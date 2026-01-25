@@ -1,0 +1,60 @@
+# This workflow will do a clean installation of node dependencies, cache/restore them, build the source code and run tests across different versions of node
+# For more information see: https://help.github.com/actions/language-and-framework-guides/using-nodejs-with-github-actions
+
+name: Deploy Docs
+
+on:
+  push:
+    branches: ["main"]
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+          cache: 'yarn'
+          cache-dependency-path: documentation/yarn.lock
+
+      - name: Create or verify gh-pages branch
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git ls-remote --heads origin gh-pages | grep -q gh-pages; then
+            echo "gh-pages branch already exists."
+          else
+            echo "gh-pages branch does not exist. Creating it now."
+            # Create orphan branch and ensure clean state
+            git checkout --orphan gh-pages
+            git reset --hard
+            # Add a placeholder so the branch has at least one tracked file
+            echo "Placeholder for gh-pages branch" > .gitkeep
+            git add .gitkeep
+            git commit -m "chore(gh-pages): initial gh-pages placeholder"
+            git push origin gh-pages
+            git checkout main
+          fi
+
+      - name: Install Dependencies
+        run: cd documentation && yarn install
+
+      - name: Generate Dependencies Page
+        if: github.repository_owner == 'applebaumian'
+        run: node documentation/scripts/generate-dependencies.js
+
+      - name: Deploy to GitHub Pages
+        run: |
+          export ORG_NAME=$(echo ${GITHUB_REPOSITORY%/*})
+          export PROJECT_NAME=$(echo ${GITHUB_REPOSITORY#*/})
+          cd documentation && NODE_ENV="production" GIT_USER="github-actions[bot]" GIT_PASS="${{ secrets.GITHUB_TOKEN }}" yarn deploy

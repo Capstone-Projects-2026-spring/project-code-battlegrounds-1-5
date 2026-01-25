@@ -1,0 +1,92 @@
+# This is an example and will not work
+# An example for generating coverage and docs
+# in python and automatically putting them in your
+# deployed docusaurus website
+
+name: Deploy Docs With Coverage and Docs
+
+on:
+  push:
+    branches: ["main"]
+jobs:
+  generate-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+        # Make sure python and its dependencies are installed
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          cd server
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # Generate a coverage report using the pytest tool
+      # Copes the output to the static docusaurus folder
+      - name: Generate Coverage Report
+        run: |
+          cd server
+          coverage run -m pytest tests/ -v
+          coverage html
+          cd ../
+          rm -rf documentation/static/htmlcov
+          mv server/htmlcov documentation/static/
+
+      # Uses sphinx to generate a docs website from
+      # the docstrings in your code
+      - name: Generate Python documentation
+        run: |
+          cd server/docs
+          python -m sphinx.cmd.build -b html source build
+
+      - name: Upload docs
+        run: |
+          rm -rf documentation/static/flaskdoc
+          mv server/docs/build documentation/static/flaskdoc
+
+      # Gets your apispec for a deployed API. There are other ways to do this
+      - name: Generate OpenAPI documentation
+        run: |
+          curl -L -o documentation/static/apispec_1.json https://www.example.com/apispec_1.json
+
+      # Uploads the last few steps into an artifact to be used in the deploy job below
+      - name: Upload Documentation Artifacts
+        id: upload-docs
+        uses: actions/upload-artifact@v4
+        with:
+          name: documentation
+          path: documentation/static/
+
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      # Get the artifact contents from the previous step
+      - name: Download Documentation Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: documentation
+          path: documentation/static/
+
+      - name: Install
+        run: cd documentation && yarn install
+
+      - name: Deploy
+        run: |
+          export ORG_NAME=$(echo ${GITHUB_REPOSITORY%/*})
+          export PROJECT_NAME=$(echo ${GITHUB_REPOSITORY#*/})
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          cd documentation && NODE_ENV="production" GIT_USER="github-actions[bot]" GIT_PASS="${{ secrets.GITHUB_TOKEN }}" yarn deploy

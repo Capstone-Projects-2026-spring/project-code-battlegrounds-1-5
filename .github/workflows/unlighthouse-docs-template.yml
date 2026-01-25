@@ -1,0 +1,22 @@
+name: Unlighthouse Report for Docs
+
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows: ["Deploy Docs"]
+    types: [completed]
+
+jobs:
+  demo:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Dependencies
+        run: npm install -g @unlighthouse/cli puppeteer netlify-cli
+
+      - name: Unlighthouse assertions and client
+        run: |
+          unlighthouse-ci --site https://applebaumian.github.io/tu-cis-4398-docs-template/ --budget 75 --build-static
