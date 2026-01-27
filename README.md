@@ -38,7 +38,7 @@ Discuss what you need to develop this project. This includes background informat
 <div align="center">
 
 [//]: # (Replace with your collaborators)
-[Julia Fasick](https://github.com/julia-fasick) • [Kyle Dragon Lee](https://github.com/leekd99) • [Jesse Herrera](https://github.com/JesseHerrera04) • [Kyle Fauntroy](https://github.com/safebootup) • [Elan Reizas](https://github.com/ElanReizas) • [Samir Buch](https://github.com/samirbuch)
+[Julia Fasick](https://github.com/julia-fasick) • [Kyle Dragon Lee](https://github.com/leekd99) • [Jesse Herrera](https://github.com/JesseHerrera04) • [Kyle Fauntroy](https://github.com/safebootup) • [Elan Reizas](https://github.com/ElanReizas) • [Samir Buch](https://github.com/samirbuch) • [Michael Zach](https://github.com/Mzach55)
 
 
 </div>
