@@ -30,7 +30,7 @@ sidebar_position: 5
 # Use Case 4 (Full Game Flow)
 1. Matchmaking completes, user is assigned initial role of code writer.
 2. User sees problem and begins to write code. Function names and associated JavaDocs are sent to the tester's machine.
-3. Tester writes and runs unit tests for functions exposed.
+3. Tester writes and runs unit tests for functions exposed. Unit test results are sent back to coder's machine.
 4. Halfway through match, user roles switch.
 5. When all tests are passing, code is submitted for scoring.
 6. Code is graded based on correctness, efficiency (runtime), validity of unit tests, and overall time taken to finish prompt.
@@ -39,7 +39,7 @@ sidebar_position: 5
 # Use Case 5 (Perfect Game Flow)
 1. Matchmaking completes, user is assigned initial role of code writer.
 2. User sees problem and begins to write code. Function names and associated JavaDocs are sent to the tester's machine.
-3. Tester writes and runs unit tests for functions exposed.
+3. Tester writes and runs unit tests for functions exposed. Unit test results are sent back to coder's machine.
 4. All tests are passing, code is submitted for scoring.
 6. Code is graded based on correctness, efficiency (runtime), validity of unit tests, and overall time taken to finish prompt.
 7. Player rankings updated based on score.
@@ -47,7 +47,7 @@ sidebar_position: 5
 # Use Case 6 (Worst-Case Game Flow)
 1. Matchmaking completes, user is assigned initial role of code writer.
 2. User sees problem and begins to write code. Function names and associated JavaDocs are sent to the tester's machine.
-3. Tester writes and runs unit tests for functions exposed.
+3. Tester writes and runs unit tests for functions exposed. Unit test results are sent back to coder's machine.
 4. Halfway through match, user roles switch.
 5. All tests still not passing.
 6. Timer runs out.
