@@ -42,7 +42,7 @@ The background will contain a more detailed description of the product and a com
     - Exit matchmaking
 
 3. Coding Questions
-    - The application will include a database of coding questions for users to answer.
+    - The application will include questions that are stored persistently.
     - The questions will include
         - Strings
         - Arrays
@@ -50,36 +50,34 @@ The background will contain a more detailed description of the product and a com
         - Math Questions
         - Data Structures & Algorithms
 
-4. Question Process
+4. Game Process
     - The application will follow a structured flow
         - Users will be paired
         - Users will be assigned a random question from the question list
         - The coder will have to submit code to answer the question
-        - the QA participant will need to create feedback and create test cases
-        - QA Participant can send these test cases to the coder
-
+        - the QA participant will receive their test results
+        - QA Participant will send back their own test cases to help guide the coder
+        - Process repeats until a team finishes.
 
 4. 
 
-
-
-
-
-3. User completition of successful rounds will increase their personal stats
-
-4. User can monitor their daily activity on the website by tracking days logged in.
-
-5. 
 
 # Nonfunctional Requirements
 
-1. There will be a progression system to reward users for signing in and playing the game.
+1. Interfaces
+    - The user interface will be designed for simplicity and ease of use, following modern design principles.
 
-2. Code Battlegrounds will securely allow users to sign in with a gmail through Google Identity Services
+2. Security
+    - The application will leverage Google Authentication services
 
-3. Google Services will be handling security concerns such as passwords
+3. Performance
+    - The program can handle submitting code and providing feedback between users in an efficient and fast manner
 
-4. 
+4. Usability
+    - Provide a responsive design
+
+5. 
+
 
 ## Required Resources
 
