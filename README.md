@@ -29,6 +29,58 @@ Describe the initial design concept: Hardware/software architecture, programming
 
 The background will contain a more detailed description of the product and a comparison to existing similar projects/products. A literature search should be conducted and the results listed. Proper citation of sources is required. If there are similar open-source products, you should state whether existing source will be used and to what extent. If there are similar closed-source/proprietary products, you should state how the proposed product will be similar and different.
 
+## Features and Requirements
+
+# Functional Requirements
+
+1. User must have an account to play on CodeBattlegrounds
+    - They will be prompted to sign-in with Google
+    - User will be authenticated through google Oauth
+
+2. User must be able to interact with matchmaking
+    - Start the search for matchmaking
+    - Exit matchmaking
+
+3. Coding Questions
+    - The application will include a database of coding questions for users to answer.
+    - The questions will include
+        - Strings
+        - Arrays
+        - Trees
+        - Math Questions
+        - Data Structures & Algorithms
+
+4. Question Process
+    - The application will follow a structured flow
+        - Users will be paired
+        - Users will be assigned a random question from the question list
+        - The coder will have to submit code to answer the question
+        - the QA participant will need to create feedback and create test cases
+        - QA Participant can send these test cases to the coder
+
+
+4. 
+
+
+
+
+
+3. User completition of successful rounds will increase their personal stats
+
+4. User can monitor their daily activity on the website by tracking days logged in.
+
+5. 
+
+# Nonfunctional Requirements
+
+1. There will be a progression system to reward users for signing in and playing the game.
+
+2. Code Battlegrounds will securely allow users to sign in with a gmail through Google Identity Services
+
+3. Google Services will be handling security concerns such as passwords
+
+4. 
+
 ## Required Resources
 
 Discuss what you need to develop this project. This includes background information you will need to acquire, hardware resources, and software resources. If these are not part of the standard Computer Science Department lab resources, these must be identified early and discussed with the instructor.
