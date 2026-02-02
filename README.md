@@ -29,56 +29,6 @@ Describe the initial design concept: Hardware/software architecture, programming
 
 The background will contain a more detailed description of the product and a comparison to existing similar projects/products. A literature search should be conducted and the results listed. Proper citation of sources is required. If there are similar open-source products, you should state whether existing source will be used and to what extent. If there are similar closed-source/proprietary products, you should state how the proposed product will be similar and different.
 
-## Features and Requirements
-
-# Functional Requirements
-
-1. User must have an account to play on CodeBattlegrounds
-    - They will be prompted to sign-in with Google
-    - User will be authenticated through google Oauth
-
-2. User must be able to interact with matchmaking
-    - Start the search for matchmaking
-    - Exit matchmaking
-
-3. Coding Questions
-    - The application will include questions that are stored persistently.
-    - The questions will include
-        - Strings
-        - Arrays
-        - Trees
-        - Math Questions
-        - Data Structures & Algorithms
-
-4. Game Process
-    - The application will follow a structured flow
-        - Users will be paired
-        - Users will be assigned a random question from the question list
-        - The coder will have to submit code to answer the question
-        - the QA participant will receive their test results
-        - QA Participant will send back their own test cases to help guide the coder
-        - Process repeats until a team finishes.
-
-4. 
-
-
-# Nonfunctional Requirements
-
-1. Interfaces
-    - The user interface will be designed for simplicity and ease of use, following modern design principles.
-
-2. Security
-    - The application will leverage Google Authentication services
-
-3. Performance
-    - The program can handle submitting code and providing feedback between users in an efficient and fast manner
-
-4. Usability
-    - Provide a responsive design
-
-5. 
-
-
 ## Required Resources
 
 Discuss what you need to develop this project. This includes background information you will need to acquire, hardware resources, and software resources. If these are not part of the standard Computer Science Department lab resources, these must be identified early and discussed with the instructor.
