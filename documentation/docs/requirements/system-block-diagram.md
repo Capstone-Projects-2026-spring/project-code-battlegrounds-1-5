@@ -27,10 +27,9 @@ cr --> sql : Persistent
 
 ```
 ## Description
-This project stack will be deployed on Google Cloud Platform (GCP) and it follows a containerized architecture where users interact with the application through a frontend built with React. The front end communicates with our backend service on Cloud Run.
+This project stack will be deployed on Google Cloud Platform (GCP) and it utilized a containerized architecture where users interact with the application through a frontend built with NextJS and Bun. 
+The application is containerized and deployed via Cloud Run for orchestrated scaling.
 
-The backend application runs stateless containers on cloud run ensuring scalability. Redis is used for ephemeral data such as caching and short lived sessions, while PostgreSQL serves as the persistant data store.
+Redis (Google Memorystore) is used for ephemeral data such as match status, while PostgreSQL (CloudSQL) serves as the authoratative, persistent store for account info and similar.
 
-Application container images are built and stored in Artifact Registry. Cloud Run uses the images  during deployment.
-
-Overall this architecture isolates computation, storage and deployment concerns allowing scalability and reliability.
+Application container images are built automatically and stored in Artifact Registry via a GitHub Actions CI/CD pipeline.
