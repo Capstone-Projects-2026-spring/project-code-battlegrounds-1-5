@@ -8,6 +8,7 @@
 .env.test.local
 .env.production.local
 
+dev-docker-compose.yml
 
 .dev-env
 # Created by https://www.toptal.com/developers/gitignore/api/nextjs,node,git,docusaurus
@@ -278,3 +279,5 @@ next-env.d.ts
 .svelte-kit
 
 # End of https://www.toptal.com/developers/gitignore/api/nextjs,node,git,docusaurus
+
+/src/generated/prisma
