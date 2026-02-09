@@ -1,12 +1,21 @@
 import React from 'react';
 import Navbar from '@/components/Navbar';
+import Broadstats from '@/components/Broadstats'
+import DifficultyGrid from '@/components/DifficultyGrid'
 
 export default function LandingPage() {
   return (
     <div>
-      <Navbar />
-      <h1>Welcome to the Landing Page</h1>
-      <p>This is where you can introduce your product or service.</p>
+      <Navbar 
+        links={[
+          "Time",
+          "Players",
+          "Tournament"
+        ]}
+        title = "Code BattleGrounds"
+      />
+      <DifficultyGrid />
+      <Broadstats />
     </div>
   );
 }
