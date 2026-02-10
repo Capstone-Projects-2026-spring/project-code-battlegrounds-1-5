@@ -2,7 +2,7 @@ import { authClient } from "@/lib/auth-client";
 import { useState } from "react";
 import { useRouter } from "next/router";
 
-export default function SignUp() {
+export default function LoginPage() {
   const router = useRouter();
 
   const [email, setEmail] = useState("");
@@ -30,6 +30,17 @@ export default function SignUp() {
         rememberMe: false
     }, {
         //callbacks
+        onRequest: (ctx) => {
+            //show loading
+        },
+        onSuccess: (ctx) => {
+            //redirect to the dashboard or sign in page
+            router.push("/dashboard")
+        },
+        onError: (ctx) => {
+            // display the error message
+            alert(ctx.error.message);
+        },
     })
   }
   return (
@@ -40,6 +51,7 @@ export default function SignUp() {
       }}
     >
       <input
+        data-testid="email-login"
         type="email"
         placeholder="Email"
         value={email}
@@ -47,14 +59,15 @@ export default function SignUp() {
       />
 
       <input
+        data-testid="password-login"
         type="password"
         placeholder="Password"
         value={password}
         onChange={(e) => setPassword(e.target.value)}
       />
 
-      <button type="submit" disabled={loading}>
-        {loading ? "Creating account..." : "Sign up"}
+      <button data-testid="login-button" type="submit" disabled={loading}>
+        {loading ? "Logging in..." : "Sign in"}
       </button>
     </form>
   );

@@ -20,6 +20,7 @@
     "react-dom": "19.2.3"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "@types/node": "^20",
     "@types/pg": "^8.16.0",
     "@types/react": "^19",

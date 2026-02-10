@@ -9,6 +9,9 @@
 .env.production.local
 
 .dev-env
+.env.test
+playwright-report
+test-results
 # Created by https://www.toptal.com/developers/gitignore/api/nextjs,node,git,docusaurus
 # Edit at https://www.toptal.com/developers/gitignore?templates=nextjs,node,git,docusaurus
 

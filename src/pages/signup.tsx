@@ -2,7 +2,7 @@ import { authClient } from "@/lib/auth-client";
 import { useState } from "react";
 import { useRouter } from "next/router";
 
-export default function SignUp() {
+export default function SignUpPage() {
   const router = useRouter();
 
   const [email, setEmail] = useState("");
@@ -22,6 +22,7 @@ export default function SignUp() {
         },
         onSuccess: (ctx) => {
             //redirect to the dashboard or sign in page
+            router.push("/dashboard")
         },
         onError: (ctx) => {
             // display the error message
@@ -37,6 +38,7 @@ export default function SignUp() {
       }}
     >
       <input
+        data-testid="name-signup"
         type="text"
         placeholder="Name"
         value={name}
@@ -44,6 +46,7 @@ export default function SignUp() {
       />
 
       <input
+        data-testid="email-signup"
         type="email"
         placeholder="Email"
         value={email}
@@ -51,13 +54,14 @@ export default function SignUp() {
       />
 
       <input
+        data-testid="password-signup"
         type="password"
         placeholder="Password"
         value={password}
         onChange={(e) => setPassword(e.target.value)}
       />
 
-      <button type="submit" disabled={loading}>
+      <button data-testid="signup-button" type="submit" disabled={loading}>
         {loading ? "Creating account..." : "Sign up"}
       </button>
     </form>
