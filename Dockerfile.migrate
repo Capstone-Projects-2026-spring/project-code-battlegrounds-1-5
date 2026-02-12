@@ -37,7 +37,6 @@ RUN bun run build
 
 FROM node:20-bookworm-slim
 WORKDIR /app
-ENV NODE_ENV=production
 
 # Install system deps needed for Prisma
 RUN apt-get update -y && apt-get install -y --no-install-recommends \
@@ -45,12 +44,16 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends \
     ca-certificates \
  && rm -rf /var/lib/apt/lists/*
 
-# Copy artifacts from builder stage (or rebuild in this Dockerfile)
+# Copy only manifests first and install all dependencies (including dev) so `prisma/config` is available
+COPY package.json bun.lock* ./
+RUN npm install
+
+# Now copy the rest of the app source (schema, migrations, config, etc.)
 COPY . .
 
-# Ensure Bun is available if you still want bunx
-RUN npm install -g bun
+# Set production environment for runtime after deps are installed
+ENV NODE_ENV=production
 
 # Default command just runs prisma deploy (can be overridden in Cloud Run Job)
-CMD ["bunx", "prisma", "deploy"]
+CMD ["npx", "prisma", "deploy"]
 
