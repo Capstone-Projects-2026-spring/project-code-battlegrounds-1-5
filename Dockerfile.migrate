@@ -54,6 +54,6 @@ COPY . .
 # Set production environment for runtime after deps are installed
 ENV NODE_ENV=production
 
-# Default command just runs prisma deploy (can be overridden in Cloud Run Job)
-CMD ["npx", "prisma", "deploy"]
+# Default command runs Prisma migrate deploy to avoid dynamic subcommand resolution (can be overridden in Cloud Run Job)
+CMD ["npx", "prisma", "migrate", "deploy"]
 
