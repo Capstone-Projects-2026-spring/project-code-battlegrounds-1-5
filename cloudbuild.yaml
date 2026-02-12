@@ -1,11 +1,3 @@
-# Cloud Build configuration to build, push to Artifact Registry, and deploy to Cloud Run
-# Assumes the following fixed environment values for this repository:
-#   project_id = code-battlegrounds
-#   region     = us-central1
-#   image_url  = us-central1-docker.pkg.dev/code-battlegrounds/poc-app/app:latest
-# This pipeline builds the container, pushes it to Artifact Registry, and deploys
-# to Cloud Run service "app" in us-central1.
-
 steps:
   # 1) Build the image and tag as latest at the fixed Artifact Registry URL
   - name: gcr.io/cloud-builders/docker
@@ -19,25 +11,21 @@ steps:
   - name: gcr.io/cloud-builders/docker
     args: ["push", "us-central1-docker.pkg.dev/code-battlegrounds/poc-app/app:latest"]
 
-  # 3) Deploy to Cloud Run (service: app) in region us-central1
-  #- name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
-  #  entrypoint: gcloud
-  #  args:
-  #    - run
-  #    - deploy
-  #    - app
-  #    - --image
-  #    - "us-central1-docker.pkg.dev/code-battlegrounds/poc-app/app:latest"
-  #    - --region
-  #    - us-central1
-  #    - --platform
-  #    - managed
-  #    - --allow-unauthenticated
-      # Optionally set env vars (uncomment and add as needed):
-      # - --set-env-vars
-      # - "KEY=value,ANOTHER=value"
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -f
+      - Dockerfile.migrate
+      - -t
+      - "us-central1-docker.pkg.dev/code-battlegrounds/poc-app/migrate:latest"
+      - .
+
+  # 4) Push migration image
+  - name: gcr.io/cloud-builders/docker
+    args: ["push", "us-central1-docker.pkg.dev/code-battlegrounds/poc-app/migrate:latest"]
+
 
 images:
   - "us-central1-docker.pkg.dev/code-battlegrounds/poc-app/app:latest"
-
+  - "us-central1-docker.pkg.dev/code-battlegrounds/poc-app/migrate:latest"
 timeout: "1200s" # 20 minutes
