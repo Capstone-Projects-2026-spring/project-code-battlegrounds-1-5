@@ -9,7 +9,7 @@ WORKDIR /app
 
 # make sure prisma client is generated
 ARG DATABASE_URL="postgresql://user:pass@localhost:5432/db" # dummy var just to be able to generate it
-ENV DATABASE_URL=$DATABASE_UR
+ENV DATABASE_URL=$DATABASE_URL
 
 # Install system dependencies (optional but useful for native modules / Prisma)
 RUN apt-get update -y && apt-get install -y --no-install-recommends \
