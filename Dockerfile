@@ -29,6 +29,8 @@ RUN bun install --frozen-lockfile
 # Copy the rest of the app source
 COPY . .
 
+RUN bunx prisma generate
+
 # Build the Next.js app
 ENV NODE_ENV=production
 RUN bun run build
