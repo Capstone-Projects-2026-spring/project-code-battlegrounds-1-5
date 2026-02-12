@@ -1,48 +1,42 @@
-# Multi-stage Dockerfile for Next.js + Prisma app
-# Use Debian-based image to ensure Prisma binaries work out-of-the-box
-
-# TODO: this should use bun for installation and server starting
+# Multi-stage Dockerfile for Next.js + Prisma app (Bun-only)
+# Use Debian-based Bun image to ensure Prisma binaries work out-of-the-box
 
 # 1) Base builder image: installs deps, generates Prisma client, builds Next app
-FROM node:20-bookworm-slim AS builder
+FROM oven/bun:1-debian AS builder
 
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies (optional but useful for native modules)
+# Install system dependencies (optional but useful for native modules / Prisma)
 RUN apt-get update -y && apt-get install -y --no-install-recommends \
     openssl \
     ca-certificates \
  && rm -rf /var/lib/apt/lists/*
 
-# Enable Corepack to get Yarn
-ENV COREPACK_ENABLE_AUTO_PIN=1
-RUN corepack enable
-
 # Copy dependency manifests
-COPY package.json yarn.lock* ./
+COPY package.json bun.lock* ./
 
 # Copy prisma schema before install because postinstall runs `prisma generate`
 COPY prisma ./prisma
 
 # Install dependencies (includes dev deps needed for build and prisma)
-RUN yarn install --frozen-lockfile
+RUN bun install --frozen-lockfile
 
 # Copy the rest of the app source
 COPY . .
 
 # Build the Next.js app
 ENV NODE_ENV=production
-RUN yarn build
+RUN bun run build
 
 # 2) Runner image: minimal runtime with built app
-FROM node:20-bookworm-slim AS runner
+FROM oven/bun:1-debian AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=8080
 
 # Make sure we have openssl for prisma
-RUN apt-get update -y && apt-get install -y openssl
+RUN apt-get update -y && apt-get install -y --no-install-recommends openssl ca-certificates && rm -rf /var/lib/apt/lists/*
 
 # Copy only the necessary build artifacts and node_modules from builder
 COPY --from=builder /app/package.json ./package.json
@@ -55,8 +49,5 @@ COPY --from=builder /app/tsconfig.json ./tsconfig.json
 # Expose the port Next.js listens on
 EXPOSE 8080
 
-# Switch to non-root user
-USER node
-
-# Start the Next.js server
-CMD ["sh", "-c", "yarn start -p $PORT -H 0.0.0.0"]
+# Start the Next.js server with Bun
+CMD ["sh", "-c", "bun run start -p ${PORT:-8080} -H 0.0.0.0"]
