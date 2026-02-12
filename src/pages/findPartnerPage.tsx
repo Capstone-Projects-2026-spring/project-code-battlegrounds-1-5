@@ -2,11 +2,11 @@ import React from 'react';
 import { Stack, Box } from '@mantine/core'; //
 import Navbar from '@/components/Navbar';
 import Broadstats from '@/components/Broadstats';
-import DifficultyGrid from '@/components/DifficultyGrid';
+import PartnerSearch from '@/components/PartnerSearch';
 
-export default function LandingPage() {
+export default function FindPartnerPage() {
   return (
-    /* Stack creates a flex column. 
+    /* Stack creates a flex column.
        h="100vh" ensures the page is at least the height of the screen.
        gap={0} prevents unwanted spacing between the header and the grid.
     */
@@ -20,12 +20,12 @@ export default function LandingPage() {
         title="Code BattleGrounds"
       />
       
-      {/* Wrapping the grid in a Box with flex: 1 
+      {/* Wrapping the grid in a Box with flex: 1
           forces this section to grow and fill all empty space,
           naturally pushing Broadstats to the bottom.
       */}
       <Box style={{ flex: 1 }}>
-        <DifficultyGrid />
+        <PartnerSearch />
       </Box>
       
       <Broadstats />
