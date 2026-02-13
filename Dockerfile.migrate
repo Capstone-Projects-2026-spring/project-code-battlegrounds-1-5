@@ -1,59 +1,61 @@
-# Multi-stage Dockerfile for Next.js + Prisma app (Bun-only)
-# Use Debian-based Bun image to ensure Prisma binaries work out-of-the-box
+# multistage Dockerfile with builder and runner image. runner is not for the full app; just to be deployed via cloud run
+# job to apply deployments to prod db
 
-# 1) Base builder image: installs deps, generates Prisma client, builds Next app
+# ================ builder stage ================
 FROM oven/bun:1-debian AS builder
 
-# Set working directory
+# set working dir
 WORKDIR /app
 
-# make sure prisma client is generated
-ARG DATABASE_URL="postgresql://user:pass@localhost:5432/db" # dummy var just to be able to generate it
+# make sure prisma client is generated (can use a dummy var, but it needs to be set)
+ARG DATABASE_URL="postgresql://user:pass@localhost:5432/db"
 ENV DATABASE_URL=$DATABASE_URL
 
-# Install system dependencies (optional but useful for native modules / Prisma)
+# make sure we get openssl for prisma
 RUN apt-get update -y && apt-get install -y --no-install-recommends \
     openssl \
     ca-certificates \
  && rm -rf /var/lib/apt/lists/*
 
-# Copy dependency manifests
+# copy dependency files
 COPY package.json bun.lock* ./
 
-# Copy prisma schema before install because postinstall runs `prisma generate`
+# copy prisma schema BEFORE install (otherwise prisma will complain)
 COPY prisma ./prisma
 
-# Install dependencies (includes dev deps needed for build and prisma)
+# install all deps
 RUN bun install --frozen-lockfile
 
-# Copy the rest of the app source
+# copy the rest of the project
 COPY . .
 
+# generate prisma client
 RUN bunx prisma generate
 
-# Build the Next.js app
+# build!
 ENV NODE_ENV=production
 RUN bun run build
 
+# ================ runner stage ================
 FROM node:20-bookworm-slim
 WORKDIR /app
 
-# Install system deps needed for Prisma
+# make sure we get openssl for prisma
 RUN apt-get update -y && apt-get install -y --no-install-recommends \
     openssl \
     ca-certificates \
  && rm -rf /var/lib/apt/lists/*
 
-# Copy only manifests first and install all dependencies (including dev) so `prisma/config` is available
+# just copy all the deps and install, since this is not really a prod image and will only be run in contained environments
 COPY package.json bun.lock* ./
 RUN npm install
 
-# Now copy the rest of the app source (schema, migrations, config, etc.)
+# copy everything else
 COPY . .
 
-# Set production environment for runtime after deps are installed
+# set prod env
 ENV NODE_ENV=production
 
-# Default command runs Prisma migrate deploy to avoid dynamic subcommand resolution (can be overridden in Cloud Run Job)
+# set command to run the prisma deployment, can be overriden in cloud run job as well
 CMD ["npx", "prisma", "migrate", "deploy"]
 

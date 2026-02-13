@@ -1,5 +1,5 @@
 steps:
-  # 1) Build the image and tag as latest at the fixed Artifact Registry URL
+  # this bit builds the full prod image
   - name: gcr.io/cloud-builders/docker
     args:
       - build
@@ -7,10 +7,11 @@ steps:
       - "us-central1-docker.pkg.dev/code-battlegrounds/poc-app/app:latest"
       - .
 
-  # 2) Push the image to Artifact Registry
+  # push the prod image
   - name: gcr.io/cloud-builders/docker
     args: ["push", "us-central1-docker.pkg.dev/code-battlegrounds/poc-app/app:latest"]
 
+  # build the prisma deployment image
   - name: gcr.io/cloud-builders/docker
     args:
       - build
@@ -20,7 +21,7 @@ steps:
       - "us-central1-docker.pkg.dev/code-battlegrounds/poc-app/migrate:latest"
       - .
 
-  # 4) Push migration image
+  # push deployment image
   - name: gcr.io/cloud-builders/docker
     args: ["push", "us-central1-docker.pkg.dev/code-battlegrounds/poc-app/migrate:latest"]
 
