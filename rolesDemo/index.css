@@ -1,0 +1,9 @@
+body {
+  margin: 0;
+  padding: 20px;
+  font-family: Arial, sans-serif;
+}
+
+#root {
+  min-height: 100vh;
+}
