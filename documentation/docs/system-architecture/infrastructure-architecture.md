@@ -14,7 +14,7 @@ perfectly to production, as discussed later.
 
 The API will connect with two different data stores. For quick-access, ephemeral data, [Redis](https://redis.io/) will
 be utilized. For an authoritative data store, [PostgreSQL](https://www.postgresql.org/) will be used. For more
-information on the database design, see FILLER. <!-- TODO: replace this with database design doc page -->
+information on the database design, see [Database Schema](database-schema.md)
 
 ## Diagram and Explanation
 
