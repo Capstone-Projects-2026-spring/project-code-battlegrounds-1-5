@@ -9,12 +9,12 @@ sidebar_position: 1
 The architecture is designed with a high level of inherent scalability, both vertically and horizontally. This is
 achieved with an ephemeral, stateless application that can be autoscaled by orchestration systems. For local
 development, the application can be run with a `.env` file and `docker-compose.yml`
-file <!-- TODO: replace this with development environment link -->. This environment maps
+file (see [development-environment.md](./development-environment.md)). This environment maps
 perfectly to production, as discussed later.
 
 The API will connect with two different data stores. For quick-access, ephemeral data, [Redis](https://redis.io/) will
 be utilized. For an authoritative data store, [PostgreSQL](https://www.postgresql.org/) will be used. For more
-information on the database design, see FILLER. <!-- TODO: replace this with database design doc page -->
+information on the database design, see [Database Schema](database-schema.md)
 
 ## Diagram and Explanation
 
@@ -116,7 +116,7 @@ analytics. Infrastructure declaration files are hosted in a separate Git repo, h
 - Used for authoritative, persistent data store such as problem sets, user data, and match results.
 - Can be vertically and horizontally scaled if needed.
 - Migrations and deployment handled by Cloud Run Job.
-- See FILLER for schema information. <!-- TODO: replace this with database design doc page -->
+- See [Database Schema](./database-schema.md) for schema information.
 
 ### [Serverless VPC Access Connector](https://docs.cloud.google.com/vpc/docs/serverless-vpc-access)
 
