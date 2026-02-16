@@ -18,11 +18,11 @@ The repository is organized to maintain a clear separation between product and d
 ## Branching Strategy
 To ensure stability, we follow a feature-branch workflow:
 
-| Branch | Purpose | Permissions |
-| :--- | :--- | :--- |
-| `main` | **Production Ready.** Contains the latest stable release. | **Protected.** No direct pushes. |
-| `feat/*` | Active development of new features or user stories. | Developer-owned. |
-| `fix/*` | Critical bug fixes or patches. | Developer-owned. |
+| Branch   | Purpose | Permissions |
+|:---------| :--- | :--- |
+| `main`   | **Production Ready.** Contains the latest stable release. | **Protected.** No direct pushes. |
+| `feat-*` | Active development of new features or user stories. | Developer-owned. |
+| `fix-*`  | Critical bug fixes or patches. | Developer-owned. |
 
 ---
 
