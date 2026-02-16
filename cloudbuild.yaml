@@ -1,0 +1,32 @@
+steps:
+  # this bit builds the full prod image
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -t
+      - "us-central1-docker.pkg.dev/code-battlegrounds/poc-app/app:latest"
+      - .
+
+  # push the prod image
+  - name: gcr.io/cloud-builders/docker
+    args: ["push", "us-central1-docker.pkg.dev/code-battlegrounds/poc-app/app:latest"]
+
+  # build the prisma deployment image
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -f
+      - Dockerfile.migrate
+      - -t
+      - "us-central1-docker.pkg.dev/code-battlegrounds/poc-app/migrate:latest"
+      - .
+
+  # push deployment image
+  - name: gcr.io/cloud-builders/docker
+    args: ["push", "us-central1-docker.pkg.dev/code-battlegrounds/poc-app/migrate:latest"]
+
+
+images:
+  - "us-central1-docker.pkg.dev/code-battlegrounds/poc-app/app:latest"
+  - "us-central1-docker.pkg.dev/code-battlegrounds/poc-app/migrate:latest"
+timeout: "1200s" # 20 minutes
