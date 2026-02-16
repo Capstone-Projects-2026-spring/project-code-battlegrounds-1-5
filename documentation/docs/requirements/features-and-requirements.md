@@ -7,24 +7,7 @@ sidebar_position: 4
 
 # Functional Requirements
 
-1. User must have an account to play on CodeBattlegrounds
-    - They will be prompted to sign-in with Google
-    - User will be authenticated through google Oauth
-
-2. User must be able to interact with matchmaking
-    - Start the search for matchmaking
-    - Exit matchmaking
-
-3. Coding Questions
-    - The application will include questions that are stored persistently.
-    - The questions will include
-        - Strings
-        - Arrays
-        - Trees
-        - Math Questions
-        - Data Structures & Algorithms
-
-4. Game Process
+1. Game Process
     - The application will follow a structured flow
     - Users will be paired.
     - Users will be assigned a random problem from the problem list.
@@ -34,16 +17,37 @@ sidebar_position: 4
     - After a designated interval, the roles switch.
     - Process repeats until a team finishes.
 
+2. Coding Questions
+    - The application will include questions that are stored persistently.
+    - The questions will include
+        - Strings
+        - Arrays
+        - Trees
+        - Math Questions
+        - Data Structures & Algorithms
+
+3. User must be able to interact with matchmaking
+    - Start the search for matchmaking
+    - Exit matchmaking
+
+
+4. User must have an account to play on CodeBattlegrounds
+    - They will be prompted to sign-in with Google
+    - User will be authenticated through google Oauth
+
+
+
+
 
 
 
 # Nonfunctional Requirements
 
-1. Interfaces
-    - The user interface will be designed for simplicity and ease of use, following modern design principles.
-
-2. Security
+1. Security
     - The application will leverage Google Authentication services
+
+2. Interfaces
+    - The user interface will be designed for simplicity and ease of use, following modern design principles.
 
 3. Performance
     - The program can handle submitting code and providing feedback between users in an efficient and fast manner

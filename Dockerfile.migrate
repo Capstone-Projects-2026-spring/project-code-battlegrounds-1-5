@@ -1,0 +1,61 @@
+# multistage Dockerfile with builder and runner image. runner is not for the full app; just to be deployed via cloud run
+# job to apply deployments to prod db
+
+# ================ builder stage ================
+FROM oven/bun:1-debian AS builder
+
+# set working dir
+WORKDIR /app
+
+# make sure prisma client is generated (can use a dummy var, but it needs to be set)
+ARG DATABASE_URL="postgresql://user:pass@localhost:5432/db"
+ENV DATABASE_URL=$DATABASE_URL
+
+# make sure we get openssl for prisma
+RUN apt-get update -y && apt-get install -y --no-install-recommends \
+    openssl \
+    ca-certificates \
+ && rm -rf /var/lib/apt/lists/*
+
+# copy dependency files
+COPY package.json bun.lock* ./
+
+# copy prisma schema BEFORE install (otherwise prisma will complain)
+COPY prisma ./prisma
+
+# install all deps
+RUN bun install --frozen-lockfile
+
+# copy the rest of the project
+COPY . .
+
+# generate prisma client
+RUN bunx prisma generate
+
+# build!
+ENV NODE_ENV=production
+RUN bun run build
+
+# ================ runner stage ================
+FROM node:20-bookworm-slim
+WORKDIR /app
+
+# make sure we get openssl for prisma
+RUN apt-get update -y && apt-get install -y --no-install-recommends \
+    openssl \
+    ca-certificates \
+ && rm -rf /var/lib/apt/lists/*
+
+# just copy all the deps and install, since this is not really a prod image and will only be run in contained environments
+COPY package.json bun.lock* ./
+RUN npm install
+
+# copy everything else
+COPY . .
+
+# set prod env
+ENV NODE_ENV=production
+
+# set command to run the prisma deployment, can be overriden in cloud run job as well
+CMD ["npx", "prisma", "migrate", "deploy"]
+
