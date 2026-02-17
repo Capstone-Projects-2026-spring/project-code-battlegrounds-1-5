@@ -42,7 +42,7 @@ export default function Home() {
         <>
             <Head>
                 <title>Infra Test</title>
-                <meta name="description" content="Infra connectivity test" />
+                <meta name="description" content="Infra Connectivity Test" />
                 <meta name="viewport" content="width=device-width, initial-scale=1" />
                 <link rel="icon" href="/favicon.ico" />
             </Head>
@@ -51,7 +51,7 @@ export default function Home() {
                 <main className={styles.main}>
                     <div className={styles.intro}>
                         <h1>Infrastructure connectivity test</h1>
-                        <p>Use the buttons below to verify write/read to Postgres and Redis as configured in .env and dev-docker-compose.yml.</p>
+                        <p>Use the buttons below to verify write/read to Postgres and Redis.</p>
                     </div>
 
                     <div className={styles.ctas}>
