@@ -4,14 +4,14 @@ import { useState } from "react";
 import { authClient } from "@/lib/auth-client";
 
 export default function Home() {
-    // Left column: infra tests
+    // infra tests
     const [pgResult, setPgResult] = useState<any>(null);
     const [pgLoading, setPgLoading] = useState(false);
     const [redisResult, setRedisResult] = useState<any>(null);
     const [redisLoading, setRedisLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    // Right column: auth tests
+    // auth tests
     const [name, setName] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
@@ -54,7 +54,7 @@ export default function Home() {
         setAuthLoading("signup");
         try {
             const { data, error } = await authClient.signUp.email(
-                { email, password, name, callbackURL: "/dashboard" },
+                { email, password, name },
                 {
                     onError: (ctx) => setAuthMessage(`Sign up error: ${ctx.error.message}`),
                 }
@@ -75,7 +75,7 @@ export default function Home() {
         setAuthLoading("login");
         try {
             const { data, error } = await authClient.signIn.email(
-                { email, password, callbackURL: "/dashboard", rememberMe: false },
+                { email, password, rememberMe: false },
                 {
                     onError: (ctx) => setAuthMessage(`Login error: ${ctx.error.message}`),
                 }
@@ -116,9 +116,9 @@ export default function Home() {
 
             <div className={styles.page}>
                 <main className={styles.main}>
-                    <div style={{ display: "flex", flexDirection: "row", gap: 24, width: "100%" }}>
+                    <div style={{ display: "flex", flexDirection: "row", gap: 48, width: "100%" }}>
                         {/* Left column: existing infra tests (about one third) */}
-                        <div style={{ flex: "0 0 33%", minWidth: 260 }}>
+                        <div style={{ flex: "0 0 33%", minWidth: 260, padding: 16, marginLeft: -24 }}>
                             <div className={styles.intro}>
                                 <h1>Infrastructure connectivity test</h1>
                                 <p>Use the buttons below to verify write/read to Postgres and Redis.</p>
@@ -150,7 +150,7 @@ export default function Home() {
                         </div>
 
                         {/* Right column: new auth tests */}
-                        <div style={{ flex: "1 1 auto" }}>
+                        <div style={{ flex: "1 1 auto", padding: 16, marginLeft: 150 }}>
                             <div className={styles.intro}>
                                 <h1>Auth tests</h1>
                                 <p>Create a user, sign in, and logout. Mirrors signup/login/dashboard flows.</p>
