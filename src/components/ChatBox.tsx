@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { ScrollArea, TextInput, ActionIcon, Paper, Text, Stack, Box } from '@mantine/core';
 import { IconSend } from '@tabler/icons-react';
-import { Socket } from 'socket.io-client';
+import type { Socket } from 'socket.io-client';
 
 interface Message {
   id: string;
   text: string;
-  user: string; 
+  user: string;
 }
 
 interface ChatBoxProps {
@@ -17,24 +17,26 @@ interface ChatBoxProps {
 }
 
 export default function ChatBox({ socket, roomId, role, isSpectator = false }: ChatBoxProps) {
-
   // State for the entire chat history
   const [messages, setMessages] = useState<Message[]>([]);
-  
   // State for the text currently being typed in the input box
   const [currentText, setCurrentText] = useState('');
 
   // 3. Listen for INCOMING messages from the server
   useEffect(() => {
-    socket.on('receiveChat', (incomingMessage: Message) => {
-      // The "prev" callback ensures we always append to the most recent array
-      setMessages((prev) => [...prev, incomingMessage]);
-    });
-
-    return () => {
-      socket.off('receiveChat');
+    const handler = (incomingMessage: Message) => {
+      /* This would ignore spectators from seeing new messages. Just incase we wanted them to not see chat.
+      if (!isSpectator) {
+        setMessages((prev) => [...prev, incomingMessage]);
+      }
+        */
     };
-  }, [socket]);
+
+    socket.on('receiveChat', handler);
+    return () => {
+      socket.off('receiveChat', handler);
+    };
+  }, [socket, isSpectator]);
 
   const handleSendMessage = () => {
     if (isSpectator) return; // Spectators cannot send messages
@@ -44,7 +46,7 @@ export default function ChatBox({ socket, roomId, role, isSpectator = false }: C
     const newMessage: Message = {
       id: Math.random().toString(36).substring(7), // Quick random ID
       text: currentText,
-      user: role, 
+      user: role,
     };
 
     // Optimistically add it to our own screen instantly
@@ -61,13 +63,12 @@ export default function ChatBox({ socket, roomId, role, isSpectator = false }: C
     <Paper shadow="xs" p="md" withBorder h="100%" display="flex" style={{ flexDirection: 'column' }}>
       <Text fw={700} mb="xs">Match Chat</Text>
       
+      {/* 1. The Message Display Area */}
       <ScrollArea style={{ flex: 1 }} mb="md">
         <Stack gap="xs">
           {messages.map((msg) => (
             <Box key={msg.id}>
-              <Text size="xs" c="dimmed" fw={500} tt="capitalize">
-                {msg.user}
-              </Text>
+              <Text size="xs" c="dimmed" fw={500}>{msg.user}</Text>
               <Paper withBorder p="xs" radius="sm" bg="var(--mantine-color-gray-0)">
                 <Text size="sm">{msg.text}</Text>
               </Paper>
@@ -76,6 +77,7 @@ export default function ChatBox({ socket, roomId, role, isSpectator = false }: C
         </Stack>
       </ScrollArea>
 
+      {/* 2. The Input Area */}
       <TextInput
         placeholder="Type a message..."
         value={currentText}

@@ -6,7 +6,8 @@ import classes from '../styles/comps/Header.module.css';
 
 interface HeaderProps {
   links: string[],
-  title: string
+  title: string,
+  isSpectator?: boolean
 }
 
 export default function HeaderSimple(props: HeaderProps) {

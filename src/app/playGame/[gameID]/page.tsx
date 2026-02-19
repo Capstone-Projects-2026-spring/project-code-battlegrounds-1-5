@@ -24,15 +24,14 @@ export default function PlayGameRoom() {
     const socketInstance = io(); 
     setSocket(socketInstance);
 
-    // 4. Wait for the server to reply with our role (coder, tester, or spectator)
-    // The server assigns a role before letting the user join the game room, so we should get this info immediately after connecting
+    // 4. Ask the server to put us in the room for this specific game
+    // sends a signal to the server that we want to join a specific game room, identified by gameId
+    socketInstance.emit('joinGame', gameId);
+
+    // 5. Wait for the server to reply with our role (coder, tester, or spectator)
     socketInstance.on('roleAssigned', (assignedRole) => {
       setRole(assignedRole);
     });
-
-    // 5. Ask the server to put us in the room for this specific game
-    // sends a signal to the server that we want to join a specific game room, identified by gameId
-    socketInstance.emit('joinGame', gameId);
 
     // 6. Cleanup: disconnect the socket if the user leaves the page
     return () => {
