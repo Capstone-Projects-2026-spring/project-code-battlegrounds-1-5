@@ -1,17 +1,21 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 
-
 const { createServer } = require('http');
 const next = require('next');
 const { Server } = require('socket.io');
+const { createAdapter } = require('@socket.io/redis-adapter');
+const Redis = require('ioredis');
+require('dotenv').config();
 
 // Configure environment
 const dev = process.env.NODE_ENV !== 'production';
 const hostname = 'localhost';
-const port = 3000;
+const port = Number(process.env.PORT) || 3000;
+
+const REDIS_HOST = process.env.REDIS_HOST || '127.0.0.1';
+const REDIS_PORT = Number(process.env.REDIS_PORT) || 6379;
 
 // Initialize the Next.js app
-
 // this is starting up next.js
 const app = next({ dev, hostname, port });
 
@@ -20,12 +24,22 @@ const handle = app.getRequestHandler();
 
 // wait for next.js to be ready before starting our server
 app.prepare().then(() => {
-    // creating an httpServer and passing all traffic to next.js to handle (like page loads)
+  // creating an httpServer and passing all traffic to next.js to handle (like page loads)
   const httpServer = createServer(handle);
 
   // Initialize Socket.IO server and attach it to our HTTP server.
   // This allows Socket.IO to handle WebSocket connections on the same server that serves our Next.js app.
-  const io = new Server(httpServer);
+  const io = new Server(httpServer, {
+    // you can tweak transports/cors here if needed
+  });
+
+  // Create ioredis clients for the Socket.IO Redis adapter
+  const pubClient = new Redis({ host: REDIS_HOST, port: REDIS_PORT });
+  const subClient = pubClient.duplicate();
+  io.adapter(createAdapter(pubClient, subClient));
+
+  // Redis client for app-level state (e.g., latest code per room)
+  const stateRedis = pubClient; // reuse the same connection for simplicity
 
   // Listen for socket connections
   io.on('connection', (socket) => {
@@ -33,32 +47,52 @@ app.prepare().then(() => {
     console.log(`New connection: ${socket.id}`);
 
     // 1. Handle joining a specific game room
-    socket.on('joinGame', (gameId) => {
-      socket.join(gameId);
-      
-      // Determine how many people are currently in this specific room
-      const room = io.sockets.adapter.rooms.get(gameId);
-      const numPlayers = room ? room.size : 0;
+    socket.on('joinGame', async (gameId) => {
+      await socket.join(gameId);
+
+      // Determine how many people are currently in this specific room (cluster-aware)
+      const socketsInRoom = await io.in(gameId).allSockets();
+      const numPlayers = socketsInRoom ? socketsInRoom.size : 0;
 
       // Role Assignment Logic
       let role = 'spectator';
       if (numPlayers === 1) {
-        role = 'coder';   // First person in
+        role = 'coder'; // First person in
       } else if (numPlayers === 2) {
-        role = 'tester';  // Second person in
+        role = 'tester'; // Second person in
       }
 
       // Emit the assigned role back ONLY to the person who just joined
       socket.emit('roleAssigned', role);
-      
+
+      // Send latest code state from Redis if present so the joiner syncs
+      try {
+        const latestCode = await stateRedis.get(`game:${gameId}:code`);
+        if (latestCode != null) {
+          socket.emit('receiveCodeUpdate', latestCode);
+        }
+      } catch (e) {
+        console.error('Error fetching code from Redis', e);
+      }
+
       console.log(`Socket ${socket.id} joined room ${gameId} as ${role}`);
     });
 
     // 2. Handle live code relay (Coder -> Server -> Tester)
-    socket.on('codeChange', (data) => {
-      console.log(`Server received code for room ${data.roomId}`); // <-- ADD THIS
+    socket.on('codeChange', async (data) => {
+      const { roomId, code } = data || {};
+      if (!roomId) return;
+      // console.log(`Server received code for room ${roomId}`);
+
+      // Persist latest code state in Redis so all nodes/late joiners can get it
+      try {
+        await stateRedis.set(`game:${roomId}:code`, code);
+      } catch (e) {
+        console.error('Error saving code to Redis', e);
+      }
+
       // Broadcast the updated code to everyone else in the same room (except the sender)
-      socket.to(data.roomId).emit('receiveCodeUpdate', data.code);
+      socket.to(roomId).emit('receiveCodeUpdate', code);
     });
 
     // 3. Handle graceful disconnection
@@ -69,8 +103,8 @@ app.prepare().then(() => {
 
   // Start the unified server
   httpServer.listen(port, () => {
-    console.log(`Code BattleGrounds Server Ready on http://${hostname}:${port}`);
+    console.log(
+      `Code BattleGrounds Server Ready on http://${hostname}:${port} (Redis @ ${REDIS_HOST}:${REDIS_PORT})`
+    );
   });
-
-
 });
