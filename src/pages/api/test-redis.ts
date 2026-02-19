@@ -1,7 +1,14 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import Redis from "ioredis";
+import { auth } from "@/lib/auth";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+    // require auth for database queries
+    const session = await auth.api.getSession({ headers: req.headers as any });
+    if (!session) {
+        return res.status(401).json({ ok: false, error: "Unauthorized" });
+    }
+
     const host = process.env.REDIS_HOST;
     const port = Number(process.env.REDIS_PORT || 6379);
 

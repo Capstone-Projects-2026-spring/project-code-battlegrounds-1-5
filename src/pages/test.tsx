@@ -33,6 +33,10 @@ export default function Home() {
     };
 
     const testPostgres = async () => {
+        if (!session) {
+            setError("you must be logged in to test PostgreSQL connection!");
+            return;
+        }
         setPgLoading(true);
         setPgResult(null);
         const data = await callApi("/api/test-postgres");
@@ -41,6 +45,10 @@ export default function Home() {
     };
 
     const testRedis = async () => {
+        if (!session) {
+            setError("you must be logged in to test Redis connection!");
+            return;
+        }
         setRedisLoading(true);
         setRedisResult(null);
         const data = await callApi("/api/test-redis");
