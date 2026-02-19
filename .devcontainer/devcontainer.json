@@ -1,5 +1,16 @@
 {
-  "name": "CIS4398 Docusaurus Dev Container",
-  "image": "mcr.microsoft.com/devcontainers/javascript-node:1-20-bookworm",
-  "postCreateCommand": "cd documentation && yarn install"
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "waitFor": "onCreateCommand",
+  "onCreateCommand": "./.devcontainer/on-create.sh",
+  "postAttachCommand": {
+    "next": "bun dev"
+  },
+  "portsAttributes": {
+    "3000": {
+      "label": "Next Dev Server",
+      "onAutoForward": "notify"
+    }
+  }
 }
