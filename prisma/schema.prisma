@@ -81,3 +81,7 @@ model InfraTestKv {
 
   @@map("infra_test_kv")
 }
+
+model Match {
+  id String @id
+}
