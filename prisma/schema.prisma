@@ -74,3 +74,10 @@ model Verification {
   @@index([identifier])
   @@map("verification")
 }
+
+model InfraTestKv {
+  id  BigInt @id
+  val String
+
+  @@map("infra_test_kv")
+}

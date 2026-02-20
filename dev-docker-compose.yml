@@ -1,5 +1,6 @@
 services:
   postgres:
+    container_name: "battlegrounds-postgres"
     image: postgres:15
     ports:
       - "${POSTGRES_PORT}:5432"
@@ -11,6 +12,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
 
   redis:
+    container_name: "battlegrounds-redis"
     image: redis:7
     ports:
       - "${REDIS_PORT}:6379"
