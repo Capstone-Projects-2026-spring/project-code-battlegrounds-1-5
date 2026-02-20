@@ -35,8 +35,12 @@ export default function HeaderSimple(props: HeaderProps) {
       <Container size="md" className={classes.inner}>
         {/* <MantineLogo size={28} /> */}
         
-        <Text c="blue.6" fw={600} mr="auto">
+        <Text c="blue.6" fw={600} fz="xl" mr="auto">
           {props.title}
+          {/** Optional spectating indicator */}
+          {('isSpectator' in props && (props as any).isSpectator) && (
+            <span style={{ marginLeft: 8, color: 'rgb(0, 102, 255)', fontWeight: 500 }}>(Spectating)</span>
+          )}
         </Text>
 
         <Group gap={6} visibleFrom="xs">

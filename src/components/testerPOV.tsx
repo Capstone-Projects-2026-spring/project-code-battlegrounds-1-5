@@ -12,10 +12,11 @@ import { Socket } from "socket.io-client";
 
 interface TesterPOVProps {
   socket: Socket;
-  roomId: string; 
+  roomId: string;
+  isSpectator?: boolean;
 }
 
-export default function TesterPOV({ socket, roomId }: TesterPOVProps) {
+export default function TesterPOV({ socket, roomId, isSpectator }: TesterPOVProps) {
   // State to hold the incoming keystrokes
   const [liveCode, setLiveCode] = useState("// Waiting for coder to type...");
 
@@ -49,6 +50,7 @@ export default function TesterPOV({ socket, roomId }: TesterPOVProps) {
         <Navbar
           links={["Time", "Players", "Tournament"]}
           title="Code BattleGrounds"
+          isSpectator={isSpectator}
         />
       </Box>
 
