@@ -76,7 +76,7 @@ export default function TesterPOV({ socket, roomId }: TesterPOVProps) {
       </Box>
 
       <Box style={{ gridArea: "chatbox" }}>
-            <ChatBox />
+            <ChatBox socket={socket} roomId={roomId} role="Tester" />
       </Box>
       
       <Box style={{ gridArea: "foot" }}>

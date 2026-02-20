@@ -1,11 +1,9 @@
-// src/app/layout.tsx
-import { MantineProvider, ColorSchemeScript } from '@mantine/core';
-// Import Mantine's global CSS (required for v7)
-import '@mantine/core/styles.css'; 
+import '@mantine/core/styles.css';
+import { ColorSchemeScript, MantineProvider } from '@mantine/core';
 
 export const metadata = {
   title: 'Code BattleGrounds',
-  description: 'Real-time multiplayer coding challenges',
+  description: 'Competitive coding platform',
 };
 
 export default function RootLayout({
@@ -14,16 +12,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
-        <ColorSchemeScript />
+        {/* 1. This script prevents the hydration mismatch */}
+        <ColorSchemeScript defaultColorScheme="auto" />
       </head>
       <body>
-        <MantineProvider defaultColorScheme="dark">
+        {/* 2. The provider wraps your entire app */}
+        <MantineProvider defaultColorScheme="auto">
           {children}
         </MantineProvider>
       </body>
     </html>
   );
 }
-

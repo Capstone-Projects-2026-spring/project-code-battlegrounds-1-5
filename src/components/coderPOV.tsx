@@ -65,7 +65,7 @@ export default function CoderPOV({ socket, roomId }: CoderPOVProps) {
       </Box>
 
       <Box style={{ gridArea: "chatbox" }}>
-            <ChatBox />
+            <ChatBox socket={socket} roomId={roomId} role="Coder" />
       </Box>
       
       <Box style={{ gridArea: "foot" }}>
