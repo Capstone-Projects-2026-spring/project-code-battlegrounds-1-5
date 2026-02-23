@@ -15,7 +15,7 @@ interface CoderPOVProps {
 }
 
 export default function CoderPOV({ socket, roomId }: CoderPOVProps) {
-  
+
   // 3. Create the handler that blasts keystrokes to the server
   const handleEditorChange = (value: string | undefined) => {
     if (value !== undefined) {
@@ -30,7 +30,7 @@ export default function CoderPOV({ socket, roomId }: CoderPOVProps) {
         display: "grid",
         height: "100vh",
         gridTemplateColumns: "repeat(4, 1fr)",
-        gridTemplateRows: "auto 1fr 1fr auto", 
+        gridTemplateRows: "auto 1fr 1fr auto",
         gridTemplateAreas: `
           "nav nav nav nav"
           "prob edit edit coderDashBoard"
@@ -52,22 +52,22 @@ export default function CoderPOV({ socket, roomId }: CoderPOVProps) {
 
       <Box style={{ gridArea: "edit" }}>
         {/* 4. Attach the handler to Monaco's onChange event */}
-        <Editor 
-          height="100%" 
-          defaultLanguage="javascript" 
-          theme="vs-dark" 
-          onChange={handleEditorChange} 
+        <Editor
+          height="100%"
+          defaultLanguage="javascript"
+          theme="vs-dark"
+          onChange={handleEditorChange}
         />
       </Box>
 
       <Box style={{ gridArea: "coderDashBoard" }}>
-            <CoderDashboard />
+        <CoderDashboard />
       </Box>
 
       <Box style={{ gridArea: "chatbox" }}>
-            <ChatBox socket={socket} roomId={roomId} role="Coder" />
+        <ChatBox socket={socket} roomId={roomId} role="Coder" />
       </Box>
-      
+
       <Box style={{ gridArea: "foot" }}>
         <BroadStats />
       </Box>
