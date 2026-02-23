@@ -22,7 +22,7 @@ export default function PartnerSearch() {
     const roomId = query.trim();
     if (!roomId) return;
 
-    router.push(`/playGame/${encodeURIComponent(roomId)}`);
+    router.push(`/playGame/${roomId}`);
   };
 
   return (
