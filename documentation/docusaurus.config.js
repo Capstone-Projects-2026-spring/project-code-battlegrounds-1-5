@@ -105,6 +105,11 @@ const config = {
             spec: 'static/openapi.yml.yaml',
             route: '/api/',
           },
+          {
+            id: 'question-api',
+            spec: 'static/question-api.yaml',
+            route: '/api/question/',
+          },
         ],
         // Theme Options for modifying how redoc renders them
         theme: {
