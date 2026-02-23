@@ -1,7 +1,5 @@
-'use client';
-
 import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation'; // <-- Allows us read dynamic folder names.
+import { useRouter } from 'next/router';
 import { Center, Loader, Text, Group } from '@mantine/core';
 import { io, Socket } from 'socket.io-client';
 
@@ -10,8 +8,8 @@ import TesterPOV from '@/components/testerPOV';
 
 export default function PlayGameRoom() {
   // 1. Grab the ID from the URL (e.g., "624")
-  const params = useParams();
-  const gameId = params.gameID as string;
+  const router = useRouter();
+  const gameId = router.query.gameID as string;
 
   // 2. Set up our state for the socket connection and the user's role
   const [role, setRole] = useState<'coder' | 'tester' | 'spectator' | null>(null);
@@ -19,8 +17,10 @@ export default function PlayGameRoom() {
 
   // ONLY HAPPENS ON PAGE LAUNCH
   useEffect(() => {
+    if (!gameId) return;
+
     // 3. Initialize the connection to our custom server.js backend
-    const socketInstance = io(); 
+    const socketInstance = io();
     setSocket(socketInstance);
 
     // 4. Ask the server to put us in the room for this specific game
