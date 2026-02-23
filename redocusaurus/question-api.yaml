@@ -1,0 +1,250 @@
+openapi: 3.0.3
+info:
+  title: Code Battlegrounds - Question API
+  description: >-
+    REST endpoint for retrieving coding questions sourced from the
+    LeetCode-style dataset (`public/dataset.csv`).
+
+
+    The dataset is loaded once at server start and cached in memory.
+
+    Every call returns **exactly one** question object, chosen randomly from the
+    questions that match the supplied filters.
+  version: 1.0.0
+servers:
+  - url: /api
+    description: Next.js API routes (relative to app root)
+tags:
+  - name: questions
+    description: Coding challenge questions
+paths:
+  /question:
+    get:
+      tags:
+        - questions
+      summary: Get a single coding question
+      description: >-
+        Returns one question, picked at random from all questions that match the
+        supplied filters. Omit all query parameters to receive a uniformly
+        random question from the full dataset.
+      operationId: getQuestion
+      parameters:
+        - name: id
+          in: query
+          required: false
+          description: Numeric LeetCode-style Question ID (e.g. `1` for Two Sum).
+          schema:
+            type: integer
+            example: 1
+        - name: slug
+          in: query
+          required: false
+          description: URL slug of the question (e.g. `two-sum`).
+          schema:
+            type: string
+            example: two-sum
+        - name: difficulty
+          in: query
+          required: false
+          description: Filter by difficulty level (case-insensitive).
+          schema:
+            type: string
+            enum:
+              - Easy
+              - Medium
+              - Hard
+            example: Medium
+        - name: topic
+          in: query
+          required: false
+          description: |-
+            Partial, case-insensitive match against any topic tag on the
+            question (e.g. `dynamic` matches `Dynamic Programming`).
+          schema:
+            type: string
+            example: dynamic programming
+      responses:
+        '200':
+          description: A single matching question.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  question:
+                    $ref: '#/components/schemas/Question'
+              example:
+                question:
+                  id: 0
+                  questionId: 1
+                  title: Two Sum
+                  slug: two-sum
+                  text: >-
+                    Given an array of integers nums and an integer target,
+                    return indices of the two numbers such that they add up to
+                    target.
+                  topics:
+                    - Array
+                    - Hash Table
+                  difficulty: Easy
+                  successRate: 48.5
+                  totalSubmissions: 13207990
+                  totalAccepted: 6403821
+                  likes: 31242
+                  dislikes: 988
+                  likeRatio: 0.969
+                  hints:
+                    - >-
+                      A really brute force way would be to search for all
+                      possible pairs of numbers but that would be too slow.
+                  similarQuestionIds:
+                    - 15
+                    - 18
+                    - 167
+                  similarQuestionTitles:
+                    - 3Sum
+                    - 4Sum
+                    - Two Sum II - Input Array Is Sorted
+        '404':
+          description: No questions match the given filters.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: No questions match the given filters
+        '405':
+          description: Method not allowed - only GET is supported.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: Method not allowed
+        '500':
+          description: Internal server error while loading the question dataset.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: Failed to load questions
+components:
+  schemas:
+    Question:
+      type: object
+      description: A coding challenge question derived from the dataset CSV.
+      required:
+        - id
+        - questionId
+        - title
+        - slug
+        - text
+        - topics
+        - difficulty
+        - successRate
+        - totalSubmissions
+        - totalAccepted
+        - likes
+        - dislikes
+        - likeRatio
+        - hints
+        - similarQuestionIds
+        - similarQuestionTitles
+      properties:
+        id:
+          type: integer
+          description: Zero-based row index in the CSV dataset.
+          example: 0
+        questionId:
+          type: integer
+          description: Original LeetCode-style numeric question ID.
+          example: 1
+        title:
+          type: string
+          description: Human-readable question title.
+          example: Two Sum
+        slug:
+          type: string
+          description: URL-safe slug derived from the title.
+          example: two-sum
+        text:
+          type: string
+          description: Full problem statement.
+          example: >-
+            Given an array of integers nums and an integer target, return
+            indices of the two numbers such that they add up to target.
+        topics:
+          type: array
+          description: Topic / category tags associated with the question.
+          items:
+            type: string
+          example:
+            - Array
+            - Hash Table
+        difficulty:
+          type: string
+          enum:
+            - Easy
+            - Medium
+            - Hard
+          description: Difficulty rating of the question.
+          example: Easy
+        successRate:
+          type: number
+          format: float
+          description: Percentage of accepted submissions (0-100).
+          example: 48.5
+        totalSubmissions:
+          type: integer
+          description: Total number of times the question has been submitted.
+          example: 13207990
+        totalAccepted:
+          type: integer
+          description: Total number of accepted submissions.
+          example: 6403821
+        likes:
+          type: integer
+          description: Number of upvotes the question has received.
+          example: 31242
+        dislikes:
+          type: integer
+          description: Number of downvotes the question has received.
+          example: 988
+        likeRatio:
+          type: number
+          format: float
+          description: Ratio of likes to total votes (likes / (likes + dislikes)).
+          example: 0.969
+        hints:
+          type: array
+          description: Optional hints provided alongside the question.
+          items:
+            type: string
+          example:
+            - Try using a hash map to store complements.
+        similarQuestionIds:
+          type: array
+          description: Question IDs of related problems.
+          items:
+            type: integer
+          example:
+            - 15
+            - 18
+        similarQuestionTitles:
+          type: array
+          description: Titles of related problems, corresponding to similarQuestionIds.
+          items:
+            type: string
+          example:
+            - 3Sum
+            - 4Sum
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          description: Human-readable error message.
+          example: No questions match the given filters
