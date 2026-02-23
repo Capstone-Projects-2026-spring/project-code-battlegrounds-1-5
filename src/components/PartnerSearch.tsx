@@ -6,18 +6,29 @@ import {
   TextInput,
   Group,
 } from "@mantine/core";
+import { useRouter } from "next/router";
 
 export default function PartnerSearch() {
   const [query, setQuery] = useState("");
+  const router = useRouter();
 
   const handleRandom = () => {
     // replace with real random partner logic
     console.log("Pick a random partner");
   };
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      handleSearch(); // Trigger search on Enter key press
+    }
+  };
 
   const handleSearch = () => {
-    // replace with real search logic
     console.log("Search partner:", query);
+    //Using the input query, implement logic to search for a partner by room ID.
+    const roomId = query.trim();
+    if (!roomId) return;
+
+    router.push(`/playGame/${encodeURIComponent(roomId)}`);
   };
 
   return (
@@ -52,11 +63,12 @@ export default function PartnerSearch() {
           </Button>
 
           <TextInput
-            placeholder="Enter Partner Username"
+            placeholder="Enter Room ID"
             size="lg"
             radius="xs"
             value={query}
             onChange={(e) => setQuery(e.currentTarget.value)}
+            onKeyDown={handleKeyDown}
             styles={{ input: { width: 300 } }}
           />
         </Group>
