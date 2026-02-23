@@ -1,11 +1,5 @@
 import React, { useState } from "react";
-import {
-  Stack,
-  Text,
-  Button,
-  TextInput,
-  Group,
-} from "@mantine/core";
+import { Stack, Text, Button, TextInput, Group } from "@mantine/core";
 import { useRouter } from "next/router";
 
 export default function PartnerSearch() {
@@ -23,8 +17,8 @@ export default function PartnerSearch() {
   };
 
   const handleSearch = () => {
-    console.log("Search partner:", query);
     //Using the input query, implement logic to search for a partner by room ID.
+    console.log("Search room ID:", query);
     const roomId = query.trim();
     if (!roomId) return;
 
