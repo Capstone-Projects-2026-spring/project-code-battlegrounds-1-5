@@ -23,7 +23,7 @@ interface Message {
 
 ---
 
-## Client → Server Events
+## Client -> Server Events
 
 ### `joinGame`
 
@@ -94,7 +94,7 @@ Messages are **not persisted** server-side. Chat history only exists in each cli
 
 ---
 
-## Server → Client Events
+## Server -> Client Events
 
 ### `roleAssigned`
 
