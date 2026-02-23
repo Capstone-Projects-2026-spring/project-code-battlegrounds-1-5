@@ -37,7 +37,7 @@ export default function PartnerSearch() {
         {/* Left Side: Text */}
         <Stack gap={0} style={{ flex: 1 }}>
           <Text size="2.5rem" fw={700} style={{ lineHeight: 1.1 }}>
-            Select a partner
+            Select your battleground...
           </Text>
           <Text size="xl" c="dimmed">
             Or gamble if you are bold...
