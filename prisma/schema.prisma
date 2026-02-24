@@ -81,3 +81,12 @@ model InfraTestKv {
 
   @@map("infra_test_kv")
 }
+
+model GameRoom {
+  id        String   @id
+  status    String
+  createdAt DateTime @default(now()) @map("created_at")
+  // TODO: create array or json here containing players actively in match. potentially also roles?
+
+  @@map("game_rooms")
+}
