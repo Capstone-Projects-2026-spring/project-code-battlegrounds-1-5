@@ -1,0 +1,8 @@
+{
+  "label": "Internal Code Contracts",
+  "position": 5,
+  "link": {
+    "type": "generated-index",
+    "description": "Internal code contracts for every core module in Code Battlegrounds. Each contract documents the purpose, public surface area, behavioral guarantees, and error-handling policy of a class or module. Contracts must be kept in sync with the implementation at all times."
+  }
+}
