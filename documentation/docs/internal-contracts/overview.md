@@ -25,7 +25,7 @@ Contracts must stay in sync with the implementation. If a method signature, exce
 | `DashboardPage` | `src/pages/dashboard/index.tsx` | [Pages](./pages) |
 | `FindPartnerPage` | `src/pages/findPartnerPage.tsx` | [Pages](./pages) |
 | Socket.IO server | `server.js` | [WebSocket](./websocket) |
-| `PlayGameRoom` | `src/app/playGame/[gameID]/page.tsx` | [WebSocket](./websocket) |
+| `PlayGameRoom` | `src/pages/playGame/[gameID].tsx` | [WebSocket](./websocket) |
 | `CoderPOV` | `src/components/coderPOV.tsx` | [WebSocket](./websocket) |
 | `TesterPOV` | `src/components/testerPOV.tsx` | [WebSocket](./websocket) |
 | `ChatBox` | `src/components/ChatBox.tsx` | [WebSocket](./websocket) |
