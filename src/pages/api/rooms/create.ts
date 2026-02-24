@@ -16,6 +16,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // check auth status
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const session = await auth.api.getSession({headers: req.headers as any});
     if (!session) {
         return res.status(401).json({ok: false, error: "Unauthorized"});
@@ -34,12 +35,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             create: { id: gameId, status },
         });
 
-        // TODO: store in redis pubsub channel called "matchmaking" or such so that other players can find it. then, before generating a new room, try to join any existing rooms. if room is joined and becomes full, mark it as in progress in postgres.
+        // TODO: here, store in redis pubsub channel called "matchmaking" or such so that other players can find it. then, before generating a new room, try to join any existing rooms. if room is joined and becomes full, mark it as in progress in postgres. See CODEBAT-14 and CODEBAT-56
 
         // return generated code
         return res.status(201).json({gameId});
-    } catch (error: any) {
-        // Return error message with status 500 (internal server error) if something goes wrong during game room creation
-        return res.status(500).json({message: error?.message || 'Failed to create game room'});
+    } catch (error: unknown) {
+        if (error instanceof Error) {
+            // Return error message with status 500 (internal server error) if something goes wrong during game room creation
+            return res.status(500).json({message: error?.message || 'Failed to create game room'});
+        } else {
+            return res.status(500).json({message: 'Failed to create game room'});
+        }
     }
 }  
