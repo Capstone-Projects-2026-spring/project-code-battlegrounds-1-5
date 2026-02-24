@@ -64,6 +64,7 @@ app.prepare().then(() => {
 
       // Emit the assigned role back ONLY to the person who just joined
       socket.emit('roleAssigned', role);
+      // TODO: update player/role assignment in postgres
 
       // Send latest code state from Redis if present so the joiner syncs
       try {
