@@ -86,7 +86,6 @@ model GameRoom {
   id        String   @id
   status    String
   createdAt DateTime @default(now()) @map("created_at")
-  // TODO: create array or json here containing players actively in match. potentially also roles?
-
+  // TODO: create array or json here containing players actively in match. potentially also roles? See CODEBAT-14 and CODEBAT-50
   @@map("game_rooms")
 }
