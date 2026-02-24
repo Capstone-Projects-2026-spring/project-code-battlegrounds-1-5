@@ -1,14 +1,17 @@
 import React from 'react';
-import { Stack, Box, Button, Center, Loader } from '@mantine/core'; //
+import { Stack, Box, Button, Center } from '@mantine/core'; //
 import Navbar from '@/components/Navbar';
 import Broadstats from '@/components/Broadstats';
 import DifficultyGrid from '@/components/DifficultyGrid';
 import { useRouter } from 'next/router';
+import { authClient } from "@/lib/auth-client";
 
 export default function LandingPage() {
  
   const router = useRouter(); // Next router used for navigation AKA redirecting page
   const [loading, setLoading] = React.useState(false); // State to manage loading state of the button
+  const [error, setError] = React.useState<string | null>(null);
+  const { data: session } = authClient.useSession();
 
   /**
    * handleCreateRoom is called when the user clicks the "Create Game Room" button.
@@ -17,6 +20,11 @@ export default function LandingPage() {
    * If there's an error, it shows an alert with the error message.
    */
   const handleCreateRoom = async () => {
+    if (!session) {
+      setError("Error: You must be signed in to create a match!");
+      return;
+    }
+    setError(null);
     setLoading(true);
     try {
       const response = await fetch('/api/rooms/create', { method: 'POST'});
@@ -57,7 +65,10 @@ export default function LandingPage() {
       </Box>
 
       {/* Center the button to create the game room */}
-      <Center mb='lg'>
+      <Center mb='lg' style={{ flexDirection: 'column', gap: 8 }}>
+        {error && (
+          <div style={{ color: 'red', marginBottom: 8 }}>{error}</div>
+        )}
         <Button 
           onClick={handleCreateRoom} 
           size='lg' 
