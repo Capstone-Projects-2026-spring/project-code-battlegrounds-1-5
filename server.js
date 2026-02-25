@@ -64,6 +64,7 @@ app.prepare().then(() => {
 
       // Emit the assigned role back ONLY to the person who just joined
       socket.emit('roleAssigned', role);
+      // TODO: update player/role assignment in postgres here. See CODEBAT-14 and CODEBAT-56
 
       // Send latest code state from Redis if present so the joiner syncs
       try {
@@ -93,6 +94,14 @@ app.prepare().then(() => {
 
       // Broadcast the updated code to everyone else in the same room (except the sender)
       socket.to(roomId).emit('receiveCodeUpdate', code);
+    });
+
+    socket.on('sendChat', async (data) => {
+      const { roomId, message } = data || {};
+      if (!roomId || !message) return;
+
+      // Broadcast the chat message to everyone else in the same room (except the sender)
+      socket.to(roomId).emit('receiveChat', message);
     });
 
     // 3. Handle graceful disconnection

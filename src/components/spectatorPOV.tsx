@@ -13,13 +13,13 @@ export default function SpectatorPOV({ socket, roomId }: SpectatorPOVProps) {
   const [view, setView] = useState<'none' | 'coder' | 'tester'>('none');
 
   return (
+    //The exit view button is temporary for testing purposes.
     <Box style={{ position: 'relative', height: '100vh' }}>
       <Box style={{ position: 'absolute', top: 12, left: 12, zIndex: 20 }}>
         <Group spacing="xs">
           <Button size="sm" onClick={() => setView('coder')}>View Coder</Button>
           <Button size="sm" onClick={() => setView('tester')}>View Tester</Button>
-          <Button size="sm" onClick={() => setView('none')}>Exit View</Button>
-
+          <Button size="sm" onClick={() => setView('none')}>Exit View</Button> 
         </Group>
       </Box>
 
