@@ -116,4 +116,8 @@ app.prepare().then(() => {
       `Code BattleGrounds Server Ready on http://${hostname}:${port} (Redis @ ${REDIS_HOST}:${REDIS_PORT})`
     );
   });
+
+  pubClient.on('error', (e) => {
+    console.error("Redis client experienced an error:", e);
+  })
 });
