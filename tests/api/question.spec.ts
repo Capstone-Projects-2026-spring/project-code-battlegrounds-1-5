@@ -70,7 +70,12 @@ describe("Simple 200 OKs", () => {
     const json = await get({ topic: "Array" });
 
     expect(json.question?.topics).toContain("Array");
-  })
+  });
+
+  test("No QS", async () => {
+    const json = await get();
+    expect(json.question).not.toBeNull();
+  });
 });
 
 describe("Combined query parameters", async () => {
