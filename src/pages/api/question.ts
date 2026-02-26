@@ -22,6 +22,23 @@ export interface Question {
   similarQuestionTitles: string[];
 }
 
+export interface QuestionQuery {
+  id?: string;
+  slug?: string;
+  difficulty?: string;
+  topic?: string;
+}
+
+interface SuccessfulResponse {
+  question: Question,
+  error: null
+}
+interface FailedResponse {
+  question: null,
+  error: unknown
+}
+export type QuestionAPIResponse = SuccessfulResponse | FailedResponse;
+
 // Module-level cache so the CSV is only parsed once per server lifetime
 let cachedQuestions: Question[] | null = null;
 
@@ -107,15 +124,18 @@ async function loadQuestions(): Promise<Question[]> {
  *
  * Always returns a single { question } object.
  */
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse<QuestionAPIResponse>
+) {
   if (req.method !== "GET") {
-    return res.status(405).json({ error: "Method not allowed" });
+    return res.status(405).json({ question: null, error: "Method not allowed" });
   }
 
   try {
     let questions = await loadQuestions();
 
-    const { id, slug, difficulty, topic } = req.query;
+    const { id, slug, difficulty, topic } = req.query as QuestionQuery;
 
     if (id) {
       const targetId = Number(id);
@@ -141,13 +161,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     if (questions.length === 0) {
-      return res.status(404).json({ error: "No questions match the given filters" });
+      return res.status(404).json({ question: null, error: "No questions match the given filters" });
     }
 
     const question = questions[Math.floor(Math.random() * questions.length)];
-    return res.status(200).json({ question });
+    return res.status(200).json({ question, error: null });
   } catch (err) {
     console.error("[/api/question]", err);
-    return res.status(500).json({ error: "Failed to load questions" });
+    return res.status(500).json({ question: null, error: "Failed to load questions" });
   }
 }
