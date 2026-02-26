@@ -22,6 +22,7 @@ model User {
   updatedAt     DateTime  @updatedAt
   sessions      Session[]
   accounts      Account[]
+  players       TeamPlayer[]
 
   @@unique([email])
   @@map("user")
@@ -82,10 +83,84 @@ model InfraTestKv {
   @@map("infra_test_kv")
 }
 
+enum GameStatus {
+  STARTING
+  ACTIVE
+  FINISHED
+  CANCELLED
+}
+
 model GameRoom {
-  id        String   @id
-  status    String
-  createdAt DateTime @default(now()) @map("created_at")
-  // TODO: create array or json here containing players actively in match. potentially also roles? See CODEBAT-14 and CODEBAT-50
+  id            String   @id
+  status        GameStatus @default(STARTING)
+  createdAt     DateTime @default(now()) @map("created_at")
+  endedAt       DateTime?
+  winningTeamId String?  @unique
+  problemId     String
+  problem       Problem  @relation(fields: [problemId], references: [id])
+  winningTeam   Team?    @relation("WinningTeam", fields: [winningTeamId], references: [id])
+  teams         Team[]
+  submissions   Submission[]
+  
   @@map("game_rooms")
+  @@index([problemId])
+}
+
+model Team {
+  id          String @id
+  gameRoomId  String
+  wonGame     GameRoom? @relation("WinningTeam")
+  gameRoom    GameRoom @relation(fields: [gameRoomId], references: [id], onDelete: Cascade)
+  players     TeamPlayer[]
+  submissions Submission[]
+
+  @@index([gameRoomId])
+}
+
+model TeamPlayer {
+  id          String @id
+  teamId      String
+  userId      String
+  team        Team    @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, userId])
+  @@index([teamId])
+  @@index([userId])
+}
+
+enum ProblemDifficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+model Problem {
+  id                  String @id
+  problemDescription  String
+  difficulty          ProblemDifficulty
+  gameRooms           GameRoom[]
+  testCases           TestCase[]
+}
+
+model TestCase {
+  id        String @id
+  testCase  String
+  problemId String
+  problem   Problem  @relation(fields: [problemId], references: [id], onDelete: Cascade)
+}
+
+model Submission {
+  id         String   @id
+  teamId     String
+  gameRoomId String
+  code       String
+  language   String
+  createdAt  DateTime @default(now())
+  passed     Boolean
+  team       Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  gameRoom   GameRoom @relation(fields: [gameRoomId], references: [id], onDelete: Cascade)
+
+  @@index([gameRoomId])
+  @@index([teamId])
 }
