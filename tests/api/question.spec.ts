@@ -51,7 +51,7 @@ describe("Simple 200 OKs", () => {
   test("ID=1", async () => {
     const json = await get({ id: "1" });
 
-    expect(json.question?.questionId).toBeTruthy();
+    expect(json.question?.questionId).toEqual(1);
   });
 
   test("slug=two-sum", async () => {
