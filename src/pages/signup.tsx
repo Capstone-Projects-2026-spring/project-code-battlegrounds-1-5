@@ -15,14 +15,14 @@ export default function SignUpPage() {
         email, // user email address
         password, // user password -> min 8 characters by default
         name, // user display name
-        callbackURL: "/dashboard" // A URL to redirect to after the user verifies their email (optional)
+        callbackURL: "/landingpage" // A URL to redirect to after the user verifies their email (optional)
     }, {
         onRequest: (ctx) => {
             //show loading
         },
         onSuccess: (ctx) => {
             //redirect to the dashboard or sign in page
-            router.push("/dashboard")
+            router.push("/landingpage")
         },
         onError: (ctx) => {
             // display the error message

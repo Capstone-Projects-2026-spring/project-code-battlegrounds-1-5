@@ -5,13 +5,17 @@ import Navbar from "@/components/Navbar";
 import ProblemBox from "@/components/ProblemBox";
 import ChatBox from "@/components/ChatBox";
 import { Socket } from "socket.io-client";
+import GameTimer from "./GameTimer";
 
 interface TesterPOVProps {
   socket: Socket;
   roomId: string;
+  startedAt: number;
+  duration: number;
+  gameState: "Waiting" | "In Progress" | "Completed";
 }
 
-export default function TesterPOV({ socket, roomId }: TesterPOVProps) {
+export default function TesterPOV({ socket, roomId, startedAt, duration, gameState }: TesterPOVProps) {
   // State for the incoming code from the Coder
   const [liveCode, setLiveCode] = useState("// Waiting for coder to type...");
 
@@ -49,7 +53,9 @@ export default function TesterPOV({ socket, roomId }: TesterPOVProps) {
       <Box style={{ flex: 1, display: "flex" }}>
         {/* 2. Left Sidebar: Problem Description (Dark) */}
         <Box w={300} bg="#333" c="white" p="md" style={{ overflowY: "auto" }}>
+          <GameTimer  startedAt={startedAt} duration={duration}/>
           <ProblemBox />
+          
         </Box>
 
         {/* 3. Main Workspace */}
