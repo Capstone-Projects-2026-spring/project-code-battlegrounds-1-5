@@ -6,15 +6,19 @@ import BroadStats from "@/components/Broadstats";
 import Editor from "@monaco-editor/react";
 import ChatBox from "@/components/ChatBox";
 import CoderDashboard from "@/components/CoderDashboard";
+import GameTimer from "@/components/GameTimer";
 import { Socket } from "socket.io-client"; // <-- 1. Import Socket type
 
 // 2. Define the props we are passing in from the dynamic page
 interface CoderPOVProps {
   socket: Socket;
   roomId: string;
+  startedAt: number;
+  duration: number;
+  gameState: "Waiting" | "In Progress" | "Completed";
 }
 
-export default function CoderPOV({ socket, roomId }: CoderPOVProps) {
+export default function CoderPOV({ socket, roomId, startedAt, duration, gameState }: CoderPOVProps) {
 
   // 3. Create the handler that blasts keystrokes to the server
   const handleEditorChange = (value: string | undefined) => {
@@ -47,7 +51,8 @@ export default function CoderPOV({ socket, roomId }: CoderPOVProps) {
       </Box>
 
       <Box style={{ gridArea: "prob", borderRight: "1px solid #e0e0e0" }}>
-        <ProblemBox />
+        <GameTimer startedAt={startedAt} duration={duration}/>
+        <ProblemBox /> 
       </Box>
 
       <Box style={{ gridArea: "edit" }}>

@@ -1,9 +1,10 @@
 import Head from "next/head";
 import styles from "@/styles/Home.module.css";
-
-import Editor from "@monaco-editor/react";
+import Router from "next/router";
 
 export default function Home() {
+
+
   return (
     <>
       <Head>
@@ -17,14 +18,8 @@ export default function Home() {
         className={`${styles.page}`}
       >
         <div className={styles.editorWrapper}>
-          <Editor
-            height="100%"
-            theme="vs-dark"
-            defaultLanguage="typescript"
-            options={{
-              minimap: { enabled: false }
-            }}
-          />
+          <button onClick={() => Router.push("/login")}>Login</button>
+          <button onClick={() => Router.push("/signup")}>Sign Up</button>
         </div>
       </div>
     </>
