@@ -22,7 +22,7 @@ export default function LoginPage() {
         /**
          * A URL to redirect to after the user verifies their email (optional)
          */
-        callbackURL: "/dashboard",
+        callbackURL: "/landingpage",
         /**
          * remember the user session after the browser is closed. 
          * @default true

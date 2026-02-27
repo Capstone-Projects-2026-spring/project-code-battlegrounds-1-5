@@ -40,6 +40,25 @@ app.prepare().then(() => {
 
   // Redis client for app-level state (e.g., latest code per room)
   const stateRedis = pubClient; // reuse the same connection for simplicity
+ 
+  setInterval(async () => {
+    const activeGames = await stateRedis.smembers("activeGames");
+
+    for (const gameId of activeGames) {
+      const startedAt = Number(await stateRedis.get(`game:${gameId}:startedAt`));
+      const duration = Number(await stateRedis.get(`game:${gameId}:duration`));
+
+      if (Date.now() >= startedAt + duration) {
+        io.to(gameId).emit("gameEnded");
+
+        await stateRedis.srem("activeGames", gameId);
+        await stateRedis.del(`game:${gameId}:startedAt`);
+        await stateRedis.del(`game:${gameId}:duration`);
+      }
+    }
+  }, 1000); // check every second
+
+  const GAME_DURATION_MS = 5 * 60 * 1000; // 5 minutes in milliseconds
 
   // Listen for socket connections
   io.on('connection', (socket) => {
@@ -58,10 +77,23 @@ app.prepare().then(() => {
       let role = 'spectator';
       if (numPlayers === 1) {
         role = 'coder'; // First person in
+        socket.emit('waitingForTester'); // Notify the coder to wait for a tester
       } else if (numPlayers === 2) {
         role = 'tester'; // Second person in
-      }
+        let startedAt = await stateRedis.get(`game:${gameId}:startedAt`);
+        
+        if (!startedAt) {
 
+          startedAt = Date.now();
+          await stateRedis.sadd("activeGames", gameId);
+          await stateRedis.set(`game:${gameId}:startedAt`, Date.now());
+          await stateRedis.set(`game:${gameId}:duration`, GAME_DURATION_MS);
+
+          console.log(`Game ${gameId} started at ${new Date(Number(startedAt)).toISOString()} with duration ${GAME_DURATION_MS / 1000} seconds`);
+        }
+
+        io.to(gameId).emit('gameStarted', { start: startedAt, durat: GAME_DURATION_MS });
+      }
       // Emit the assigned role back ONLY to the person who just joined
       socket.emit('roleAssigned', role);
       // TODO: update player/role assignment in postgres here. See CODEBAT-14 and CODEBAT-56
