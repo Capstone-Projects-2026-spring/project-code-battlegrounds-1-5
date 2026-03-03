@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-require-imports */
 // Socket event handlers isolated here
 // Expects io (Server), socket (Socket), and services to manage game state
 
