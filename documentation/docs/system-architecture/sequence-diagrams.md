@@ -27,7 +27,8 @@ actor "User A" as ua
 actor "User B" as ub
 participant API as api
 participant "WebSocket Server" as ws
-participant "Runner Container" as runner
+activate ws
+participant "Code Runner" as runner
 note left of runner
 container is warm (always running)
 end note
@@ -48,31 +49,29 @@ end note
 activate ua
 ua --> api: /rooms/create
 activate api
-api --> api: /rooms/join: see if there are open rooms to join instead of create
 api --> pg: Matches table entry, status set to waiting
 api --> rds: Add match ID to Redis for matchmaking queue
-activate ub
 api --> ua: Return match ID for client side redirect
 ua --> ws: HTTP connection upgrade to socket
-activate ws
+
 ws --> ua: socket ack
 ua --> ws: emit joinGame
-ws --> ua: emit roleAssigned
+ws --> ua: emit roleAssigned (first connection is coder)
 ws --> pg: add user to match with role
 
 == User Joins Match ==
-ub --> api: /rooms/create
 note right of api
 These could be different
 backends entirely
 end note
-api --> api: /rooms/join
+ub --> api: /rooms/join
+activate ub
 api --> rds: Remove found match ID from Redis
 api --> ub: Match ID of User A's room for client side redirect
 ub --> ws: HTTP connection upgrade to socket
 ws --> ub: socket ack
 ub --> ws: emit joinGame
-ws --> ub: emit roleAssigned
+ws --> ub: emit roleAssigned (tester)
 ws --> pg: update match record with game status in-progress and new player/role
 
 == Game Start ==
