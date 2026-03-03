@@ -37,10 +37,10 @@ export default function PlayGameRoom() {
       setGameState("Waiting");
     });
 
-    socketInstance.on('gameStarted', ({ start, durat }) => {
-      if (isNaN(start) || isNaN(durat)) return;
+    socketInstance.on('gameStarted', ({ start, _duration }) => {
+      if (isNaN(start) || isNaN(_duration)) return;
       setStartedAt(Number(start));
-      setDuration(Number(durat));
+      setDuration(Number(_duration));
       setGameState("In Progress");
     });
 
