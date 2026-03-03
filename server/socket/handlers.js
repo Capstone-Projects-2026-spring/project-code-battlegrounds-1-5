@@ -24,7 +24,7 @@ function registerSocketHandlers(io, socket, services) {
 
       const startedAt = await gameService.ensureGameStarted(gameId);
 
-      io.to(gameId).emit('gameStarted', { start: startedAt, durat: gameService.GAME_DURATION_MS });
+      io.to(gameId).emit('gameStarted', { start: startedAt, duration: gameService.GAME_DURATION_MS });
     }
 
     // Emit the assigned role back ONLY to the person who just joined
