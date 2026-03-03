@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-require-imports */
 // Timer loop logic to check for game expiration and notify clients
 
 function startGameTimer(io, gameService) {
