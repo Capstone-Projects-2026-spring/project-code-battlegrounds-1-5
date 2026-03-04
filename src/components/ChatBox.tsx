@@ -13,9 +13,10 @@ interface ChatBoxProps {
   socket: Socket;
   roomId: string;
   role: string;
+  isSpectator?: boolean;
 }
 
-export default function ChatBox({ socket, roomId, role }: ChatBoxProps) {
+export default function ChatBox({ socket, roomId, role, isSpectator = false }: ChatBoxProps) {
 
   // State for the entire chat history
   const [messages, setMessages] = useState<Message[]>([]);
@@ -36,6 +37,7 @@ export default function ChatBox({ socket, roomId, role }: ChatBoxProps) {
   }, [socket]);
 
   const handleSendMessage = () => {
+    if (isSpectator) return; // Spectators cannot send messages
     if (currentText.trim() === '') return;
 
     // Create the message object
@@ -78,13 +80,20 @@ export default function ChatBox({ socket, roomId, role }: ChatBoxProps) {
         placeholder="Type a message..."
         value={currentText}
         onChange={(event) => setCurrentText(event.currentTarget.value)}
+        disabled={isSpectator}
         onKeyDown={(event) => {
-          if (event.key === 'Enter') handleSendMessage(); // Allow sending with Enter key
+          if (event.key === 'Enter' && !isSpectator) handleSendMessage();
         }}
         rightSection={
-          <ActionIcon variant="filled" color="blue" radius="xl" onClick={handleSendMessage}>
-            <IconSend size={16} />
-          </ActionIcon>
+          isSpectator ? (
+            <ActionIcon variant="light" color="gray" radius="xl" disabled>
+              <IconSend size={16} />
+            </ActionIcon>
+          ) : (
+            <ActionIcon variant="filled" color="blue" radius="xl" onClick={handleSendMessage}>
+              <IconSend size={16} />
+            </ActionIcon>
+          )
         }
       />
     </Paper>
