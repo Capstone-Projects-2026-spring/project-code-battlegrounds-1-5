@@ -51,7 +51,9 @@ export default function CoderPOV({ socket, roomId, timeRemaining, duration, game
       </Box>
 
       <Box style={{ gridArea: "prob", borderRight: "1px solid #e0e0e0" }}>
-        <GameTimer _timeRemaining={timeRemaining} duration={duration}/>
+        {gameState === "In Progress" && (
+          <GameTimer _timeRemaining={timeRemaining} duration={duration} />
+        )}
         <ProblemBox /> 
       </Box>
 

@@ -8,17 +8,16 @@ function createGameService(stateRedis) {
 
     async startGameIfNeeded(gameId) {
       const key = `game:${gameId}:expires`;
-      const exists = await stateRedis.set(key);
-      if (!exists) {
-        // set an expiration key so we can get notified when the game is over
-        await stateRedis.set(key, '1', 'PX', GAME_DURATION_MS)
+      // try to set key only if it doesnt exist (to avoid potential race condition)
+      const started = await stateRedis.set(key, '1', 'PX', GAME_DURATION_MS, 'NX');
+      if (started) {
         await stateRedis.sadd('activeGames', gameId);
         console.log(
           `Game ${gameId} started with duration ${GAME_DURATION_MS / 1000} seconds`
         );
       }
 
-      const ttl = await stateRedis.pttl(key)
+      const ttl = await stateRedis.pttl(key);
 
       return {
         duration: GAME_DURATION_MS,

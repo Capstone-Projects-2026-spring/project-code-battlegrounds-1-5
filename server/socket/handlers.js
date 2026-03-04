@@ -22,9 +22,13 @@ function registerSocketHandlers(io, socket, services) {
     } else if (numPlayers === 2) {
       role = 'tester'; // Second person in
 
-      const time = await gameService.startGameIfNeeded(gameId);
-
-      io.to(gameId).emit('gameStarted', { time: time, _duration: gameService.GAME_DURATION_MS });
+      try {
+        const time = await gameService.startGameIfNeeded(gameId);
+        console.log('game ttl:', time?.remaining, 'of', time?.duration);
+        io.to(gameId).emit('gameStarted', { start: time?.remaining, _duration: gameService.GAME_DURATION_MS });
+      } catch (e) {
+        console.error('Failed to start game', e);
+      }
     }
 
     // Emit the assigned role back ONLY to the person who just joined
