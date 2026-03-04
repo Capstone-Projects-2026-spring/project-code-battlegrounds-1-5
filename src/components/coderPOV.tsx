@@ -13,12 +13,12 @@ import { Socket } from "socket.io-client"; // <-- 1. Import Socket type
 interface CoderPOVProps {
   socket: Socket;
   roomId: string;
-  startedAt: number;
+  timeRemaining: number;
   duration: number;
   gameState: "Waiting" | "In Progress" | "Completed";
 }
 
-export default function CoderPOV({ socket, roomId, startedAt, duration, gameState }: CoderPOVProps) {
+export default function CoderPOV({ socket, roomId, timeRemaining, duration, gameState }: CoderPOVProps) {
 
   // 3. Create the handler that blasts keystrokes to the server
   const handleEditorChange = (value: string | undefined) => {
@@ -51,7 +51,7 @@ export default function CoderPOV({ socket, roomId, startedAt, duration, gameStat
       </Box>
 
       <Box style={{ gridArea: "prob", borderRight: "1px solid #e0e0e0" }}>
-        <GameTimer startedAt={startedAt} duration={duration}/>
+        <GameTimer _timeRemaining={timeRemaining} duration={duration}/>
         <ProblemBox /> 
       </Box>
 

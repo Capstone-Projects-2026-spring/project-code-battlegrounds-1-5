@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 const { createServer } = require('http');
 const next = require('next');
+const { startExpirationListener } = require('./game/expirationListener');
 require('dotenv').config();
 
 // Local modules
@@ -25,6 +26,10 @@ app.prepare().then(async () => {
 
   // Initialize Socket.IO, wire adapter + handlers + game timer
   const io = initSocket(httpServer, redis);
+
+  // set redis to notify us of events and start listening
+  await redis.pubClient.config('SET', 'notify-keyspace-events', 'Ex');
+  startExpirationListener(io,redis.pubClient);
 
   // Start listening
   httpServer.listen(port, () => {

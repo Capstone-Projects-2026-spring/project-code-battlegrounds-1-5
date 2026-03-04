@@ -22,9 +22,9 @@ function registerSocketHandlers(io, socket, services) {
     } else if (numPlayers === 2) {
       role = 'tester'; // Second person in
 
-      const startedAt = await gameService.ensureGameStarted(gameId);
+      const time = await gameService.startGameIfNeeded(gameId);
 
-      io.to(gameId).emit('gameStarted', { start: startedAt, _duration: gameService.GAME_DURATION_MS });
+      io.to(gameId).emit('gameStarted', { time: time, _duration: gameService.GAME_DURATION_MS });
     }
 
     // Emit the assigned role back ONLY to the person who just joined

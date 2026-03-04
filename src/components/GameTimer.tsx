@@ -2,23 +2,22 @@ import { useEffect, useRef, useState } from "react";
 import { Text } from "@mantine/core";
 
 interface Props {
-  startedAt: number;
+  _timeRemaining: number;
   duration: number;
   onExpire?: () => void;
 }
 
-export default function GameTimer({ startedAt, duration, onExpire }: Props) {
-  const [timeLeft, setTimeLeft] = useState<number>(duration);
+export default function GameTimer({ _timeRemaining, duration, onExpire }: Props) {
+  const [timeRemaining, setTimeRemaining] = useState<number>(_timeRemaining);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const updateTimer = () => {
       const remaining = Math.max(
-        duration - (Date.now() - startedAt),
+        timeRemaining - 1000,
         0
       );
-
-      setTimeLeft(remaining);
+      setTimeRemaining(timeRemaining - 1000)
 
       if (remaining <= 0 && intervalRef.current) {
         clearInterval(intervalRef.current);
@@ -34,10 +33,10 @@ export default function GameTimer({ startedAt, duration, onExpire }: Props) {
         clearInterval(intervalRef.current);
       }
     };
-  }, [startedAt, duration]);
+  }, [_timeRemaining, duration]);
 
-  const minutes = Math.floor(timeLeft / 60000);
-  const seconds = Math.floor((timeLeft % 60000) / 1000);
+  const minutes = Math.floor(timeRemaining / 60000);
+  const seconds = Math.floor((timeRemaining % 60000) / 1000);
 
   return (
     <Text size="xl" fw={700}>

@@ -1,0 +1,100 @@
+@startuml
+' Code BattleGrounds - Server Sequence Diagram
+' Shows flow when the server receives socket signals and timer interactions
+
+skinparam linetype polyline
+hide footbox
+
+actor Client
+participant "HTTP Server\n(Node.js)" as Http
+participant "Next.js App" as Next
+participant "Socket.IO Server" as IO
+participant "Socket (per client)" as Sock
+participant "Handlers" as H
+participant "GameService" as GS
+database "Redis (state + adapter)" as R
+participant "GameTimer" as GT
+
+== Startup ==
+Client -> Http : HTTP request / WebSocket upgrade
+Http -> Next : delegate request handling
+activate Next
+Next --> Http : handle (pages/api)
+deactivate Next
+
+Http -> IO : upgrade to WebSocket (Socket.IO)
+create Sock
+IO -> Sock : connection established
+IO -> H : registerSocketHandlers(io, socket, { gameService })
+H --> IO : handlers bound
+
+== Player joins a game ==
+Client -> Sock : emit("joinGame", gameId)
+activate H
+Sock -> H : on("joinGame") callback
+H -> Sock : socket.join(gameId)
+H -> IO : io.in(gameId).allSockets()
+IO --> H : Set of socket ids (size = N)
+alt first player
+  H -> Sock : emit("waitingForTester")
+  H -> Sock : emit("roleAssigned", "coder")
+else second player
+  H -> GS : ensureGameStarted(gameId)
+  activate GS
+  GS -> R : GET game:{id}:startedAt
+  R --> GS : startedAt or null
+  alt game not started
+    GS -> R : SADD activeGames {id}
+    GS -> R : SET game:{id}:startedAt now
+    GS -> R : SET game:{id}:duration GAME_DURATION_MS
+  end
+  deactivate GS
+  H -> IO : to(gameId).emit("gameStarted", {start, _duration})
+  H -> Sock : emit("roleAssigned", "tester")
+end
+
+H -> GS : getLatestCode(gameId)
+GS -> R : GET game:{id}:code
+R --> GS : code | null
+GS --> H : latestCode | null
+opt has latest code
+  H -> Sock : emit("receiveCodeUpdate", code)
+end
+
+== Live code relay ==
+Client -> Sock : emit("codeChange", { roomId, code })
+Sock -> H : on("codeChange")
+H -> GS : saveLatestCode(roomId, code)
+GS -> R : SET game:{id}:code code
+R --> GS : OK
+H -> IO : socket.to(roomId).emit("receiveCodeUpdate", code)
+
+== Chat messages ==
+Client -> Sock : emit("sendChat", { roomId, message })
+Sock -> H : on("sendChat")
+H -> IO : socket.to(roomId).emit("receiveChat", message)
+
+== Timer loop ==
+activate GT
+loop every 1s
+  GT -> GS : getActiveGames()
+  GS -> R : SMEMBERS activeGames
+  R --> GS : [gameIds]
+  GT -> GS : getGameTimes(gameId)
+  GS -> R : GET game:{id}:startedAt / duration
+  R --> GS : { startedAt, duration }
+  alt expired (now >= startedAt + duration)
+    GT -> IO : to(gameId).emit("gameEnded")
+    GT -> GS : cleanupGame(gameId)
+    GS -> R : SREM activeGames {id}
+    GS -> R : DEL game:{id}:startedAt
+    GS -> R : DEL game:{id}:duration
+  end
+end
+
+== Disconnect ==
+Client -> Sock : disconnect
+Sock -> H : on("disconnect")
+H -> H : log("Disconnected")
+
+@enduml

@@ -17,7 +17,7 @@ export default function PlayGameRoom() {
   const [role, setRole] = useState<'coder' | 'tester' | 'spectator' | null>(null);
   const [socket, setSocket] = useState<Socket | null>(null);
   const [gameState, setGameState] = useState<"Waiting" | "In Progress" | "Completed">("Waiting");
-  const [startedAt, setStartedAt] = useState<number>(0);
+  const [timeRemaining, setTimeRemaining] = useState<number>(0);
   const [duration, setDuration] = useState<number>(0);
 
 
@@ -39,7 +39,7 @@ export default function PlayGameRoom() {
 
     socketInstance.on('gameStarted', ({ start, _duration }) => {
       if (isNaN(start) || isNaN(_duration)) return;
-      setStartedAt(Number(start));
+      setTimeRemaining(Number(start));
       setDuration(Number(_duration));
       setGameState("In Progress");
     });
@@ -97,7 +97,7 @@ export default function PlayGameRoom() {
         <CoderPOV 
           socket={socket} 
           roomId={gameId} 
-          startedAt={startedAt}
+          timeRemaining={timeRemaining}
           duration={duration}
           gameState={gameState}
         />
@@ -105,8 +105,8 @@ export default function PlayGameRoom() {
       {role === 'tester' && (
         <TesterPOV 
           socket={socket} 
-          roomId={gameId} 
-          startedAt={startedAt}
+          roomId={gameId}
+          timeRemaining={timeRemaining}
           duration={duration} 
           gameState={gameState}
         />
