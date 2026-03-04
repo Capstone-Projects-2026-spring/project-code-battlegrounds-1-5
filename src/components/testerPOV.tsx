@@ -53,7 +53,9 @@ export default function TesterPOV({ socket, roomId, timeRemaining, duration, gam
       <Box style={{ flex: 1, display: "flex" }}>
         {/* 2. Left Sidebar: Problem Description (Dark) */}
         <Box w={300} bg="#333" c="white" p="md" style={{ overflowY: "auto" }}>
-          <GameTimer _timeRemaining={timeRemaining} duration={duration}/>
+          {gameState === "In Progress" && (
+            <GameTimer _timeRemaining={timeRemaining} duration={duration} />
+          )}
           <ProblemBox />
           
         </Box>
