@@ -2,7 +2,6 @@
 const { Server } = require('socket.io');
 const { registerSocketHandlers } = require('./handlers');
 const { createGameService } = require('../game/gameService');
-const { startGameTimer } = require('../game/gameTimer');
 
 function initSocket(httpServer, redis) {
     const io = new Server(httpServer, {
@@ -14,9 +13,6 @@ function initSocket(httpServer, redis) {
 
     // Create services using Redis state client
     const gameService = createGameService(redis.stateRedis);
-
-    // Start the game timer loop
-    startGameTimer(io, gameService);
 
     // Register per-connection handlers
     io.on('connection', (socket) => {
