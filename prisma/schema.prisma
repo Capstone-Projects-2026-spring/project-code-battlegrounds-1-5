@@ -5,7 +5,7 @@
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
 generator client {
-  provider = "prisma-client-js" // use js client instead of edge client reccomended by docs
+  provider = "prisma-client-js" // use js client instead of edge client recomended by docs
 }
 
 datasource db {
@@ -22,6 +22,7 @@ model User {
   updatedAt     DateTime  @updatedAt
   sessions      Session[]
   accounts      Account[]
+  players       TeamPlayer[]
 
   @@unique([email])
   @@map("user")
@@ -82,10 +83,81 @@ model InfraTestKv {
   @@map("infra_test_kv")
 }
 
+enum GameStatus {
+  STARTING
+  ACTIVE
+  FINISHED
+  CANCELLED
+}
+
 model GameRoom {
-  id        String   @id
-  status    String
-  createdAt DateTime @default(now()) @map("created_at")
-  // TODO: create array or json here containing players actively in match. potentially also roles? See CODEBAT-14 and CODEBAT-50
+  id            String      @id
+  status        GameStatus  @default(STARTING)
+  createdAt     DateTime    @default(now()) @map("created_at")
+  endedAt       DateTime?
+  problemId     String
+  problem       Problem     @relation(fields: [problemId], references: [id])
+  teams         Team[]
+  gameResult    GameResult?
+  
   @@map("game_rooms")
+  @@index([problemId])
+}
+
+model Team {
+  id          String      @id
+  gameRoomId  String
+  gameRoom    GameRoom    @relation(fields: [gameRoomId], references: [id], onDelete: Cascade)
+  players     TeamPlayer[]
+  wonGame     GameResult? @relation("WinningTeamRelation")
+
+  @@index([gameRoomId])
+}
+
+model TeamPlayer {
+  teamId      String
+  userId      String
+  team        Team    @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, userId])
+  @@index([teamId])
+  @@index([userId])
+}
+
+enum ProblemDifficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+model Problem {
+  id                  String @id
+  problemDescription  String
+  difficulty          ProblemDifficulty
+  gameRooms           GameRoom[]
+  tests               ProblemTest[]
+}
+
+model ProblemTest {
+  id            String @id
+  testCode      String
+  language      String
+  problemId     String 
+  optimalTimeMs Int
+  problem       Problem  @relation(fields: [problemId], references: [id], onDelete: Cascade)
+}
+
+model GameResult {
+  id                String   @id
+  gameRoomId        String   @unique
+  winningTeamId     String   @unique
+  bestCode          String
+  timeToPassMs      Int
+  
+  
+  winningTeam       Team     @relation("WinningTeamRelation", fields: [winningTeamId], references: [id])
+  gameRoom          GameRoom @relation(fields: [gameRoomId], references: [id], onDelete: Cascade)
+
+  @@index([winningTeamId])
 }
