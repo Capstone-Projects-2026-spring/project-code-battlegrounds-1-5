@@ -5,7 +5,6 @@ import { io, Socket } from 'socket.io-client';
 
 import CoderPOV from '@/components/coderPOV';
 import TesterPOV from '@/components/testerPOV';
-import { start } from 'repl';
 
 // TODO: this route should be auth checked (only allow signed-in users to join, not anyone with the URL). See CODEBAT-56
 export default function PlayGameRoom() {

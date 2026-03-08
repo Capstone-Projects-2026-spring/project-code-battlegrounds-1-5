@@ -23,18 +23,6 @@ function createGameService(stateRedis) {
         duration: GAME_DURATION_MS,
         remaining: ttl,
       };
-
-      /*let startedAt = await stateRedis.get(`game:${gameId}:startedAt`);
-      if (!startedAt) {
-        startedAt = Date.now();
-        await stateRedis.sadd('activeGames', gameId);
-        await stateRedis.set(`game:${gameId}:startedAt`, startedAt);
-        await stateRedis.set(`game:${gameId}:duration`, GAME_DURATION_MS);
-        console.log(
-          `Game ${gameId} started at ${new Date(Number(startedAt)).toISOString()} with duration ${GAME_DURATION_MS / 1000} seconds`
-        );
-      }
-      return Number(startedAt);*/
     },
 
     async getLatestCode(gameId) {
