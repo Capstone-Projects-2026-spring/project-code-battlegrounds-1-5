@@ -90,7 +90,7 @@ jobs:
         run: npx playwright install-deps chromium
 
       - name: Start server
-        run: node /server/index.js &
+        run: node ./server/index.js &
         env:
           NODE_ENV: production
 
