@@ -12,7 +12,7 @@ test("signup flow works", async ({ page }) => {
 
   await page.click("button[data-testid='signup-button']");
 
-  await expect(page).toHaveURL("/dashboard", {
+  await expect(page).toHaveURL("/landingpage", {
     timeout: 15000,
   });
   await expect(page.getByText("Welcome")).toBeVisible();
@@ -26,12 +26,12 @@ test("login flow works", async ({ page }) => {
 
   await page.click("button[data-testid='login-button']");
 
-  await expect(page).toHaveURL("/dashboard", {
+  await expect(page).toHaveURL("/landingpage", {
     timeout: 15000,
   });
 });
 
-test("logout blocks dashboard", async ({ page }) => {
+test("logout blocks landingpage", async ({ page }) => {
   await page.goto("/login");
 
   await page.fill('[data-testid="email-login"]', testEmail);
@@ -43,13 +43,13 @@ test("logout blocks dashboard", async ({ page }) => {
 
   await expect(page).toHaveURL("/login");
 
-  await page.goto("/dashboard");
+  await page.goto("/landingpage");
 
   await expect(page).toHaveURL("/login");
 });
 
-test("dashboard requires auth", async ({ page }) => {
-  await page.goto("/dashboard");
+test("landingpage requires auth", async ({ page }) => {
+  await page.goto("/landingpage");
 
   await expect(page).toHaveURL("/login");
 });
