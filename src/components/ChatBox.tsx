@@ -63,11 +63,11 @@ export default function ChatBox({ socket, roomId, role }: ChatBoxProps) {
         <Stack gap="xs">
           {messages.map((msg) => (
             <Box key={msg.id}>
-              <Text size="xs" c="dimmed" fw={500} tt="capitalize">
+              <Text size="xs" c="black" fw={500} tt="capitalize">
                 {msg.user}
               </Text>
               <Paper withBorder p="xs" radius="sm" bg="var(--mantine-color-gray-0)">
-                <Text size="sm">{msg.text}</Text>
+                <Text size="sm" c="black">{msg.text}</Text>
               </Paper>
             </Box>
           ))}
