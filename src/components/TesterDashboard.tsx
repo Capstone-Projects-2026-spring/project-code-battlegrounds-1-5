@@ -1,6 +1,10 @@
 import { Stack, Button, Text, Paper, Title } from '@mantine/core';
 
-export default function TesterDashboard() {
+interface TesterDashboardProps {
+  isSpectator?: boolean;
+}
+
+export default function TesterDashboard({ isSpectator = false }: TesterDashboardProps) {
   const actions = [
     "Send Edge Case",
     "Check Tests now",
@@ -41,12 +45,18 @@ export default function TesterDashboard() {
                   fontSize: '15px',
                 },
               }}
+              disabled={isSpectator}
               onClick={() => console.log(`Action triggered: ${label}`)}
             >
               {label}
             </Button>
           ))}
         </Stack>
+        {isSpectator && (
+          <Text c="yellow" size="xs" mt="sm">
+            Spectators cannot trigger tester actions.
+          </Text>
+        )}
       </Stack>
     </Paper>
   );
