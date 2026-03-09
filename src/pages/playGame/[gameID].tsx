@@ -5,6 +5,8 @@ import { io, Socket } from 'socket.io-client';
 
 import CoderPOV from '@/components/coderPOV';
 import TesterPOV from '@/components/testerPOV';
+import SpectatorPOV from '@/components/spectatorPOV';
+
 
 // TODO: this route should be auth checked (only allow signed-in users to join, not anyone with the URL). See CODEBAT-56
 
@@ -54,15 +56,11 @@ export default function PlayGameRoom() {
     );
   }
 
-  // State B: The room already has 2 people in it
+ // State B: The room already has 2 people in it
   if (role === 'spectator') {
-    return (
-      <Center h="100vh">
-        <Text size="xl" c="dimmed">The room is full. You are spectating.</Text>
-      </Center>
-    );
+    return <SpectatorPOV socket={socket} roomId={gameId} />;
   }
-
+  
   // State C: Successfully joined as a player! Render the correct layout.
   return (
     <>
