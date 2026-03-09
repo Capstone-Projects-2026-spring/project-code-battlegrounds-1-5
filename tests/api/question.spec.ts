@@ -78,7 +78,7 @@ describe("Simple 200 OKs", () => {
   });
 });
 
-describe("Combined query parameters", async () => {
+describe("Combined query parameters", () => {
 
   // test.each([
   //   [1, 1, 2],
