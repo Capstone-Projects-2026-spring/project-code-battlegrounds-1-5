@@ -29,11 +29,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         // store in postgres
         const status = "waiting" as const;
-        await prisma.gameRoom.upsert({
-            where: { id: gameId },
-            update: { status },
-            create: { id: gameId, status },
-        });
+
+        // Need to make a database call to Problem table but there are no Problems in the table right now
+        // await prisma.gameRoom.upsert({
+        //    where: { id: gameId },
+        //   update: { status },
+        //    create: { id: gameId, status },
+        //});
 
         // TODO: here, store in redis pubsub channel called "matchmaking" or such so that other players can find it. then, before generating a new room, try to join any existing rooms. if room is joined and becomes full, mark it as in progress in postgres. See CODEBAT-14 and CODEBAT-56
 
