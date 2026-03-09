@@ -35,13 +35,16 @@ jobs:
 
     env:
       DATABASE_URL: postgresql://testuser:testpass@localhost:5432/testdb
-      BETTER_AUTH_SECRET: ci-test-secret-key
+      BETTER_AUTH_URL: http://localhost:3000
       REDIS_HOST: 127.0.0.1
       REDIS_PORT: 6379
       NODE_ENV: test
       PORT: 3000
 
     steps:
+      - name: Generate auth secret
+        run: echo "BETTER_AUTH_SECRET=$(openssl rand -base64 32)" >> "$GITHUB_ENV"
+
       - name: Checkout code
         uses: actions/checkout@v4
 
