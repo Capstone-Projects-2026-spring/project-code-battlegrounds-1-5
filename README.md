@@ -92,7 +92,9 @@ To develop, you will need a computer with Git, Node, Bun, and Docker Compose.
     ```
 3. Run `bun install` to install the dependencies.
 4. Run `bunx prisma generate` to generate the Prisma client and database migrations.
-5. Run `bunx prisma migrate` to 
+5. Run `docker compose up -f ./dev-docker-compose.yml up -d` to bring up the containers.
+6. Run `bunx prisma migrate` to bring the database up to schema.
+7. Run `bun dev` to launch the development server and navigate to `localhost:3000` to view the page.
 
 ## Collaborators
 
