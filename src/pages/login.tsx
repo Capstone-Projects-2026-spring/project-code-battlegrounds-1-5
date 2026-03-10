@@ -22,7 +22,7 @@ export default function LoginPage() {
         /**
          * A URL to redirect to after the user verifies their email (optional)
          */
-        callbackURL: "/landingpage",
+        callbackURL: "/",
         /**
          * remember the user session after the browser is closed. 
          * @default true
@@ -35,7 +35,7 @@ export default function LoginPage() {
         },
         onSuccess: (ctx) => {
             //redirect to the dashboard or sign in page
-            router.push("/dashboard")
+            router.push("/")
         },
         onError: (ctx) => {
             // display the error message
