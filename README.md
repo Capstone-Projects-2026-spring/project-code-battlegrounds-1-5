@@ -1,9 +1,9 @@
 <div align="center">
 
-# Project Name
-[![Report Issue on Jira](https://img.shields.io/badge/Report%20Issues-Jira-0052CC?style=flat&logo=jira-software)](https://temple-cis-projects-in-cs.atlassian.net/jira/software/c/projects/DT/issues)
-[![Deploy Docs](https://github.com/ApplebaumIan/tu-cis-4398-docs-template/actions/workflows/deploy.yml/badge.svg)](https://github.com/ApplebaumIan/tu-cis-4398-docs-template/actions/workflows/deploy.yml)
-[![Documentation Website Link](https://img.shields.io/badge/-Documentation%20Website-brightgreen)](https://applebaumian.github.io/tu-cis-4398-docs-template/)
+# Code Battlegrounds
+<!-- [![Report Issue on Jira](https://img.shields.io/badge/Report%20Issues-Jira-0052CC?style=flat&logo=jira-software)](https://temple-cis-projects-in-cs.atlassian.net/jira/software/c/projects/DT/issues) -->
+
+[![Documentation Website Link](https://img.shields.io/badge/-Documentation%20Website-brightgreen)](https://capstone-projects-2026-spring.github.io/project-code-battlegrounds-1-5/)
 
 
 </div>
@@ -11,40 +11,117 @@
 
 ## Keywords
 
-Section #, as well as any words that quickly give your peers insights into the application like programming language, development platform, type of application, etc.
+- Section 1
+- Multiplayer
+- Game
+- Pair-programming
+- Real-time
 
 ## Project Abstract
 
-This document proposes a novel application of a text message (SMS or Email) read-out and hands-free call interacted between an Android Smartphone and an infotainment platform (headunit) in a car environment. When a phone receives an SMS or Email, the text message is transferred from the phone to the headunit through a Bluetooth connection. On the headunit, user can control which and when the received SMS or E-mail to be read out through the in-vehicle audio system. The user may press one button on the headunit to activate the hands-free feature to call back the SMS sender.
+This repository contains a multiplayer web game that is meant to teach collaborative programming concepts. It utilizes pair-programming, where each user must complete their part to ensure the solution meets all requirements. The coder writes the code to solve the prompt. The quality assurance user cannot edit the code. They can write test cases, and run them. They can discuss potential approaches or failing tests and how to fix them with the coder.
+
 
 ## High Level Requirement
 
-Describe the requirements – i.e., what the product does and how it does it from a user point of view – at a high level.
+From a user's perspective, the application must provide an intuitive way to complete their tasks. It needs to support low latency communication between clients. It also must support fast and secure untrusted code execution for user submissions and test cases. The scoring system must be robust and fair, prioritizing efficient code over fast submissions.
 
 ## Conceptual Design
 
-Describe the initial design concept: Hardware/software architecture, programming language, operating system, etc.
+Tech Stack:
+- Bun
+- Node.js
+- Next.js
+- TypeScript
+- Socket.io
+- Socket.io Redis Adapter
+- JavaScript
+- Playwright
+- Jest
+- BetterAuth
+- Prisma ORM
+- PostgreSQL
+- Redis
+
+The frontend includes Bun as a runtime, which launches a Node.js websocket server using Next.js routing.
+
+The backend is designed to be stateless and inherently scalable. Redis is used for game state, such as timers, code, etc. PostgreSQL is used for persistence data such as match results through Prisma ORM. 
+
 
 ## Background
 
-The background will contain a more detailed description of the product and a comparison to existing similar projects/products. A literature search should be conducted and the results listed. Proper citation of sources is required. If there are similar open-source products, you should state whether existing source will be used and to what extent. If there are similar closed-source/proprietary products, you should state how the proposed product will be similar and different.
+Previous similar projects include leetcode.com and hackerrank.com, known for their programming challenges. They do not offer any form of collaboration, which fails to realistically simulate a developer's life.
+
+Pair-programming has been shown to be "faster than solo programming when programming task complexity is low and yields code solutions of higher quality when task complexity is high." (See [here](https://www.sciencedirect.com/science/article/abs/pii/S0950584909000123)).
+
+We hope that necessitating pair-programming will encourage better testing, documentation, and communication among those learning to write code.
+
+As far as we can tell, this is the first platform of its type.
+
 
 ## Required Resources
 
-Discuss what you need to develop this project. This includes background information you will need to acquire, hardware resources, and software resources. If these are not part of the standard Computer Science Department lab resources, these must be identified early and discussed with the instructor.
+To use the web application, a computer with an active internet connection will be required.
+
+
+## Development
+
+To develop, you will need a computer with Git, Node, Bun, and Docker Compose.
+
+### Environment Setup
+1. Clone the repository.
+2. Create a `.env` file and populate it with the following (filling the tokens as needed, they shouldn't matter too much for local development):
+    ```
+    # config
+    PORT=3000
+    NODE_ENV=development
+    
+    # better auth
+    BETTER_AUTH_SECRET=SOME_SECRET_TOKEN
+    BETTER_AUTH_URL=http://localhost:3000
+    
+    # postgres
+    POSTGRES_USER=appuser
+    POSTGRES_PASSWORD=SOME_SECRET_TOKEN
+    POSTGRES_DB=appdb
+    POSTGRES_HOST=localhost
+    POSTGRES_PORT=5432
+
+    # redis
+    REDIS_HOST=localhost
+    REDIS_PORT=6379
+
+    # for prisma
+    DATABASE_URL=postgresql://appuser:SOME_SECRET_TOKEN@localhost:5432/appdb
+    ```
+   Remember to `source` as needed!
+3. Run `bun install` to install the dependencies.
+4. Run `bunx prisma generate` to generate the Prisma client and database migrations.
+5. Run `docker compose -f ./dev-docker-compose.yml up -d` to bring up the containers (you may need to run as root).
+6. Run `bunx prisma migrate dev` to bring the database up to schema.
+7. Run `bun dev` to launch the development server and navigate to `localhost:3000` to view the page.
+8. When done, `docker compose -f ./dev-docker-compose.yml down` will bring the containers down.
+
+### Helpful Common Commands and Tricks
+- `docker compose -f ./dev-docker-compose.yml down -v` will stop the containers and purge the volumes. Good if you _really_ mess something up (you WILL lose data!).
+- `bunx prisma migrate reset` will drop the DB (you WILL lose data!).
+- If your database is stuck out of sync and you can't apply migrations, run `rm -rf ./prisma/migrations/**` to remove all pending migrations. Then recreate the migration with `bunx prisma migrate dev --name dev` and apply it.
+- To see how the websockets are working, try opening up the game page in an incognito tab to be registered as a different client.
+
+## Testing
+We use two testing libraries: Jest and Playwright. Jest is used for individual API tests while Playwright is used for end-to-end flow tests.
+
+To run the Playwright tests, ensure you have the application running and run `bunx playwright test --workers=1`.
+You may need to have Chromium headless installed.
+
+For the Jest tests, run `bunx jest tests/api/ --forceExit`.
 
 ## Collaborators
 
 <div align="center">
 
 [//]: # (Replace with your collaborators)
-[Julia Fasick](https://github.com/julia-fasick) • [Kyle Dragon Lee](https://github.com/leekd99) • [Jesse Herrera](https://github.com/JesseHerrera04) • [Kyle Fauntroy](https://github.com/safebootup) • [Elan Reizas](https://github.com/ElanReizas) • [Samir Buch](https://github.com/samirbuch) • [Michael Zach](https://github.com/Mzach55)
+[Julia Fasick](https://github.com/julia-fasick) • [Jesse Herrera](https://github.com/JesseHerrera04) • [Kyle Fauntroy](https://github.com/safebootup) • [Elan Reizas](https://github.com/ElanReizas) • [Samir Buch](https://github.com/samirbuch) • [Michael Zach](https://github.com/Mzach55)
 • [Saad Chaudry](https://github.com/s0dl)
 
 </div>
-
-## Testing
-
-```
-bunx playwright test --workers=1
-```
