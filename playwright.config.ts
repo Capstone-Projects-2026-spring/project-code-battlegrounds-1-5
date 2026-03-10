@@ -33,10 +33,11 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
     },
   ],
+  // May not need to start a web server if you run the tests with the dev server already running.
   // Run your local dev server before starting the tests.
-  webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:3000',
-    reuseExistingServer: true,
-  },
+  //webServer: {
+  //  command: 'npm run dev',
+  //  url: 'http://localhost:3000',
+  //  reuseExistingServer: true,
+  //},
 });
