@@ -34,7 +34,7 @@ export default function Home() {
       const response = await fetch('/api/rooms/create', { method: 'POST'});
       const data = await response.json();
       if (response.ok) {
-        router.push(`/playGame/${data.gameId}`); // Redirect to the new game room page using the returned gameId
+        router.push(`/game/${data.gameId}`); // Redirect to the new game room page using the returned gameId
       } else {
         alert(data.message || 'Failed to create game room'); // Show error message from the server if available, otherwise show a generic error message
       }
