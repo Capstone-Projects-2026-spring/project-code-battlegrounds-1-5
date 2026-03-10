@@ -1,4 +1,3 @@
-import React from 'react';
 import NavBar from '@/components/Navbar'
 import { Container, Grid, Image, Stack, Text, Title } from '@mantine/core';
 import Broadstats from '@/components/Broadstats';

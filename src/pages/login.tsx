@@ -1,74 +1,84 @@
 import { authClient } from "@/lib/auth-client";
 import { useState } from "react";
 import { useRouter } from "next/router";
+import { useForm } from "@mantine/form";
+import { Button, Card, Flex, PasswordInput, TextInput } from "@mantine/core";
+import { useDisclosure } from "@mantine/hooks";
 
 export default function LoginPage() {
   const router = useRouter();
-
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [pwVisible, { toggle }] = useDisclosure();
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = async () => {
-    const { data, error } = await authClient.signIn.email({
-        /**
-         * The user email
-         */
-        email,
-        /**
-         * The user password
-         */
-        password,
-        /**
-         * A URL to redirect to after the user verifies their email (optional)
-         */
-        callbackURL: "/landingpage",
-        /**
-         * remember the user session after the browser is closed. 
-         * @default true
-         */
-        rememberMe: false
+  const form = useForm({
+    mode: "uncontrolled",
+    initialValues: {
+      email: '',
+      password: ''
+    },
+    validate: {
+      email: (value) => (/^\S+@\S+$/.test(value) ? null : 'Invalid email'),
+    },
+  });
+
+  const handleLogin = async (email: string, password: string) => {
+    await authClient.signIn.email({
+      email,
+      password,
+      callbackURL: "/",
+      rememberMe: false
     }, {
-        //callbacks
-        onRequest: (ctx) => {
-            //show loading
-        },
-        onSuccess: (ctx) => {
-            //redirect to the dashboard or sign in page
-            router.push("/dashboard")
-        },
-        onError: (ctx) => {
-            // display the error message
-            alert(ctx.error.message);
-        },
-    })
+      onRequest: (ctx) => {
+        setLoading(true);
+      },
+      onSuccess: (ctx) => {
+        router.push("/")
+      },
+      onError: (ctx) => {
+        alert(ctx.error.message);
+      },
+    });
   }
+
   return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        handleLogin();
-      }}
-    >
-      <input
-        data-testid="email-login"
-        type="email"
-        placeholder="Email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-      />
+    <Flex justify={"center"} align={"center"} mih="100vh">
+      <Card miw="30%">
+        <form onSubmit={form.onSubmit(
+          (values) => {
+            handleLogin(values.email, values.password);
+          }
+        )}>
+          <Flex direction={"column"} gap="sm">
+            <TextInput
+              data-testid="email-login"
+              withAsterisk
+              label="Email"
+              placeholder="ian@temple.edu"
+              key={form.key("email")}
+              {...form.getInputProps("email")}
+            />
 
-      <input
-        data-testid="password-login"
-        type="password"
-        placeholder="Password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-      />
+            <PasswordInput
+              data-testid="password-login"
+              withAsterisk
+              label="Password"
+              placeholder="hunter2"
+              key={form.key("password")}
+              visible={pwVisible}
+              onVisibilityChange={toggle}
+              {...form.getInputProps("password")}
+            />
 
-      <button data-testid="login-button" type="submit" disabled={loading}>
-        {loading ? "Logging in..." : "Sign in"}
-      </button>
-    </form>
+            <Button
+              data-testid="login-button"
+              type="submit"
+              loading={loading}
+            >
+              Log In
+            </Button>
+          </Flex>
+        </form>
+      </Card>
+    </Flex>
   );
 }

@@ -1,4 +1,3 @@
-import React from 'react';
 import { Stack, Box } from '@mantine/core'; //
 import Navbar from '@/components/Navbar';
 import Broadstats from '@/components/Broadstats';
