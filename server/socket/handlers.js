@@ -29,6 +29,8 @@ function registerSocketHandlers(io, socket, services) {
       } catch (e) {
         console.error('Failed to start game', e);
       }
+    } else {
+      socket.emit('spectator', role);
     }
 
     // Emit the assigned role back ONLY to the person who just joined

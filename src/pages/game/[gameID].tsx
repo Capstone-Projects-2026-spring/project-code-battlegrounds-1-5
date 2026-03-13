@@ -5,6 +5,7 @@ import { io, Socket } from 'socket.io-client';
 
 import CoderPOV from '@/components/coderPOV';
 import TesterPOV from '@/components/testerPOV';
+import SpectatorPOV from '@/components/spectatorPOV';
 
 // TODO: this route should be auth checked (only allow signed-in users to join, not anyone with the URL). See CODEBAT-56
 export default function PlayGameRoom() {
@@ -35,6 +36,10 @@ export default function PlayGameRoom() {
     socketInstance.on('waitingForTester', () => {
       setGameState("Waiting");
     });
+
+    socketInstance.on('spectator', () => {
+      setGameState("In Progress");
+    })
 
     socketInstance.on('gameStarted', ({ start, _duration }) => {
       if (isNaN(start) || isNaN(_duration)) return;
@@ -83,9 +88,13 @@ export default function PlayGameRoom() {
   // State B: The room already has 2 people in it
   if (role === 'spectator') {
     return (
-      <Center h="100vh">
-        <Text size="xl" c="dimmed">The room is full. You are spectating.</Text>
-      </Center>
+      <SpectatorPOV
+        socket={socket}
+        roomId={gameId}
+        timeRemaining={timeRemaining}
+        duration={duration}
+        gameState={gameState}
+      />
     );
   }
 

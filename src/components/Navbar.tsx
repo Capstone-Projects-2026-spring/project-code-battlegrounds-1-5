@@ -6,7 +6,8 @@ import classes from '../styles/comps/Header.module.css';
 
 interface HeaderProps {
   links: string[],
-  title: string
+  title: string,
+  isSpectator?: boolean
 }
 
 export default function HeaderSimple(props: HeaderProps) {
@@ -34,9 +35,14 @@ export default function HeaderSimple(props: HeaderProps) {
     <header className={classes.header}>
       <Container size="md" className={classes.inner}>
         {/* <MantineLogo size={28} /> */}
-        
+
         <Text c="blue.6" fw={600} mr="auto">
           {props.title}
+
+          {/** Optional spectating indicator */}
+          {props.isSpectator && (
+            <span style={{ marginLeft: 8, color: 'rgb(0, 102, 255)', fontWeight: 500 }}>(Spectating)</span>
+          )}
         </Text>
 
         <Group gap={6} visibleFrom="xs">

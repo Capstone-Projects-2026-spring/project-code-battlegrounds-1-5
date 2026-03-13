@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Box } from "@mantine/core";
 import Navbar from "@/components/Navbar";
 import ProblemBox from "@/components/ProblemBox";
@@ -16,9 +16,28 @@ interface CoderPOVProps {
   timeRemaining: number;
   duration: number;
   gameState: "Waiting" | "In Progress" | "Completed";
+  isSpectator?: boolean
 }
 
-export default function CoderPOV({ socket, roomId, timeRemaining, duration, gameState }: CoderPOVProps) {
+export default function CoderPOV({ socket, roomId, timeRemaining, duration, gameState, isSpectator = false }: CoderPOVProps) {
+
+  // If we're a spectator viewing the coder, we need to show live code
+  // from the socket but prevent edits. When not a spectator, behave as normal.
+  const [liveCode, setLiveCode] = useState<string>("// Waiting for code...");
+
+  useEffect(() => {
+    if (!isSpectator) return;
+
+    const handler = (newCode: string) => {
+      setLiveCode(newCode);
+    };
+
+    socket.on("receiveCodeUpdate", handler);
+
+    return () => {
+      socket.off("receiveCodeUpdate", handler);
+    };
+  }, [socket, isSpectator]);
 
   // 3. Create the handler that blasts keystrokes to the server
   const handleEditorChange = (value: string | undefined) => {
@@ -39,7 +58,6 @@ export default function CoderPOV({ socket, roomId, timeRemaining, duration, game
           "nav nav nav nav"
           "prob edit edit coderDashBoard"
           "prob edit edit chatbox"
-          "foot foot foot foot"
         `,
       }}
     >
@@ -47,6 +65,7 @@ export default function CoderPOV({ socket, roomId, timeRemaining, duration, game
         <Navbar
           links={["Time", "Players", "Tournament"]}
           title="Code BattleGrounds"
+          isSpectator={isSpectator}
         />
       </Box>
 
@@ -54,7 +73,7 @@ export default function CoderPOV({ socket, roomId, timeRemaining, duration, game
         {gameState === "In Progress" && (
           <GameTimer _timeRemaining={timeRemaining} duration={duration} />
         )}
-        <ProblemBox /> 
+        <ProblemBox />
       </Box>
 
       <Box style={{ gridArea: "edit" }}>
@@ -63,20 +82,21 @@ export default function CoderPOV({ socket, roomId, timeRemaining, duration, game
           height="100%"
           defaultLanguage="javascript"
           theme="vs-dark"
-          onChange={handleEditorChange}
+          {...isSpectator ? {
+            value: liveCode,
+            options: { readOnly: true, domReadOnly: true }
+          } : {
+            onChange: handleEditorChange
+          }}
         />
       </Box>
 
       <Box style={{ gridArea: "coderDashBoard" }}>
-        <CoderDashboard />
+        <CoderDashboard isSpectator={isSpectator} />
       </Box>
 
       <Box style={{ gridArea: "chatbox" }}>
-        <ChatBox socket={socket} roomId={roomId} role="Coder" />
-      </Box>
-
-      <Box style={{ gridArea: "foot" }}>
-        <BroadStats />
+        <ChatBox socket={socket} roomId={roomId} role="Coder" isSpectator={isSpectator} />
       </Box>
     </Box>
   );

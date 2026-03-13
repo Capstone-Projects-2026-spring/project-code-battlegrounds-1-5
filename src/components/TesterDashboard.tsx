@@ -1,6 +1,9 @@
 import { Stack, Button, Text, Paper, Title } from '@mantine/core';
 
-export default function TesterDashboard() {
+interface TesterDashboardProps {
+  isSpectator?: boolean
+}
+export default function TesterDashboard(props: TesterDashboardProps) {
   const actions = [
     "Send Edge Case",
     "Check Tests now",
@@ -9,10 +12,10 @@ export default function TesterDashboard() {
   ];
 
   return (
-    <Paper 
-      p="md" 
-      bg="#9f6c6c" 
-      radius="xs" 
+    <Paper
+      p="md"
+      bg="#9f6c6c"
+      radius="xs"
       h="100%"
     >
       <Stack gap="xs">
@@ -26,10 +29,11 @@ export default function TesterDashboard() {
         <Stack gap={8}>
           {actions.map((label) => (
             <Button
+              disabled={props.isSpectator}
               key={label}
               fullWidth
               variant="filled"
-              color="#4A99B8" 
+              color="#4A99B8"
               styles={{
                 root: {
                   border: '1px solid black',
@@ -47,6 +51,11 @@ export default function TesterDashboard() {
             </Button>
           ))}
         </Stack>
+        {props.isSpectator && (
+          <Text c="yellow" size="xs" mt="sm">
+            Spectators cannot trigger tester actions.
+          </Text>
+        )}
       </Stack>
     </Paper>
   );

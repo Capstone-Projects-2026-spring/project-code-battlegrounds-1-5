@@ -1,6 +1,10 @@
 import { Stack, Button, Text, Paper, Title } from '@mantine/core';
 
-export default function CoderDashboard() {
+interface CoderDashboardProps {
+  isSpectator?: boolean;
+}
+
+export default function CoderDashboard(props: CoderDashboardProps) {
   const actions = [
     "Run Edge Case",
     "Check Tests now",
@@ -26,6 +30,7 @@ export default function CoderDashboard() {
         <Stack gap={8}>
           {actions.map((label) => (
             <Button
+              disabled={props.isSpectator}
               key={label}
               fullWidth
               variant="filled"
@@ -47,6 +52,11 @@ export default function CoderDashboard() {
             </Button>
           ))}
         </Stack>
+        {props.isSpectator && (
+          <Text c="yellow" size="xs" mt="sm">
+            Spectators cannot trigger coder actions.
+          </Text>
+        )}
       </Stack>
     </Paper>
   );
