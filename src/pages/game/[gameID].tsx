@@ -80,7 +80,10 @@ export default function PlayGameRoom() {
   if (gameState === "Waiting") {
     return (
       <Center h="100vh">
-        <Text size="xl" c="dimmed">Waiting for another player to join...</Text>
+        <Group align="center">
+          <Text size="xl" c="dimmed">Waiting for another player to join...</Text>
+          <Text size="md" fw={600}>Room ID: {gameId}</Text>
+        </Group>
       </Center>
     );
   }

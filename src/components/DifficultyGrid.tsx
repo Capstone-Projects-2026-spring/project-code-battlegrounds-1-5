@@ -12,12 +12,14 @@ import { useState } from "react";
 import { useRouter } from "next/router";
 import { authClient } from "@/lib/auth-client";
 
+type Difficulty = "EASY" | "MEDIUM" | "HARD";
+
 export default function Subgrid() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   const { data: session } = authClient.useSession();
-  const handleCreateRoom = async () => {
+  const handleCreateRoom = async (difficulty: Difficulty) => {
     
     if (!session) {
       setError("Error: You must be signed in to create a match!");
@@ -26,7 +28,13 @@ export default function Subgrid() {
     setError(null);
     setLoading(true);
     try {
-      const response = await fetch("/api/rooms/create", { method: "POST" });
+      const response = await fetch("/api/rooms/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ difficulty }),
+      });
       const data = await response.json();
       if (response.ok) {
         router.push(`/game/${data.gameId}`); // Redirect to the new game room page using the returned gameId
@@ -74,7 +82,7 @@ export default function Subgrid() {
                   Strings
                 </Text>
 
-                <Button onClick={handleCreateRoom} mt={"auto"}>
+                <Button onClick={() => handleCreateRoom("EASY")} mt={"auto"}>
                   Create Room
                 </Button>
               </Flex>
@@ -116,7 +124,7 @@ export default function Subgrid() {
                   Sorts
                 </Text>
 
-                <Button onClick={handleCreateRoom} mt={"auto"}>
+                <Button onClick={() => handleCreateRoom("MEDIUM")} mt={"auto"}>
                   Create Room
                 </Button>
               </Flex>
@@ -160,7 +168,7 @@ export default function Subgrid() {
                 <Text size="sm" c="dimmed">
                   Dynamic Programming
                 </Text>
-                <Button onClick={handleCreateRoom} mt={"auto"}>
+                <Button onClick={() => handleCreateRoom("HARD")} mt={"auto"}>
                   Create Room
                 </Button>
               </Flex>
