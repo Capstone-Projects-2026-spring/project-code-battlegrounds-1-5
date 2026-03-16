@@ -1,5 +1,5 @@
-// Unit tests for the create-room API handler.
-// These tests call the handler directly, so no running Next server is required.
+// Unit tests for the create-room API endpoint.
+// The handler is called directly (no running server needed).
 import { beforeEach, describe, test, expect, jest } from "@jest/globals";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { ProblemDifficulty } from "@prisma/client";
@@ -8,40 +8,46 @@ import { auth } from "../../src/lib/auth";
 import { prisma } from "../../src/lib/prisma";
 import { nanoid } from "nanoid";
 
-// Replace auth dependency with a mock so tests can control authenticated/unauthenticated flows.
+// --- Mocks ---
+// Replace real dependencies with fakes so tests don't need a database or auth server.
+
+// Fake auth: lets each test decide whether the user is logged in or not.
 jest.mock("../../src/lib/auth", () => ({
   auth: {
     api: { getSession: jest.fn() } },
 }));
 
-// Replace Prisma dependency with mocks to avoid real DB calls.
+// Fake database: prevents real DB calls; each test controls what the DB "returns".
 jest.mock("../../src/lib/prisma", () => ({
   prisma: {
     problem: { findFirst: jest.fn() },
     gameRoom: { create: jest.fn() },
   },
 }));
-// Fix room ID generation to a deterministic value so assertions stay stable.
-jest.mock("nanoid", () => ({ 
+
+// Fake ID generator: always returns "abcd1234" so test assertions are predictable.
+jest.mock("nanoid", () => ({
     nanoid: jest.fn(() => "abcd1234"),
  }));
 
-// Typed aliases for mocked functions. Casting through unknown avoids TS incompatibility noise.
+// --- Mock shortcuts ---
+// These give us easy handles to the fake functions above so we can configure
+// their return values in each test (e.g. mockGetSession.mockResolvedValue(...)).
 const mockGetSession = auth.api.getSession as unknown as jest.MockedFunction<(...args: any[]) => any>;
 const mockFindFirst = prisma.problem.findFirst as unknown as jest.MockedFunction<(...args: any[]) => any>;
 const mockCreateGameRoom = prisma.gameRoom.create as unknown as jest.MockedFunction<(...args: any[]) => any>;
 
-// Minimal response object used by the handler in these tests.
-// We extend with `body` so assertions can read what was sent to `res.json(...)`.
+// --- Fake HTTP response ---
+// The handler expects a response object with .status() and .json() methods.
+// MockRes adds a `body` field so tests can inspect what the handler sent back.
  type MockRes = NextApiResponse & {
     statusCode: number;
     body: unknown;
  };
- 
- // makeRes mimics the parts of NextApiResponse the handler uses:
- // 1) `status(code)` stores statusCode and returns `res` for chaining.
- // 2) `json(payload)` stores payload in `body` and returns `res`.
- // 3) both are jest.fn so we can assert call arguments.
+
+ // Creates a fake response object that records what the handler does:
+ //   res.status(404)       -> stores 404 in res.statusCode
+ //   res.json({ error })   -> stores { error } in res.body
  function makeRes(): MockRes {
     const res: Partial<MockRes> = {};
     res.statusCode = 200;
@@ -57,9 +63,10 @@ const mockCreateGameRoom = prisma.gameRoom.create as unknown as jest.MockedFunct
     return res as MockRes;
  }
 
- // Branch-based tests: each test targets one behavior path in the handler.
- describe("POST /api/rooms/create unit", () => {
-     // Reset mock call history and return values between tests to prevent test leakage.
+ // --- Tests ---
+ // Each test covers one path through the handler (wrong method, missing field, etc.).
+ describe("POST /api/rooms/create unit tests", () => {
+     // Clear fake call history before each test so they don't affect each other.
     beforeEach(() => {
         jest.clearAllMocks();
     });
