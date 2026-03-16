@@ -32,7 +32,7 @@ export default function Results() {
 
         <Box p="md" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
           
-          <Title order={2} mb="md" c="dark.8" justify="center" align="center">
+          <Title order={2} mb="md" c="dark.8" ta="center">
             Match Results
           </Title>
 
