@@ -53,7 +53,7 @@ if (!difficulty || !Object.values(ProblemDifficulty).includes(difficulty)) {
         // TODO: here, store in redis pubsub channel called "matchmaking" or such so that other players can find it. then, before generating a new room, try to join any existing rooms. if room is joined and becomes full, mark it as in progress in postgres. See CODEBAT-14 and CODEBAT-56
 
         // return generated code
-        return res.status(201).json({gameId: gameRoom.id, joinCode: gameRoom.id});
+        return res.status(201).json({gameId: gameRoom.id});
     } catch (error: unknown) {
         if (error instanceof Error) {
             // Return error message with status 500 (internal server error) if something goes wrong during game room creation
