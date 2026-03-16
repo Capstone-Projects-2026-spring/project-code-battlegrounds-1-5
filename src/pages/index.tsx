@@ -15,34 +15,6 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const { data: session } = authClient.useSession();
 
-  /**
-   * handleCreateRoom is called when the user clicks the "Create Game Room" button.
-   * It sends a POST request to the /api/rooms/create endpoint to create a new game room.
-   * If successful, it redirects the user to the new game room page using the returned gameId.
-   * If there's an error, it shows an alert with the error message.
-   */
-  const handleCreateRoom = async () => {
-    if (!session) {
-      setError("Error: You must be signed in to create a match!");
-      return;
-    }
-    setError(null);
-    setLoading(true);
-    try {
-      const response = await fetch("/api/rooms/create", { method: "POST" });
-      const data = await response.json();
-      if (response.ok) {
-        router.push(`/game/${data.gameId}`); // Redirect to the new game room page using the returned gameId
-      } else {
-        alert(data.message || "Failed to create game room"); // Show error message from the server if available, otherwise show a generic error message
-      }
-    } catch (error) {
-      alert("Failed to create game room");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
     <>
       <Head>
