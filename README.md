@@ -99,8 +99,9 @@ To develop, you will need a computer with Git, Node, Bun, and Docker Compose.
 4. Run `bunx prisma generate` to generate the Prisma client and database migrations.
 5. Run `docker compose -f ./dev-docker-compose.yml up -d` to bring up the containers (you may need to run as root).
 6. Run `bunx prisma migrate dev` to bring the database up to schema.
-7. Run `bun dev` to launch the development server and navigate to `localhost:3000` to view the page.
-8. When done, `docker compose -f ./dev-docker-compose.yml down` will bring the containers down.
+7. Run `bunx prisma db seed` to add mock data to the dev database.
+8. Run `bun dev` to launch the development server and navigate to `localhost:3000` to view the page.
+9. When done, `docker compose -f ./dev-docker-compose.yml down` will bring the containers down.
 
 ### Helpful Common Commands and Tricks
 - `docker compose -f ./dev-docker-compose.yml down -v` will stop the containers and purge the volumes. Good if you _really_ mess something up (you WILL lose data!).
