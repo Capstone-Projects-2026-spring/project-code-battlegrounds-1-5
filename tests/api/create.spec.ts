@@ -3,9 +3,9 @@
 import { beforeEach, describe, test, expect, jest } from "@jest/globals";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { ProblemDifficulty } from "@prisma/client";
-import handler from "../../src/pages/api/rooms/create";
-import { auth } from "../../src/lib/auth";
-import { prisma } from "../../src/lib/prisma";
+import handler from "@/pages/api/rooms/create";
+import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 import { nanoid } from "nanoid";
 
 // --- Mocks ---
