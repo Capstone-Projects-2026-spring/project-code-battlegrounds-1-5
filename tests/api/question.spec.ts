@@ -48,13 +48,6 @@ beforeAll(async () => {
 
 describe("Simple 200 OKs", () => {
 
-  // No longer relevant. Question IDs are UUIDs.
-  // test("ID=1", async () => {
-  //   const json = await get({ id: "1" });
-
-  //   expect(json.question?.questionId).toEqual(1);
-  // });
-
   test("slug=two-sum", async () => {
     const json = await get({ slug: "two-sum" });
 
@@ -91,7 +84,6 @@ describe("Combined query parameters", () => {
 
   test.each(
     generatePowerSet<QuestionQuery>([
-      // { id: "1" },
       { slug: "two-sum" },
       { difficulty: "Easy" },
       { topic: "Array" }
