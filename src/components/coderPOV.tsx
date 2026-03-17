@@ -1,102 +1,168 @@
 import React, { useEffect, useState } from "react";
-import { Box } from "@mantine/core";
+import { Box, Group, Button, Select, Text, Tabs } from "@mantine/core";
+import Editor from "@monaco-editor/react";
 import Navbar from "@/components/Navbar";
 import ProblemBox from "@/components/ProblemBox";
-import BroadStats from "@/components/Broadstats";
-import Editor from "@monaco-editor/react";
 import ChatBox from "@/components/ChatBox";
-import CoderDashboard from "@/components/CoderDashboard";
 import GameTimer from "@/components/GameTimer";
-import { Socket } from "socket.io-client"; // <-- 1. Import Socket type
+import { Socket } from "socket.io-client";
 
-// 2. Define the props we are passing in from the dynamic page
 interface CoderPOVProps {
   socket: Socket;
   roomId: string;
   timeRemaining: number;
   duration: number;
   gameState: "Waiting" | "In Progress" | "Completed";
-  isSpectator?: boolean
+  isSpectator?: boolean;
 }
 
-export default function CoderPOV({ socket, roomId, timeRemaining, duration, gameState, isSpectator = false }: CoderPOVProps) {
-
-  // If we're a spectator viewing the coder, we need to show live code
-  // from the socket but prevent edits. When not a spectator, behave as normal.
+export default function CoderPOV({
+  socket,
+  roomId,
+  timeRemaining,
+  duration,
+  gameState,
+  isSpectator = false,
+}: CoderPOVProps) {
+  const [activeTab, setActiveTab] = useState<string | null>("console");
   const [liveCode, setLiveCode] = useState<string>("// Waiting for code...");
 
   useEffect(() => {
     if (!isSpectator) return;
-
-    const handler = (newCode: string) => {
-      setLiveCode(newCode);
-    };
-
+    const handler = (newCode: string) => setLiveCode(newCode);
     socket.on("receiveCodeUpdate", handler);
-
     return () => {
       socket.off("receiveCodeUpdate", handler);
     };
   }, [socket, isSpectator]);
 
-  // 3. Create the handler that blasts keystrokes to the server
   const handleEditorChange = (value: string | undefined) => {
-    if (value !== undefined) {
-      console.log("Coder is sending:", value); // <-- ADD THIS
+    if (value !== undefined && !isSpectator) {
       socket.emit("codeChange", { roomId, code: value });
     }
   };
 
   return (
-    <Box
-      style={{
-        display: "grid",
-        height: "100vh",
-        gridTemplateColumns: "repeat(4, 1fr)",
-        gridTemplateRows: "auto 1fr 1fr auto",
-        gridTemplateAreas: `
-          "nav nav nav nav"
-          "prob edit edit coderDashBoard"
-          "prob edit edit chatbox"
-        `,
-      }}
-    >
-      <Box style={{ gridArea: "nav" }}>
-        <Navbar
-          links={["Time", "Players", "Tournament"]}
-          title="Code BattleGrounds"
-          isSpectator={isSpectator}
-        />
-      </Box>
+    <Box h="100vh" style={{ display: "flex", flexDirection: "column" }}>
+      <Navbar
+        links={["Timer", "Players", "Tournament"]}
+        title="CODE BATTLEGROUNDS | GAMEMODE: TIMER"
+        isSpectator={isSpectator}
+      />
 
-      <Box style={{ gridArea: "prob", borderRight: "1px solid #e0e0e0" }}>
-        {gameState === "In Progress" && (
-          <GameTimer _timeRemaining={timeRemaining} duration={duration} />
-        )}
-        <ProblemBox />
-      </Box>
-
-      <Box style={{ gridArea: "edit" }}>
-        {/* 4. Attach the handler to Monaco's onChange event */}
-        <Editor
-          height="100%"
-          defaultLanguage="javascript"
-          theme="vs-dark"
-          {...isSpectator ? {
-            value: liveCode,
-            options: { readOnly: true, domReadOnly: true }
-          } : {
-            onChange: handleEditorChange
+      <Box style={{ flex: 1, display: "flex", overflow: "hidden" }}>
+        <Box
+          style={{
+            width: "20%",
+            minWidth: "250px",
+            backgroundColor: "#333",
+            color: "white",
+            padding: "1rem",
+            overflowY: "auto",
+            display: "block", 
           }}
-        />
-      </Box>
+        >
+          {gameState === "In Progress" && (
+            <Box mb="md">
+              <GameTimer _timeRemaining={timeRemaining} duration={duration} />
+            </Box>
+          )}
+          <ProblemBox />
+        </Box>
 
-      <Box style={{ gridArea: "coderDashBoard" }}>
-        <CoderDashboard isSpectator={isSpectator} />
-      </Box>
+        {/* Main Workspace */}
+        <Box
+          style={{
+            flex: 1,
+            display: "flex",
+            flexDirection: "column",
+            minWidth: 0,
+          }}
+        >
+          <Group
+            p="xs"
+            bg="#f8f9fa"
+            style={{ borderBottom: "1px solid #ddd", flexShrink: 0 }}
+          >
+            <Select
+              size="xs"
+              data={["Javascript"]}
+              defaultValue="Javascript"
+              disabled={isSpectator}
+            />
+            <Button size="xs" color="cyan" disabled={isSpectator}>
+              RUN ▷
+            </Button>
+            <Button size="xs" color="green" disabled={isSpectator}>
+              Submit Final Code
+            </Button>
+          </Group>
 
-      <Box style={{ gridArea: "chatbox" }}>
-        <ChatBox socket={socket} roomId={roomId} role="Coder" isSpectator={isSpectator} />
+          {/* Middle Row: Editor & Chat */}
+          <Box
+            style={{
+              display: "flex",
+              flex: "1 1 45%",
+              borderBottom: "2px solid #333",
+              minHeight: 0,
+            }}
+          >
+            <Box
+              style={{ flex: 1, borderRight: "1px solid #ddd", minWidth: 0 }}
+            >
+              <Editor
+                height="100%"
+                theme="vs-dark"
+                defaultLanguage="javascript"
+                value={isSpectator ? liveCode : undefined}
+                onChange={handleEditorChange}
+                options={{ readOnly: isSpectator, minimap: { enabled: false } }}
+              />
+            </Box>
+            <Box style={{ width: "30%", minWidth: "200px" }}>
+              <ChatBox
+                socket={socket}
+                roomId={roomId}
+                role="Coder"
+                isSpectator={isSpectator}
+              />
+            </Box>
+          </Box>
+
+          {/* Bottom Row: Console */}
+          <Box
+            style={{
+              flex: "1 1 35%",
+              backgroundColor: "#1e1e1e",
+              display: "flex",
+              flexDirection: "column",
+              minHeight: 0,
+            }}
+          >
+            <Box p="xs" style={{ borderBottom: "1px solid #444" }}>
+              <Tabs
+                value={activeTab}
+                onChange={setActiveTab}
+                variant="outline"
+                color="gray"
+              >
+                <Tabs.List>
+                  <Tabs.Tab value="console" style={{ color: "white" }}>
+                    Console Output
+                  </Tabs.Tab>
+                </Tabs.List>
+              </Tabs>
+            </Box>
+            <Box style={{ flex: 1 }}>
+              <Editor
+                height="100%"
+                theme="vs-dark"
+                defaultLanguage="javascript"
+                options={{ readOnly: true, minimap: { enabled: false } }}
+              />
+            </Box>
+          </Box>
+        </Box>
       </Box>
     </Box>
   );
