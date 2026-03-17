@@ -34,12 +34,22 @@ if (!difficulty || !Object.values(ProblemDifficulty).includes(difficulty)) {
         const roomID = nanoid(8);
         console.log("Generated room ID:", roomID);
 
-        // Pick random problem for the game room. For MVP, we will just pick the first problem in the database. In the future, we can implement a more sophisticated problem selection algorithm.
-        const problem = await prisma.problem.findFirst({
-            where: difficulty ? { difficulty } : undefined,
-        });
-        if (!problem) {
+        // Pick one random problem from the requested difficulty bucket.
+        const where = { difficulty };
+        const problemCount = await prisma.problem.count({ where });
+        if (problemCount === 0) {
             return res.status(500).json({message: 'No problems found in the database'});
+        }
+
+        const skip = Math.floor(Math.random() * problemCount);
+        const problem = await prisma.problem.findFirst({
+            where,
+            orderBy: { id: 'asc' },
+            skip,
+        });
+
+        if (!problem) {
+            return res.status(500).json({message: 'Failed to select a random problem'});
         }
 
         // Need to make a database call to Problem table but there are no Problems in the table right now

@@ -19,7 +19,7 @@ jest.mock("@/lib/auth", () => ({
 // Fake database: prevents real DB calls; each test controls what the DB "returns".
 jest.mock("@/lib/prisma", () => ({
   prisma: {
-    problem: { findFirst: jest.fn() },
+        problem: { findFirst: jest.fn(), count: jest.fn() },
     gameRoom: { create: jest.fn() },
   },
 }));
@@ -34,6 +34,7 @@ jest.mock("nanoid", () => ({
 // their return values in each test (e.g. mockGetSession.mockResolvedValue(...)).
 const mockGetSession = auth.api.getSession as unknown as jest.MockedFunction<(...args: any[]) => any>;
 const mockFindFirst = prisma.problem.findFirst as unknown as jest.MockedFunction<(...args: any[]) => any>;
+const mockCountProblems = prisma.problem.count as unknown as jest.MockedFunction<(...args: any[]) => any>;
 const mockCreateGameRoom = prisma.gameRoom.create as unknown as jest.MockedFunction<(...args: any[]) => any>;
 
 // --- Fake HTTP response ---
@@ -105,7 +106,7 @@ const mockCreateGameRoom = prisma.gameRoom.create as unknown as jest.MockedFunct
         
         test("returns 500 when no problem exists for difficulty", async () => {
             mockGetSession.mockResolvedValue({ user: { id: "user1" } });
-            mockFindFirst.mockResolvedValue(null);
+            mockCountProblems.mockResolvedValue(0);
 
             const req = {
                 method: "POST",
@@ -122,6 +123,7 @@ const mockCreateGameRoom = prisma.gameRoom.create as unknown as jest.MockedFunct
 
         test("returns 201 and gameId on success", async () => {
             mockGetSession.mockResolvedValue({ user: { id: "user1" } });
+            mockCountProblems.mockResolvedValue(1);
             mockFindFirst.mockResolvedValue({ id: "problem1" });
             mockCreateGameRoom.mockResolvedValue({ id: "abcd1234", problemId: "problem1" });
 
@@ -134,9 +136,14 @@ const mockCreateGameRoom = prisma.gameRoom.create as unknown as jest.MockedFunct
 
             await handler(req, res);
 
+            expect(prisma.problem.count).toHaveBeenCalledWith({
+                where: { difficulty: ProblemDifficulty.EASY },
+            });
             expect(prisma.problem.findFirst).toHaveBeenCalledWith({
-                 where: { difficulty: ProblemDifficulty.EASY },
-                 });
+                where: { difficulty: ProblemDifficulty.EASY },
+                orderBy: { id: "asc" },
+                skip: 0,
+            });
             expect(prisma.gameRoom.create).toHaveBeenCalledWith({
                 data: { id: "abcd1234", problemId: "problem1" },
             });
