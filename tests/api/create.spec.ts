@@ -3,22 +3,21 @@
 import { beforeEach, describe, test, expect, jest } from "@jest/globals";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { ProblemDifficulty } from "@prisma/client";
-import handler from "@/pages/api/rooms/create";
-import { auth } from "@/lib/auth";
+import handler from "../../src/pages/api/rooms/create";
+import {auth} from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { nanoid } from "nanoid";
-
 // --- Mocks ---
 // Replace real dependencies with fakes so tests don't need a database or auth server.
 
 // Fake auth: lets each test decide whether the user is logged in or not.
-jest.mock("../../src/lib/auth", () => ({
+jest.mock("@/lib/auth", () => ({
   auth: {
     api: { getSession: jest.fn() } },
 }));
 
 // Fake database: prevents real DB calls; each test controls what the DB "returns".
-jest.mock("../../src/lib/prisma", () => ({
+jest.mock("@/lib/prisma", () => ({
   prisma: {
     problem: { findFirst: jest.fn() },
     gameRoom: { create: jest.fn() },
