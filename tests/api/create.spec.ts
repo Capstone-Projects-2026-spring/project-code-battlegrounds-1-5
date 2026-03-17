@@ -12,13 +12,13 @@ import { nanoid } from "nanoid";
 // Replace real dependencies with fakes so tests don't need a database or auth server.
 
 // Fake auth: lets each test decide whether the user is logged in or not.
-jest.mock("@/lib/auth", () => ({
+jest.mock("../../src/lib/auth", () => ({
   auth: {
     api: { getSession: jest.fn() } },
 }));
 
 // Fake database: prevents real DB calls; each test controls what the DB "returns".
-jest.mock("@/lib/prisma", () => ({
+jest.mock("../../src/lib/prisma", () => ({
   prisma: {
     problem: { findFirst: jest.fn() },
     gameRoom: { create: jest.fn() },
