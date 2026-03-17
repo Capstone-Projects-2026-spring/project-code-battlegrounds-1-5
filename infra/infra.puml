@@ -1,0 +1,46 @@
+@startuml
+skinparam shadowing false
+skinparam linetype ortho
+skinparam wrapWidth 200
+skinparam defaultTextAlignment center
+left to right direction
+
+title Production Infrastructure
+
+actor "GitHub Action CI/CD" as cicd
+actor "End User" as user
+
+frame "Google Cloud Project" as project {
+  node "Artifact Registry\n(DOCKER format)" as ar
+  cloud "VPC Network: vpc" as vpc {
+    rectangle "Subnet: subnet\nCIDR: 10.10.0.0/24" as subnet
+    node "Serverless VPC Access Connector\nName: connector" as vpcac
+    node "Memorystore (Redis)\nName: redis\nTier: BASIC, 1 GiB" as redis
+  }
+  database "Cloud SQL (PostgreSQL 15)\nInstance: postgres\nDB: appdb" as sql
+  node "Cloud Run Service\nName: app" as app
+  node "Cloud Run Job\nName: migrate-job" as migrate
+
+  ' layout constraint: keep ar to the left of app
+  ar -[hidden]-> app
+}
+
+note right of sql
+  Accessed using Cloud SQL Auth Proxy and mounted by Cloud Run. Authenticated via service account.
+end note
+
+note right of redis
+  Redis is only authorized to be accessed through the VPC network, hence the subnet in the VPC and Access Connector.
+end note
+
+migrate ..> sql
+
+ar ..> app : image
+ar ..> migrate : image
+
+app --> sql
+app --> redis
+
+cicd --> ar
+user --> app
+@enduml

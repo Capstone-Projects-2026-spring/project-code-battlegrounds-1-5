@@ -1,0 +1,5 @@
+project_id         = "code-battlegrounds"
+region             = "us-central1"
+image_url          = "us-central1-docker.pkg.dev/code-battlegrounds/app/app:latest"
+db_user            = "appuser"
+better_auth_url    = "http://localhost:3001"
