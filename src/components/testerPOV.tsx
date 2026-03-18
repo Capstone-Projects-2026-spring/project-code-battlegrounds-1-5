@@ -3,6 +3,7 @@ import { Box, Group, Button, Select, Text, Tabs } from "@mantine/core";
 import Editor from "@monaco-editor/react";
 import Navbar from "@/components/Navbar";
 import ProblemBox from "@/components/ProblemBox";
+import type { ActiveProblem } from "@/components/ProblemBox";
 import ChatBox from "@/components/ChatBox";
 import GameTimer from "@/components/GameTimer";
 import { Socket } from "socket.io-client";
@@ -13,6 +14,7 @@ interface TesterPOVProps {
   timeRemaining: number;
   duration: number;
   gameState: "Waiting" | "In Progress" | "Completed";
+  problem: ActiveProblem | null;
   isSpectator?: boolean;
 }
 
@@ -22,6 +24,7 @@ export default function TesterPOV({
   timeRemaining,
   duration,
   gameState,
+  problem,
   isSpectator = false,
 }: TesterPOVProps) {
   const [liveCode, setLiveCode] = useState("// Waiting for coder...");
@@ -43,88 +46,86 @@ export default function TesterPOV({
   };
 
   return (
-    <Box h="100vh" style={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
-      <Navbar
-        links={["Timer", "Players", "Tournament"]}
-        title="CODE BATTLEGROUNDS | GAMEMODE: TIMER"
-        isSpectator={isSpectator}
-      />
+    <Box
+      style={{
+        display: "grid",
+        height: "100vh",
+        gridTemplateColumns: "repeat(4, 1fr)",
+        gridTemplateRows: "auto 1fr 1fr auto",
+        gridTemplateAreas: `
+          "nav nav nav nav"
+          "prob edit edit testerDashBoard"
+          "prob edit edit chatbox"
+        `,
+      }}
+    >
+      <Box style={{ gridArea: "nav" }}>
+        <Navbar
+          links={["Time", "Players", "Tournament"]}
+          title="Code BattleGrounds"
+          isSpectator={isSpectator}
+        />
+      </Box>
 
-      <Box style={{ flex: 1, display: "flex", overflow: "hidden" }}>
-        {/* Left Sidebar */}
-        <Box 
-          style={{ 
-            width: "25%", 
-            minWidth: "250px", 
-            maxWidth: "400px",
-            backgroundColor: "#333", 
-            color: "white", 
-            padding: "1rem", 
-            overflowY: "auto",
-            flexShrink: 0 
-          }}
-        >
-          {gameState === "In Progress" && (
-            <Box mb="md">
-              <GameTimer _timeRemaining={timeRemaining} duration={duration} />
-            </Box>
-          )}
-          <ProblemBox />
+      <Box style={{ gridArea: "prob", borderRight: "1px solid #e0e0e0" }}>
+        {gameState === "In Progress" && (
+          <GameTimer _timeRemaining={timeRemaining} duration={duration} />
+        )}
+        <ProblemBox problem={problem} />
+      </Box>
+
+      {/* Workspace */}
+      <Box style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
+        <Group p="xs" bg="#f8f9fa" style={{ borderBottom: "1px solid #ddd", flexShrink: 0 }}>
+          <Select size="xs" data={["Javascript"]} defaultValue="Javascript" disabled style={{ width: 120 }} />
+          <Text size="xs" c="dimmed">|</Text>
+          <Button size="xs" color="cyan" disabled={isSpectator}>RUN ▷</Button>
+          <Button size="xs" variant="subtle" color="gray" disabled={isSpectator}>Submit</Button>
+        </Group>
+
+        {/* Middle Row: Code Watcher & Chat */}
+        <Box style={{ display: "flex", flex: "1 1 45%", borderBottom: "2px solid #333", minHeight: 0 }}>
+          <Box style={{ flex: 1, borderRight: "1px solid #ddd", minWidth: 0 }}>
+            <Editor
+              height="100%"
+              theme="vs-light"
+              language="javascript"
+              value={liveCode}
+              options={{ readOnly: true, domReadOnly: true, minimap: { enabled: false } }}
+            />
+          </Box>
+          <Box style={{ width: "30%", minWidth: "200px", flexShrink: 0 }}>
+            <ChatBox socket={socket} roomId={roomId} role="Quality" isSpectator={isSpectator} />
+          </Box>
         </Box>
 
-        {/* Workspace */}
-        <Box style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
-          <Group p="xs" bg="#f8f9fa" style={{ borderBottom: "1px solid #ddd", flexShrink: 0 }}>
-            <Select size="xs" data={["Javascript"]} defaultValue="Javascript" disabled style={{ width: 120 }} />
-            <Text size="xs" c="dimmed">|</Text>
-            <Button size="xs" color="cyan" disabled={isSpectator}>RUN ▷</Button>
-            <Button size="xs" variant="subtle" color="gray" disabled={isSpectator}>Submit</Button>
-          </Group>
-
-          {/* Middle Row: Code Watcher & Chat */}
-          <Box style={{ display: "flex", flex: "1 1 45%", borderBottom: "2px solid #333", minHeight: 0 }}>
-            <Box style={{ flex: 1, borderRight: "1px solid #ddd", minWidth: 0 }}>
-              <Editor
-                height="100%"
-                theme="vs-light"
-                language="javascript"
-                value={liveCode}
-                options={{ readOnly: true, domReadOnly: true, minimap: { enabled: false } }}
-              />
-            </Box>
-            <Box style={{ width: "30%", minWidth: "200px", flexShrink: 0 }}>
-              <ChatBox socket={socket} roomId={roomId} role="Quality" isSpectator={isSpectator} />
-            </Box>
-          </Box>
-
-          {/* Bottom Row: Testing Board */}
-          <Box style={{ flex: "1 1 40%", backgroundColor: "#1e1e1e", display: "flex", flexDirection: "column", minHeight: 0 }}>
-            <Box p="xs" style={{ borderBottom: "1px solid #444" }}>
-              <Group justify="space-between">
-                <Tabs value={activeTab} onChange={setActiveTab} variant="outline" color="gray">
-                  <Tabs.List>
-                    {testCases.map((test) => (
-                      <Tabs.Tab key={test.id} value={test.id} style={{ color: "white" }}>Test {test.id}</Tabs.Tab>
-                    ))}
-                    {testCases.length < 5 && !isSpectator && (
-                      <Button variant="subtle" size="compact-xs" color="gray" onClick={addNewTest}>+</Button>
-                    )}
-                  </Tabs.List>
-                </Tabs>
-                <Group gap="xs">
-                  <Button size="compact-xs" variant="outline" color="gray" disabled={isSpectator}>Debug</Button>
-                  <Button size="compact-xs" variant="filled" color="blue" disabled={isSpectator}>Run Test</Button>
-                </Group>
+        {/* Bottom Row: Testing Board */}
+        <Box style={{ flex: "1 1 40%", backgroundColor: "#1e1e1e", display: "flex", flexDirection: "column", minHeight: 0 }}>
+          <Box p="xs" style={{ borderBottom: "1px solid #444" }}>
+            <Group justify="space-between">
+              <Tabs value={activeTab} onChange={setActiveTab} variant="outline" color="gray">
+                <Tabs.List>
+                  {testCases.map((test) => (
+                    <Tabs.Tab key={test.id} value={test.id} style={{ color: "white" }}>Test {test.id}</Tabs.Tab>
+                  ))}
+                  {testCases.length < 5 && !isSpectator && (
+                    <Button variant="subtle" size="compact-xs" color="gray" onClick={addNewTest}>+</Button>
+                  )}
+                </Tabs.List>
+              </Tabs>
+              <Group gap="xs">
+                <Button size="compact-xs" variant="outline" color="gray" disabled={isSpectator}>Debug</Button>
+                <Button size="compact-xs" variant="filled" color="blue" disabled={isSpectator}>Run Test</Button>
               </Group>
-            </Box>
-            <Box style={{ flex: 1 }}>
-              <Editor 
-                height="100%" 
-                theme="vs-dark" 
-                defaultLanguage="javascript" 
-                options={{ readOnly: isSpectator, minimap: { enabled: false }, fontSize: 13 }} 
-              />
-            </Box>
+            </Group>
+          </Box>
+          <Box style={{ flex: 1 }}>
+            <Editor
+              height="100%"
+              theme="vs-dark"
+              defaultLanguage="javascript"
+              options={{ readOnly: isSpectator, minimap: { enabled: false }, fontSize: 13 }}
+            />
           </Box>
         </Box>
       </Box>

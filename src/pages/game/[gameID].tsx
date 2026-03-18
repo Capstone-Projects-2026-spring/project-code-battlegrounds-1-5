@@ -6,6 +6,11 @@ import { io, Socket } from 'socket.io-client';
 import CoderPOV from '@/components/coderPOV';
 import TesterPOV from '@/components/testerPOV';
 import SpectatorPOV from '@/components/spectatorPOV';
+import type { ActiveProblem } from '@/components/ProblemBox';
+
+interface RoomDetailsResponse {
+  problem: ActiveProblem;
+}
 
 // TODO: this route should be auth checked (only allow signed-in users to join, not anyone with the URL). See CODEBAT-56
 export default function PlayGameRoom() {
@@ -19,11 +24,25 @@ export default function PlayGameRoom() {
   const [gameState, setGameState] = useState<"Waiting" | "In Progress" | "Completed">("Waiting");
   const [timeRemaining, setTimeRemaining] = useState<number>(0);
   const [duration, setDuration] = useState<number>(0);
+  const [problem, setProblem] = useState<ActiveProblem | null>(null);
 
 
   // ONLY HAPPENS ON PAGE LAUNCH
   useEffect(() => {
     if (!gameId) return;
+
+    const loadProblem = async () => {
+      try {
+        const response = await fetch(`/api/rooms/${gameId}`);
+        if (!response.ok) return;
+        const data = (await response.json()) as RoomDetailsResponse;
+        setProblem(data.problem);
+      } catch (error) {
+        console.error('Failed to load room problem', error);
+      }
+    };
+
+    void loadProblem();
 
     // 3. Initialize the connection to our custom server.js backend
     const socketInstance = io();
@@ -97,6 +116,7 @@ export default function PlayGameRoom() {
         timeRemaining={timeRemaining}
         duration={duration}
         gameState={gameState}
+        problem={problem}
       />
     );
   }
@@ -111,6 +131,7 @@ export default function PlayGameRoom() {
           timeRemaining={timeRemaining}
           duration={duration}
           gameState={gameState}
+          problem={problem}
         />
       )}
       {role === 'tester' && (
@@ -120,6 +141,7 @@ export default function PlayGameRoom() {
           timeRemaining={timeRemaining}
           duration={duration} 
           gameState={gameState}
+          problem={problem}
         />
       )}
     </>
