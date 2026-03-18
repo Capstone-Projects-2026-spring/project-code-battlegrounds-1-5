@@ -1,4 +1,4 @@
-import { PrismaClient, GameStatus, ProblemDifficulty } from "@prisma/client";
+import { PrismaClient, GameStatus, ProblemDifficulty, Role } from "@prisma/client";
 import { auth } from "../src/lib/auth";
 import { PrismaPg } from "@prisma/adapter-pg";
 
@@ -136,7 +136,7 @@ async function main() {
     data: {
       gameRoomId: gameRoom.id,
       players: {
-        create: [{ userId: alice.id }, { userId: charlie.id }],
+        create: [{ userId: alice.id, role: Role.CODER }, { userId: charlie.id, role: Role.TESTER }],
       },
     },
   });
@@ -145,7 +145,7 @@ async function main() {
     data: {
       gameRoomId: gameRoom.id,
       players: {
-        create: [{ userId: bob.id }, { userId: diana.id }],
+        create: [{ userId: bob.id, role: Role.CODER }, { userId: diana.id, role: Role.TESTER }],
       },
     },
   });

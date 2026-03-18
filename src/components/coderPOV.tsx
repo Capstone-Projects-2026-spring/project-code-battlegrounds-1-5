@@ -8,6 +8,7 @@ import ChatBox from "@/components/ChatBox";
 import CoderDashboard from "@/components/CoderDashboard";
 import GameTimer from "@/components/GameTimer";
 import { Socket } from "socket.io-client"; // <-- 1. Import Socket type
+import { GameStatus } from "@prisma/client";
 
 // 2. Define the props we are passing in from the dynamic page
 interface CoderPOVProps {
@@ -15,7 +16,7 @@ interface CoderPOVProps {
   roomId: string;
   timeRemaining: number;
   duration: number;
-  gameState: "Waiting" | "In Progress" | "Completed";
+  gameState: GameStatus;
   isSpectator?: boolean
 }
 
@@ -43,7 +44,7 @@ export default function CoderPOV({ socket, roomId, timeRemaining, duration, game
   const handleEditorChange = (value: string | undefined) => {
     if (value !== undefined) {
       console.log("Coder is sending:", value); // <-- ADD THIS
-      socket.emit("codeChange", { roomId, code: value });
+      socket.emit("codeChange", { teamId: roomId, code: value });
     }
   };
 
@@ -70,7 +71,7 @@ export default function CoderPOV({ socket, roomId, timeRemaining, duration, game
       </Box>
 
       <Box style={{ gridArea: "prob", borderRight: "1px solid #e0e0e0" }}>
-        {gameState === "In Progress" && (
+        {gameState === GameStatus.ACTIVE && (
           <GameTimer _timeRemaining={timeRemaining} duration={duration} />
         )}
         <ProblemBox />
@@ -97,7 +98,7 @@ export default function CoderPOV({ socket, roomId, timeRemaining, duration, game
 
       <Box style={{ gridArea: "chatbox" }}>
         <ChatBox socket={socket} roomId={roomId} role="Coder" isSpectator={isSpectator} />
-      </Box>
+      </Box>teamId
     </Box>
   );
 }

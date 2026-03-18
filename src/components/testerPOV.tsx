@@ -7,13 +7,14 @@ import ChatBox from "@/components/ChatBox";
 import TesterDashboard from "@/components/TesterDashboard";
 import GameTimer from "./GameTimer";
 import { Socket } from "socket.io-client";
+import { GameStatus } from "@prisma/client";
 
 interface TesterPOVProps {
   socket: Socket;
   roomId: string;
   timeRemaining: number;
   duration: number;
-  gameState: "Waiting" | "In Progress" | "Completed";
+  gameState: GameStatus;
   isSpectator?: boolean;
 }
 
@@ -54,7 +55,7 @@ export default function TesterPOV({ socket, roomId, timeRemaining, duration, gam
       </Box>
 
       <Box style={{ gridArea: "prob", borderRight: "1px solid #e0e0e0" }}>
-        {gameState === "In Progress" && (
+        {gameState === GameStatus.ACTIVE && (
           <GameTimer _timeRemaining={timeRemaining} duration={duration} />
         )}
         <ProblemBox />

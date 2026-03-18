@@ -51,7 +51,7 @@ export default function ChatBox({ socket, roomId, role, isSpectator = false }: C
     setMessages((prev) => [...prev, newMessage]);
 
     // Send it to the server to broadcast to the other person
-    socket.emit('sendChat', { roomId, message: newMessage });
+    socket.emit('sendChat', { teamId: roomId, message: newMessage });
 
     // Clear the input box
     setCurrentText('');

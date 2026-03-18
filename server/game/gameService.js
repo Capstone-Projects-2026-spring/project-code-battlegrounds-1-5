@@ -1,10 +1,15 @@
 // The game service handlers itself. note that this is the only file that should interact with redis
+// ^ GET A LOAD OF THIS HAHAHAHAHA
 
 const GAME_DURATION_MS = 5 * 60 * 1000; // 5 minutes in milliseconds
 
 function createGameService(stateRedis) {
   return {
     GAME_DURATION_MS,
+
+    async registerSocketToUser(userId, socketId) {
+      await stateRedis.set(`socket:${userId}`, socketId) // link userId
+    },
 
     async startGameIfNeeded(gameId) {
       const key = `game:${gameId}:expires`;
@@ -25,12 +30,18 @@ function createGameService(stateRedis) {
       };
     },
 
-    async getLatestCode(gameId) {
-      return stateRedis.get(`game:${gameId}:code`);
+    async isGameStarted(gameId) {
+      const key = `game:${gameId}:expires`;
+      const exists = await stateRedis.exists(key);
+      return exists === 1;
     },
 
-    async saveLatestCode(gameId, code) {
-      return stateRedis.set(`game:${gameId}:code`, code);
+    async getLatestCode(teamId) {
+      return stateRedis.get(`game:${teamId}:code`);
+    },
+
+    async saveLatestCode(teamId, code) {
+      return stateRedis.set(`game:${teamId}:code`, code);
     },
 
     async getActiveGames() {
@@ -42,8 +53,9 @@ function createGameService(stateRedis) {
       return { ttl };
     },
 
-    async cleanupGame(gameId) {
+    async cleanupGame(gameId, userId) {
       await stateRedis.srem('activeGames', gameId);
+      await stateRedis.del(`socket:${userId}`)
       // TODO: remove expiration key if not expired yet.
       // potential future cleanup: code, submissions, etc.
     },

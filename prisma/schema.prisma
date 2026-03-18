@@ -84,6 +84,7 @@ model InfraTestKv {
 }
 
 enum GameStatus {
+  WAITING
   STARTING
   ACTIVE
   FINISHED
@@ -114,9 +115,16 @@ model Team {
   @@index([gameRoomId])
 }
 
+enum Role {
+  CODER
+  TESTER
+  SPECTATOR
+}
+
 model TeamPlayer {
   teamId      String
   userId      String
+  role        Role
   team        Team    @relation(fields: [teamId], references: [id], onDelete: Cascade)
   user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
