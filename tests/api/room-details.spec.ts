@@ -1,7 +1,14 @@
 import { beforeEach, describe, expect, jest, test } from "@jest/globals";
 import type { NextApiRequest, NextApiResponse } from "next";
 import handler from "../../src/pages/api/rooms/[gameId]";
+import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+
+jest.mock("@/lib/auth", () => ({
+  auth: {
+    api: { getSession: jest.fn() },
+  },
+}));
 
 jest.mock("@/lib/prisma", () => ({
   prisma: {
@@ -12,6 +19,7 @@ jest.mock("@/lib/prisma", () => ({
 const mockFindUnique = prisma.gameRoom.findUnique as unknown as jest.MockedFunction<
   (...args: any[]) => any
 >;
+const mockGetSession = auth.api.getSession as unknown as jest.MockedFunction<(...args: any[]) => any>;
 
 type MockRes = NextApiResponse & {
   statusCode: number;
@@ -36,6 +44,7 @@ function makeRes(): MockRes {
 describe("GET /api/rooms/[gameId] unit tests", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockGetSession.mockResolvedValue({ user: { id: "user-1" } });
   });
 
   test("returns 405 for non-GET", async () => {
@@ -56,6 +65,18 @@ describe("GET /api/rooms/[gameId] unit tests", () => {
 
     expect(res.status).toHaveBeenCalledWith(400);
     expect(res.body).toEqual({ message: "Invalid room ID" });
+  });
+
+  test("returns 401 when unauthenticated", async () => {
+    mockGetSession.mockResolvedValue(null);
+
+    const req = { method: "GET", query: { gameId: "room-1" }, headers: {} } as unknown as NextApiRequest;
+    const res = makeRes();
+
+    await handler(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(res.body).toEqual({ message: "Unauthorized" });
   });
 
   test("returns 404 when room is not found", async () => {

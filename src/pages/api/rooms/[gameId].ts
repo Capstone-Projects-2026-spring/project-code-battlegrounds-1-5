@@ -1,4 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
+import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 /**
  * Room details API endpoint.
@@ -28,6 +29,13 @@ export default async function handler(
   // This endpoint is read-only and only supports GET.
   if (req.method !== "GET") {
     return res.status(405).json({ message: "Method not allowed" });
+  }
+
+  // Only authenticated users should be able to retrieve active room problem details.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const session = await auth.api.getSession({ headers: req.headers as any });
+  if (!session) {
+    return res.status(401).json({ message: "Unauthorized" });
   }
 
   // Validate the dynamic route parameter before querying the database.
