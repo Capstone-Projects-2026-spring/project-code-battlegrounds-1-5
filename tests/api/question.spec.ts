@@ -48,12 +48,6 @@ beforeAll(async () => {
 
 describe("Simple 200 OKs", () => {
 
-  test("ID=1", async () => {
-    const json = await get({ id: "1" });
-
-    expect(json.question?.questionId).toEqual(1);
-  });
-
   test("slug=two-sum", async () => {
     const json = await get({ slug: "two-sum" });
 
@@ -90,7 +84,6 @@ describe("Combined query parameters", () => {
 
   test.each(
     generatePowerSet<QuestionQuery>([
-      { id: "1" },
       { slug: "two-sum" },
       { difficulty: "Easy" },
       { topic: "Array" }
@@ -99,7 +92,7 @@ describe("Combined query parameters", () => {
     }))
   )('$qps', async ({ qps }) => {
     const json = await get(qps);
-    expect(json.question?.questionId).not.toBeNull();
+    expect(json.question).not.toBeNull();
   })
 
 });
@@ -108,8 +101,9 @@ describe("Known 404s", () => {
 
   test("difficulty=NotADifficulty", async () => {
     const json = await get({ difficulty: "NotADifficulty" });
+    console.log(json);
 
-    expect(json.error).toEqual("No questions match the given filters");
+    expect(json.error).toEqual("Unknown difficulty. Pick from `easy`, `medium`, or `hard`");
   });
 
 })

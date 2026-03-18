@@ -1,11 +1,9 @@
 import { NextApiRequest, NextApiResponse } from "next";
-import * as csv from "csv";
-import * as fs from "node:fs";
-import * as path from "node:path";
+import { prisma } from "@/lib/prisma";
+import { Problem, ProblemDifficulty, Prisma } from "@prisma/client";
 
 export interface Question {
-  id: number;
-  questionId: number;
+  id: string;
   title: string;
   slug: string;
   text: string;
@@ -16,10 +14,7 @@ export interface Question {
   totalAccepted: number;
   likes: number;
   dislikes: number;
-  likeRatio: number;
   hints: string[];
-  similarQuestionIds: number[];
-  similarQuestionTitles: string[];
 }
 
 export interface QuestionQuery {
@@ -39,85 +34,34 @@ interface FailedResponse {
 }
 export type QuestionAPIResponse = SuccessfulResponse | FailedResponse;
 
-// Module-level cache so the CSV is only parsed once per server lifetime
-let cachedQuestions: Question[] | null = null;
+const DIFFICULTY_LABEL: Record<ProblemDifficulty, Question["difficulty"]> = {
+  [ProblemDifficulty.EASY]: "Easy",
+  [ProblemDifficulty.MEDIUM]: "Medium",
+  [ProblemDifficulty.HARD]: "Hard",
+};
 
-async function loadQuestions(): Promise<Question[]> {
-  if (cachedQuestions) return cachedQuestions;
-
-  const csvPath = path.join(process.cwd(), "public", "dataset.csv");
-
-  const parser = fs
-    .createReadStream(csvPath)
-    .pipe(
-      csv.parse({
-        delimiter: ",",
-        trim: true,
-        from_line: 2,
-        skipEmptyLines: true,
-        skip_empty_lines: true,
-        skipRecordsWithError: true,
-        skip_records_with_error: true,
-        skipRecordsWithEmptyValues: false,
-        skip_records_with_empty_values: false,
-      })
-    );
-
-  const questions: Question[] = [];
-
-  for await (const record of parser) {
-    const [
-      id,
-      questionId,
-      title,
-      slug,
-      text,
-      topicsRaw,
-      difficulty,
-      successRate,
-      totalSubmissions,
-      totalAccepted,
-      likes,
-      dislikes,
-      likeRatio,
-      hintsRaw,
-      similarIdsRaw,
-      similarTitlesRaw,
-    ] = record as string[];
-
-    questions.push({
-      id: Number(id),
-      questionId: Number(questionId),
-      title,
-      slug,
-      text: text?.trim(),
-      topics: topicsRaw ? topicsRaw.split(",").map((t) => t.trim()).filter(Boolean) : [],
-      difficulty: difficulty as Question["difficulty"],
-      successRate: parseFloat(successRate) || 0,
-      totalSubmissions: Number(totalSubmissions) || 0,
-      totalAccepted: Number(totalAccepted) || 0,
-      likes: Number(likes) || 0,
-      dislikes: Number(dislikes) || 0,
-      likeRatio: parseFloat(likeRatio) || 0,
-      hints: hintsRaw ? hintsRaw.split(",").map((h) => h.trim()).filter(Boolean) : [],
-      similarQuestionIds: similarIdsRaw
-        ? similarIdsRaw.split(",").map(Number).filter(Boolean)
-        : [],
-      similarQuestionTitles: similarTitlesRaw
-        ? similarTitlesRaw.split(",").map((t) => t.trim()).filter(Boolean)
-        : [],
-    });
-  }
-
-  cachedQuestions = questions;
-  return cachedQuestions;
+function mapToQuestion(p: Problem): Question {
+  return {
+    id: p.id,
+    title: p.title,
+    slug: p.slug,
+    text: p.description,
+    topics: p.topics,
+    difficulty: DIFFICULTY_LABEL[p.difficulty],
+    successRate: p.successRate,
+    totalSubmissions: p.totalSubmissions,
+    totalAccepted: p.totalAccepted,
+    likes: p.likes,
+    dislikes: p.dislikes,
+    hints: p.hints ? p.hints.split(",").map((h) => h.trim()).filter(Boolean) : [],
+  };
 }
 
 /**
  * GET /api/question
  *
  * Query parameters:
- *   id         – return the question with this Question ID
+ *   id         – return the question with this UUID
  *   slug       – return the question with this slug
  *   difficulty – Easy | Medium | Hard  (picks a random match)
  *   topic      – partial, case-insensitive match against topic tags (picks a random match)
@@ -133,38 +77,59 @@ export default async function handler(
   }
 
   try {
-    let questions = await loadQuestions();
-
     const { id, slug, difficulty, topic } = req.query as QuestionQuery;
 
+    // Build where clause based on query params
+    const where: Prisma.ProblemWhereInput = {};
+
     if (id) {
-      const targetId = Number(id);
-      questions = questions.filter((q) => q.questionId === targetId);
+      where.id = id;
     }
 
     if (slug) {
-      questions = questions.filter((q) => q.slug === String(slug));
+      where.slug = slug;
     }
 
     if (difficulty) {
-      const d = String(difficulty);
-      questions = questions.filter(
-        (q) => q.difficulty.toLowerCase() === d.toLowerCase()
-      );
+      const d = difficulty.toLowerCase();
+      switch(d) {
+        case "easy": {
+          where.difficulty = ProblemDifficulty.EASY;
+          break;
+        }
+        case "medium": {
+          where.difficulty = ProblemDifficulty.MEDIUM;
+          break;
+        }
+        case "hard": {
+          where.difficulty = ProblemDifficulty.HARD;
+          break;
+        }
+        default: {
+          return res.status(400).json({
+            question: null,
+            error: "Unknown difficulty. Pick from `easy`, `medium`, or `hard`"
+          });
+        }
+      }
     }
 
     if (topic) {
-      const t = String(topic).toLowerCase();
-      questions = questions.filter((q) =>
-        q.topics.some((tag) => tag.toLowerCase().includes(t))
-      );
+      where.topics = {
+        has: topic,
+      };
     }
 
-    if (questions.length === 0) {
+    const problems = await prisma.problem.findMany({ where });
+
+    if (problems.length === 0) {
       return res.status(404).json({ question: null, error: "No questions match the given filters" });
     }
 
-    const question = questions[Math.floor(Math.random() * questions.length)];
+    // Pick a random problem from results
+    const randomProblem = problems[Math.floor(Math.random() * problems.length)];
+    const question = mapToQuestion(randomProblem);
+
     return res.status(200).json({ question, error: null });
   } catch (err) {
     console.error("[/api/question]", err);
