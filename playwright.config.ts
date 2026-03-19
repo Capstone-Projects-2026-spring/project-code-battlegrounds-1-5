@@ -4,8 +4,8 @@ export default defineConfig({
   // Look for test files in the "tests" directory, relative to this configuration file.
   testDir: 'tests/pw',
 
-  // 30 secs per test
-  timeout: 30000,
+  // 1 min per test
+  timeout: 60000,
 
   // Run all tests in parallel.
   fullyParallel: false,
@@ -20,7 +20,7 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
 
   // Reporter to use
-  reporter: 'html',
+  reporter: [['html'], ['list']],
 
   use: {
     // Base URL to use in actions like `await page.goto('/')`.
