@@ -5,7 +5,7 @@ export default defineConfig({
   testDir: 'tests/pw',
 
   // 30 secs per test
-  timeout: 30000,
+  timeout: 10000,
 
   // Run all tests in parallel.
   fullyParallel: false,
@@ -17,7 +17,7 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
 
   // Try with 3 workers out of parallel tests on CI.
-  //workers: process.env.CI ? 1 : undefined,
+  workers: process.env.CI ? 1 : undefined,
 
   // Reporter to use
   reporter: 'html',
