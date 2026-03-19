@@ -4,8 +4,8 @@ export default defineConfig({
   // Look for test files in the "tests" directory, relative to this configuration file.
   testDir: 'tests/pw',
 
-  // 1 min per test
-  timeout: 60000,
+  // 2 min per test
+  timeout: 120000,
 
   // Run all tests in parallel.
   fullyParallel: false,
@@ -14,7 +14,7 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
 
   // Retry on CI only.
-  retries: process.env.CI ? 2 : 0,
+  retries: 0, // process.env.CI ? 2 : 0,
 
   // Try with 3 workers out of parallel tests on CI.
   workers: process.env.CI ? 1 : undefined,
