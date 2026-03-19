@@ -16,7 +16,7 @@ export default function PlayGameRoom() {
   const router = useRouter();
   const gameId = router.query.gameID as string;
 
-  const { data: session, error, isPending } = authClient.useSession() // auth check still needs some work to make work fully correct
+  const { data: session, error, isPending } = authClient.useSession()
 
   // 2. Set up our state for the socket connection and the user's role
   const [role, setRole] = useState<Role | null>(null);
@@ -32,18 +32,22 @@ export default function PlayGameRoom() {
     if (!session?.user.id) return;
     if (!gameId) return;
 
+    if (!isPending && !session) {
+      router.push("/auth")
+    }
+
     // fetch teams and their player counts
     const fetchCounts = async () => {
-        const res = await fetch(`/api/team/count?gameId=${gameId}`);
-        const data = await res.json();
-        setTeams(data.teams);
+      const res = await fetch(`/api/team/count?gameId=${gameId}`);
+      const data = await res.json();
+      setTeams(data.teams);
     };
     fetchCounts();
 
     // 3. Initialize the connection to our custom server.js backend
     const socketInstance = io();
     setSocket(socketInstance);
-    socketInstance.emit('register', session.user.id); 
+    socketInstance.emit('register', session.user.id);
 
     socketInstance.on('gameStarting', () => {
       setGameState(GameStatus.STARTING);
@@ -62,16 +66,16 @@ export default function PlayGameRoom() {
 
     // This is so if another person picks while someone is deciding
     socketInstance.on('teamUpdated', ({ teamId, playerCount }) => {
-        setTeams(prev => prev.map(t =>
-            t.teamId === teamId ? { ...t, playerCount } : t
-        ));
+      setTeams(prev => prev.map(t =>
+        t.teamId === teamId ? { ...t, playerCount } : t
+      ));
     });
 
     // 6. Cleanup: disconnect the socket if the user leaves the page
     return () => {
       socketInstance.disconnect();
     };
-  }, [gameId, session?.user.id]);
+  }, [gameId, session, isPending]);
 
   useEffect(() => {
     // Runs after team gets selected
@@ -81,28 +85,20 @@ export default function PlayGameRoom() {
   }, [socket, teamSelected, gameId])
 
   // --- RENDERING LOGIC ---
-  if (isPending) {
-    return (
-      <Center>
-        Nope
-      </Center>
-    )
-  }
-
   if (!teamSelected && role !== Role.SPECTATOR) {
     return (
       <TeamSelect
-          userId={session?.user.id as string}
-          teams={teams}
-          gameRoomId={gameId}
-          onJoined={(teamId, role) => {
-            setTeamSelected(teamId);
-            setGameState(GameStatus.WAITING);
-            setRole(role) // TODO: add localStorage persistence
-            if (role === Role.SPECTATOR) {
-              setGameState(GameStatus.ACTIVE);
-            }
-          }}
+        userId={session?.user.id as string}
+        teams={teams}
+        gameRoomId={gameId}
+        onJoined={(teamId, role) => {
+          setTeamSelected(teamId);
+          setGameState(GameStatus.WAITING);
+          setRole(role) // TODO: add localStorage persistence
+          if (role === Role.SPECTATOR) {
+            setGameState(GameStatus.ACTIVE);
+          }
+        }}
       />
     )
   }

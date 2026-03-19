@@ -50,7 +50,7 @@ test.describe('Auth flow', () => {
 
     await page.click("text=Sign Out");
 
-    await expect(page).toHaveURL("/login");
+    await expect(page).toHaveURL("/auth");
 
     await page.goto("/");
 
@@ -62,6 +62,25 @@ test.describe('Auth flow', () => {
 
     await expect(page).toHaveURL("/auth");
   });
+
+  test("dashboard requires auth", async ({ page }) => {
+    await page.goto("/dashboard");
+
+    await expect(page).toHaveURL("/auth");
+  });
+
+  test("matchmaking requires auth", async ({ page }) => {
+    await page.goto("/matchmaking");
+
+    await expect(page).toHaveURL("/auth");
+  });
+
+  test("game requires auth", async ({ page }) => {
+    await page.goto("/game/123");
+
+    await expect(page).toHaveURL("/auth");
+  });
+
 
   test.afterAll(async ({ request }) => {
     await request.post("/api/test/cleanup", {
