@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from "react";
-import { Box, Group, Button, Select, Text, Tabs } from "@mantine/core";
+import { useEffect, useState } from "react";
+import { Box, Group, Button, Select, Tabs } from "@mantine/core";
 import Editor from "@monaco-editor/react";
 import Navbar from "@/components/Navbar";
-import ProblemBox from "@/components/ProblemBox";
+import ProblemBox, { ActiveProblem } from "@/components/ProblemBox";
 import ChatBox from "@/components/ChatBox";
 import GameTimer from "@/components/GameTimer";
 import { Socket } from "socket.io-client";
@@ -14,6 +14,7 @@ interface CoderPOVProps {
   duration: number;
   gameState: "Waiting" | "In Progress" | "Completed";
   isSpectator?: boolean;
+  problem: ActiveProblem | null;
 }
 
 export default function CoderPOV({
@@ -23,6 +24,7 @@ export default function CoderPOV({
   duration,
   gameState,
   isSpectator = false,
+  problem
 }: CoderPOVProps) {
   const [activeTab, setActiveTab] = useState<string | null>("console");
   const [liveCode, setLiveCode] = useState<string>("// Waiting for code...");
@@ -67,7 +69,7 @@ export default function CoderPOV({
               <GameTimer _timeRemaining={timeRemaining} duration={duration} />
             </Box>
           )}
-          <ProblemBox />
+          <ProblemBox problem={problem} />
         </Box>
 
         {/* Main Workspace */}
