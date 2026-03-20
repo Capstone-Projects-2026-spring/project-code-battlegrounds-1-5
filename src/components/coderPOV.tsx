@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from "react";
-import { Box, Group, Button, Select, Text, Tabs } from "@mantine/core";
+import { Box, Group, Button, Select, Text, Tabs, ActionIcon, Center } from "@mantine/core";
 import Editor from "@monaco-editor/react";
 import Navbar from "@/components/Navbar";
 import ProblemBox from "@/components/ProblemBox";
 import ChatBox from "@/components/ChatBox";
 import GameTimer from "@/components/GameTimer";
 import { Socket } from "socket.io-client";
+import { IconEye } from "@tabler/icons-react";
 
 interface CoderPOVProps {
   socket: Socket;
@@ -24,6 +25,10 @@ export default function CoderPOV({
   gameState,
   isSpectator = false,
 }: CoderPOVProps) {
+  // Add state to manage the visibility of the problem text.
+  // Is true (visible) by default.
+  const [isProblemVisible, setIsProblemVisible] = useState(true);
+  const toggleProblemVisibility = () => setIsProblemVisible((prev) => !prev);
   const [activeTab, setActiveTab] = useState<string | null>("console");
   const [liveCode, setLiveCode] = useState<string>("// Waiting for code...");
 
@@ -43,7 +48,7 @@ export default function CoderPOV({
   };
 
   return (
-    <Box h="100vh" style={{ display: "flex", flexDirection: "column" }}>
+    <Box h="100vh" style={{ display: "flex", flexDirection: "column", position: 'relative' }}>
       <Navbar
         links={["Timer", "Players", "Tournament"]}
         title="CODE BATTLEGROUNDS | GAMEMODE: TIMER"
@@ -51,23 +56,40 @@ export default function CoderPOV({
       />
 
       <Box style={{ flex: 1, display: "flex", overflow: "hidden" }}>
+        {/* Add sidebar which contains the problem text and timer and hides problem text when collapsed */}
         <Box
           style={{
-            width: "20%",
-            minWidth: "250px",
+            width: isProblemVisible ? "20%" : "50px",
+            minWidth: isProblemVisible ? "250px" : "50px",
             backgroundColor: "#333",
             color: "white",
-            padding: "1rem",
+            padding: isProblemVisible ? "0" : "0",
             overflowY: "auto",
-            display: "block", 
+            display: "flex",
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: isProblemVisible ? 'flex-start' : 'center',
+            flexShrink: 0,
+            transition: 'width 0.2s ease, min-width 0.2s ease', // Add a smooth transition
           }}
         >
+          {/* Game Timer would reset if visibility toggled, so placed it within its own persistent box component to prevent this */}
           {gameState === "In Progress" && (
-            <Box mb="md">
+            <Box p="1rem" pb={isProblemVisible ? "md" : "1rem"}>
               <GameTimer _timeRemaining={timeRemaining} duration={duration} />
             </Box>
           )}
-          <ProblemBox />
+
+          {/* Conditionally render either the ProblemBox or the "Show" icon inside the persistent sidebar. */}
+          {isProblemVisible ? (
+            <Box style={{ width: '100%', flex: 1, minHeight: 0, padding: '0 1rem 1rem 1rem' }}>
+              <ProblemBox onToggleVisibility={toggleProblemVisibility} />
+            </Box>
+          ) : (
+            <ActionIcon variant="transparent" color="gray" size="xl" onClick={toggleProblemVisibility} title="Show Problem">
+              <IconEye size={24} />
+            </ActionIcon>
+          )}
         </Box>
 
         {/* Main Workspace */}
