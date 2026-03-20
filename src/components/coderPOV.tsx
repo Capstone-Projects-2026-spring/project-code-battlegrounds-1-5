@@ -26,6 +26,9 @@ export default function CoderPOV({
 }: CoderPOVProps) {
   const [activeTab, setActiveTab] = useState<string | null>("console");
   const [liveCode, setLiveCode] = useState<string>("// Waiting for code...");
+  const [code, setCode] = useState<string>("// Start coding...\n");
+  const [language, setLanguage] = useState<string>("javascript");
+  const [consoleOutput, setConsoleOutput] = useState<string>("[Runner] Ready\n");
 
   useEffect(() => {
     if (!isSpectator) return;
@@ -36,10 +39,28 @@ export default function CoderPOV({
     };
   }, [socket, isSpectator]);
 
+  useEffect(() => {
+    const outputHandler = (message: string) => {
+      setConsoleOutput((prev) => (prev ? `${prev}\n${message}` : message));
+    };
+
+    socket.on("runOutput", outputHandler);
+    return () => {
+      socket.off("runOutput", outputHandler);
+    };
+  }, [socket]);
+
   const handleEditorChange = (value: string | undefined) => {
     if (value !== undefined && !isSpectator) {
+      setCode(value);
       socket.emit("codeChange", { roomId, code: value });
     }
+  };
+
+  const handleRun = () => {
+    if (isSpectator) return;
+    setConsoleOutput("[Runner] Executing...\n");
+    socket.emit("runCode", { roomId, language, code });
   };
 
   return (
@@ -86,14 +107,25 @@ export default function CoderPOV({
           >
             <Select
               size="xs"
-              data={["Javascript"]}
-              defaultValue="Javascript"
+              data={[
+                { value: 'javascript', label: 'JavaScript' },
+                { value: 'python', label: 'Python(WIP)' },//If I have time ill add python.
+                { value: 'cpp', label: 'C++' },
+              ]}
+              value={language}
+              onChange={(value) => value && setLanguage(value)}
               disabled={isSpectator}
+              style={{ width: '150px' }}
+              styles={{
+                option: {
+                  color: 'black',
+                },
+              }}
             />
-            <Button size="xs" color="cyan" disabled={isSpectator}>
+            <Button size="xs" color="cyan" disabled={isSpectator || gameState !== 'In Progress'} onClick={handleRun}>
               RUN ▷
             </Button>
-            <Button size="xs" color="green" disabled={isSpectator}>
+            <Button size="xs" color="green" disabled={isSpectator || gameState !== 'In Progress'}>
               Submit Final Code
             </Button>
           </Group>
@@ -113,8 +145,8 @@ export default function CoderPOV({
               <Editor
                 height="100%"
                 theme="vs-dark"
-                defaultLanguage="javascript"
-                value={isSpectator ? liveCode : undefined}
+                defaultLanguage={language}
+                value={isSpectator ? liveCode : code}
                 onChange={handleEditorChange}
                 options={{ readOnly: isSpectator, minimap: { enabled: false } }}
               />
@@ -158,6 +190,7 @@ export default function CoderPOV({
                 height="100%"
                 theme="vs-dark"
                 defaultLanguage="javascript"
+                value={consoleOutput}
                 options={{ readOnly: true, minimap: { enabled: false } }}
               />
             </Box>

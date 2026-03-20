@@ -1,6 +1,8 @@
 // Socket event handlers isolated here
 // Expects io (Server), socket (Socket), and services to manage game state
 
+const { runCode } = require('../runner');
+
 function registerSocketHandlers(io, socket, services) {
   const { gameService } = services;
 
@@ -63,6 +65,24 @@ function registerSocketHandlers(io, socket, services) {
 
     // Broadcast the updated code to everyone else in the same room (except the sender)
     socket.to(roomId).emit('receiveCodeUpdate', code);
+  });
+
+  socket.on('runCode', async (data) => {
+    const { roomId, code, language } = data || {};
+    if (!roomId || !code || !language) {
+      socket.emit('runOutput', '[Runner] Missing run payload');
+      return;
+    }
+
+    const send = (message) => {
+      io.to(roomId).emit('runOutput', message);
+    };
+
+    try {
+      await runCode(language, code, { send });
+    } catch (err) {
+      send(`[Runner] Error: ${err?.message ?? err}`);
+    }
   });
 
   socket.on('sendChat', async (data) => {
