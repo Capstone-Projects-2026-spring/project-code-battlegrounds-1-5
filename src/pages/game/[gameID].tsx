@@ -94,7 +94,7 @@ export default function PlayGameRoom() {
   }, [gameId]);
 
   useEffect(() => {
-    if (!isSpectator || !socket) return;
+    if (role === 'coder' || !socket) return;
 
     const handler = (newCode: string) => setLiveCode(newCode);
 
@@ -102,10 +102,10 @@ export default function PlayGameRoom() {
     return () => {
       socket.off("receiveCodeUpdate", handler);
     };
-  }, [socket, isSpectator]);
+  }, [socket, role]);
 
   const handleEditorChange = (value: string | undefined) => {
-    if (value !== undefined && !isSpectator && socket) {
+    if (value !== undefined && role === 'coder' && socket) {
       socket.emit("codeChange", { roomId: gameId, code: value });
     }
   };
