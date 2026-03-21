@@ -8,6 +8,7 @@ import { authClient } from "@/lib/auth-client";
 import TestCaseResultsBox from "@/components/TestCaseResultsBox";
 import AnalysisBox, { AnalysisBoxProps } from "@/components/Analysisbox";
 import ProblemBox from "@/components/ProblemBox";
+import { usePostHog } from "posthog-js/react";
 import type { ActiveProblem } from '@/components/ProblemBox';
 import { IconEye } from '@tabler/icons-react';
 
@@ -40,7 +41,12 @@ export function Results() {
   const router = useRouter();
   const gameId = router.query.gameID as string;
   const { data: session } = authClient.useSession();
-  const [problem, setProblem] = useState<ActiveProblem | null>(null);
+  const [problem, setProblem] = useState<ActiveProblem | null>(null);  const posthog = usePostHog();
+
+  useEffect(() => {
+    posthog.capture("results_viewed");
+  }, [posthog]);
+
   const [isProblemVisible, setIsProblemVisible] = useState(true);
   const toggleProblemVisibility = () => setIsProblemVisible((prev) => !prev);
   const [analysisProps, setAnalysisProps] = useState<AnalysisBoxProps | null>(null);
