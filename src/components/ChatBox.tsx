@@ -3,12 +3,12 @@ import { ScrollArea, TextInput, ActionIcon, Paper, Text, Stack, Box } from '@man
 import { IconSend2 } from '@tabler/icons-react';
 import type { Socket } from 'socket.io-client';
 
-interface Message {
+export interface Message {
   id: string;
   text: string;
-  user: string;
+  role: string;
+  timestamp: number;
 }
-
 interface ChatBoxProps {
   socket: Socket;
   roomId: string;
@@ -17,8 +17,6 @@ interface ChatBoxProps {
 }
 
 export default function ChatBox({ socket, roomId, role, isSpectator = false }: ChatBoxProps) {
-
-  // State for the entire chat history
   const [messages, setMessages] = useState<Message[]>([]);
 
   // State for the text currently being typed in the input box
@@ -26,6 +24,12 @@ export default function ChatBox({ socket, roomId, role, isSpectator = false }: C
 
   // 3. Listen for INCOMING messages from the server
   useEffect(() => {
+    socket.emit('requestChatSync', { teamId: roomId }); // Request chat history on mount
+
+    socket.on('receiveChatHistory', (history: Message[]) => {
+      setMessages(history);
+    });
+
     socket.on('receiveChat', (incomingMessage: Message) => {
       // The "prev" callback ensures we always append to the most recent array
       setMessages((prev) => [...prev, incomingMessage]);
@@ -33,8 +37,9 @@ export default function ChatBox({ socket, roomId, role, isSpectator = false }: C
 
     return () => {
       socket.off('receiveChat');
+      socket.off('receiveChatHistory');
     };
-  }, [socket]);
+  }, [socket, roomId]);
 
   const handleSendMessage = () => {
     if (isSpectator) return;
@@ -44,14 +49,15 @@ export default function ChatBox({ socket, roomId, role, isSpectator = false }: C
     const newMessage: Message = {
       id: Math.random().toString(36).substring(7), // Quick random ID
       text: currentText,
-      user: role,
+      role,
+      timestamp: Date.now(),
     };
 
     // Optimistically add it to our own screen instantly
     setMessages((prev) => [...prev, newMessage]);
 
     // Send it to the server to broadcast to the other person
-    socket.emit('sendChat', { roomId, message: newMessage });
+    socket.emit('sendChat', { teamId: roomId, message: newMessage });
 
     // Clear the input box
     setCurrentText('');
@@ -65,8 +71,8 @@ export default function ChatBox({ socket, roomId, role, isSpectator = false }: C
         <Stack gap="xs">
           {messages.map((msg) => (
             <Box key={msg.id}>
-              <Text size="xs" fw={500} tt="capitalize">
-                {msg.user}
+              <Text size="xs" c="black" fw={500} tt="capitalize">
+                {msg.role}
               </Text>
               <Paper withBorder p="xs" radius="sm">
                 <Text size="sm">

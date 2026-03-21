@@ -94,8 +94,8 @@ jobs:
 
       - name: Start server
         run: node ./server/index.js &
-        env:
-          NODE_ENV: production
+        #env:
+        #  NODE_ENV: production This was causing problems with playwright
 
       - name: Wait for server to be ready
         run: |

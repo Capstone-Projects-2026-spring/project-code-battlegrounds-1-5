@@ -1,5 +1,5 @@
-import type {NextApiRequest, NextApiResponse} from 'next';
-import {auth} from "@/lib/auth";
+import type { NextApiRequest, NextApiResponse } from 'next';
+import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ProblemDifficulty } from "@prisma/client";
 import { nanoid } from "nanoid";
@@ -12,7 +12,7 @@ import { nanoid } from "nanoid";
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
     // only allow posts
     if (req.method !== 'POST') {
-        return res.status(405).json({message: 'Method not allowed'});
+        return res.status(405).json({ message: 'Method not allowed' });
     }
 //Defensive validation for difficulty parameter. It should be one of "EASY", "MEDIUM", "HARD" if provided.
 const { difficulty } = req.body as { difficulty?: ProblemDifficulty };
@@ -23,9 +23,9 @@ if (!difficulty || !Object.values(ProblemDifficulty).includes(difficulty)) {
 
     // check auth status
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const session = await auth.api.getSession({headers: req.headers as any});
+    const session = await auth.api.getSession({ headers: req.headers as any });
     if (!session) {
-        return res.status(401).json({ok: false, error: "Unauthorized"});
+        return res.status(401).json({ ok: false, error: "Unauthorized" });
     }
 
     // try to generate an 8 character random string for the match id.
@@ -57,19 +57,22 @@ if (!difficulty || !Object.values(ProblemDifficulty).includes(difficulty)) {
             data: {
                 id: roomID,
                 problemId: problem.id,
-            },
+                teams: {
+                    create: [{}, {}]
+                }
+            }
         });
 
         // TODO: here, store in redis pubsub channel called "matchmaking" or such so that other players can find it. then, before generating a new room, try to join any existing rooms. if room is joined and becomes full, mark it as in progress in postgres. See CODEBAT-14 and CODEBAT-56
 
         // return generated code
-        return res.status(201).json({gameId: gameRoom.id});
+        return res.status(201).json({ gameId: gameRoom.id });
     } catch (error: unknown) {
         if (error instanceof Error) {
             // Return error message with status 500 (internal server error) if something goes wrong during game room creation
-            return res.status(500).json({message: error?.message || 'Failed to create game room'});
+            return res.status(500).json({ message: error?.message || 'Failed to create game room' });
         } else {
-            return res.status(500).json({message: 'Failed to create game room'});
+            return res.status(500).json({ message: 'Failed to create game room' });
         }
     }
 }  
