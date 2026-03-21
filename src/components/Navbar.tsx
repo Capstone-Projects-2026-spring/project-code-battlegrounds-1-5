@@ -15,7 +15,6 @@ export default function HeaderSimple(props: HeaderProps) {
   // const [active, setActive] = useState(props.links[0].link);
   const [active, setActive] = useState(props.links[0]);
 
-
   const items = props.links.map((link) => (
     <a
       key={link}
