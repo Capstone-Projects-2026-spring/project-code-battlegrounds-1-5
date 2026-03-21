@@ -23,7 +23,6 @@ export default function PlayGameRoom() {
   const [role, setRole] = useState<Role | null>(null);
   const [socket, setSocket] = useState<Socket | null>(null);
   const [gameState, setGameState] = useState<GameStatus>(GameStatus.WAITING);
-  const [timeRemaining, setTimeRemaining] = useState<number>(0);
   const [duration, setDuration] = useState<number>(0);
   const [teams, setTeams] = useState<TeamCount[]>([]);
   const [teamSelected, setTeamSelected] = useState<string | null>(null);
@@ -66,7 +65,6 @@ export default function PlayGameRoom() {
       if (!endTimeRef.current) {
         endTimeRef.current = Date.now() + Number(start);
       }
-      setTimeRemaining(Number(start));
       setDuration(Number(_duration));
       setGameState(GameStatus.ACTIVE);
     });
