@@ -11,6 +11,7 @@ import TeamSelect from "@/components/TeamSelect";
 import { TeamCount } from "@/components/TeamSelect";
 import type { ActiveProblem } from '@/components/ProblemBox';
 import ProblemBox from '@/components/ProblemBox';
+import RoleFlipPopup from '@/components/RoleFlipPopup';
 
 import { Role, GameStatus } from "@prisma/client";
 import { authClient } from "@/lib/auth-client";
@@ -30,7 +31,6 @@ export default function PlayGameRoom() {
   const [role, setRole] = useState<Role | null>(null);
   const [socket, setSocket] = useState<Socket | null>(null);
   const [gameState, setGameState] = useState<GameStatus>(GameStatus.WAITING);
-  const [timeRemaining, setTimeRemaining] = useState<number>(0);
   const [duration, setDuration] = useState<number>(0);
   const [problem, setProblem] = useState<ActiveProblem | null>(null);
   const [teams, setTeams] = useState<TeamCount[]>([]);
@@ -130,20 +130,16 @@ export default function PlayGameRoom() {
     socket.emit("joinGame", { gameId, teamId: teamSelected });
   }, [socket, teamSelected, gameId]);
 
-  
+
 
   useEffect(() => {
-    if (role === Role.CODER || !socket) return;
+    if (!socket) return;
     socket.emit('requestCodeSync', { teamId: teamSelected });
     socket.emit('requestTestCaseSync', { teamId: teamSelected });
-    
+
     socket.on('receiveTestCaseSync', (cases) => {
       setTestCases(cases);
     })
-
-    socket.on("receiveCodeUpdate", (newCode: string) => {
-        setLiveCode(newCode);
-    });
 
     const handler = (newCode: string) => setLiveCode(newCode);
 
@@ -155,7 +151,7 @@ export default function PlayGameRoom() {
 
   const handleEditorChange = (value: string | undefined) => {
     if (value !== undefined && role === Role.CODER && socket) {
-      socket.emit("codeChange", { roomId: gameId, code: value });
+      socket.emit("codeChange", { teamId: teamSelected, code: value });
     }
   };
 
@@ -242,6 +238,7 @@ export default function PlayGameRoom() {
       {/* Main game UI */}
       {showGameUI && (
         <Box h="100vh" style={{ display: "flex", flexDirection: "column" }}>
+          <RoleFlipPopup gameState={gameState} />
           <Navbar
             links={["Timer", "Players", "Tournament"]}
             title="CODE BATTLEGROUNDS | GAMEMODE: TIMER"
@@ -261,7 +258,7 @@ export default function PlayGameRoom() {
                 display: "block",
               }}
             >
-              {gameState === GameStatus.ACTIVE && (
+              {(gameState === GameStatus.ACTIVE || gameState === GameStatus.FLIPPING) && (
                 <Box mb="md">
                   <GameTimer endTime={endTimeRef.current ?? 0} duration={duration} />
                 </Box>
@@ -379,6 +376,13 @@ export default function PlayGameRoom() {
                     height="100%"
                     theme="vs-dark"
                     defaultLanguage="javascript"
+                    value={role == Role.TESTER ? (testCases.find(test => test.id === activeTab)?.content ?? "") : ""}
+                    onChange={(val) => {
+                      if (role !== Role.TESTER || !val) return;
+                      const updated = testCases.map(t => t.id === activeTab ? { ...t, content: val } : t);
+                      setTestCases(updated);
+                      socket.emit('updateTestCases', { teamId: teamSelected, testCases: updated });
+                    }}
                     options={{
                       readOnly: role !== Role.TESTER,
                       minimap: { enabled: false }

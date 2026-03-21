@@ -48,6 +48,7 @@ export default function TeamSelect({ userId, teams, gameRoomId, onJoined }: Team
         <Center h="100vh">
             <Stack align="center" gap="xl">
                 <Title order={3}>Choose a team</Title>
+                <Text size="md" fw={600}>Room ID: {gameRoomId}</Text>
                 <Group gap="md">
                     {teams.map((team, i) => {
                         const isFull = team.playerCount >= 2;
