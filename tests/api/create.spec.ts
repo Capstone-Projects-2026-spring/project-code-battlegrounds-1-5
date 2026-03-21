@@ -125,7 +125,7 @@ const mockCreateGameRoom = prisma.gameRoom.create as unknown as jest.MockedFunct
             mockGetSession.mockResolvedValue({ user: { id: "user1" } });
             mockCountProblems.mockResolvedValue(1);
             mockFindFirst.mockResolvedValue({ id: "problem1" });
-            mockCreateGameRoom.mockResolvedValue({ id: "abcd1234", problemId: "problem1" });
+            mockCreateGameRoom.mockResolvedValue({ id: "abcd1234", problemId: "problem1", teams: { create: [{}, {}] } });
 
             const req = {
                 method: "POST",
@@ -145,7 +145,7 @@ const mockCreateGameRoom = prisma.gameRoom.create as unknown as jest.MockedFunct
                 skip: 0,
             });
             expect(prisma.gameRoom.create).toHaveBeenCalledWith({
-                data: { id: "abcd1234", problemId: "problem1" },
+                data: { id: "abcd1234", problemId: "problem1", teams: { create: [{}, {}] } }
             });
             expect(res.status).toHaveBeenCalledWith(201);
             expect(res.body).toEqual({ gameId: "abcd1234" });

@@ -46,9 +46,9 @@ export default function Home() {
           {error && (
             <div style={{ color: "red", marginBottom: 8 }}>{error}</div>
           )}
-                  <Box style={{ flex: 1 }}>
-          <PartnerSearch />
-        </Box>
+          <Box style={{ flex: 1 }}>
+            <PartnerSearch />
+          </Box>
         </Center>
       </Stack>
     </>

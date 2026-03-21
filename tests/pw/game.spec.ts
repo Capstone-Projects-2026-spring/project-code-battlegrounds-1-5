@@ -24,16 +24,16 @@ test.describe('Game flow', () => {
     });
 
     test('Need 4 players to be joined to a team for the game to start', async () => {
-        await createGame(pages[0]);
+        await createGame(pages[0], 'easy');
 
         await pages[0].locator('[data-testid="team-1-button"]').waitFor({ state: 'visible' });
         await pages[0].click('[data-testid="team-1-button"]');
 
         await expect(pages[0].locator('[data-testid="waiting-for-second"]')).toBeVisible({ timeout: 15000 })
-    })
+    });
 
     test('4 players join and game starts', async () => {
-        await setupGame(pages);
+        await setupGame(pages, 'medium');
 
         await Promise.all(pages.map(page =>
             expect(page.locator('[data-testid="coder-pov"], [data-testid="tester-pov"]')).toBeVisible({ timeout: 15000 })
@@ -41,7 +41,7 @@ test.describe('Game flow', () => {
     });
 
     test('player is restored to their team on reload', async () => {
-        await setupGame(pages);
+        await setupGame(pages, 'hard');
 
         // wait for game to start for player 1
         await expect(pages[0].locator('[data-testid="coder-pov"]')).toBeVisible({ timeout: 15000 });

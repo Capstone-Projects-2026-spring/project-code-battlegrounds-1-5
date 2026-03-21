@@ -82,7 +82,7 @@ export default function Subgrid() {
                   Strings
                 </Text>
 
-                <Button onClick={() => handleCreateRoom("EASY")} mt={"auto"}>
+                <Button data-testid="create-room-button-easy" onClick={() => handleCreateRoom("EASY")} mt={"auto"}>
                   Create Room
                 </Button>
               </Flex>
@@ -124,7 +124,7 @@ export default function Subgrid() {
                   Sorts
                 </Text>
 
-                <Button onClick={() => handleCreateRoom("MEDIUM")} mt={"auto"}>
+                <Button data-testid="create-room-button-medium" onClick={() => handleCreateRoom("MEDIUM")} mt={"auto"}>
                   Create Room
                 </Button>
               </Flex>
@@ -168,7 +168,7 @@ export default function Subgrid() {
                 <Text size="sm" c="dimmed">
                   Dynamic Programming
                 </Text>
-                <Button onClick={() => handleCreateRoom("HARD")} mt={"auto"}>
+                <Button data-testid="create-room-button-hard" onClick={() => handleCreateRoom("HARD")} mt={"auto"}>
                   Create Room
                 </Button>
               </Flex>

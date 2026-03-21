@@ -8,13 +8,8 @@ export async function loginAs(page: Page, email: string, password: string) {
     await page.waitForURL('**/');
 }
 
-export async function setupGame(pages: Page[]): Promise<string> {
-    await pages[0].goto('/');
-    await Promise.all([
-        pages[0].waitForURL(/\/game\/.+/),
-        pages[0].click('[data-testid="create-room-button"]')
-    ]);
-    const gameUrl = pages[0].url();
+export async function setupGame(pages: Page[], difficulty: 'easy' | 'medium' | 'hard'): Promise<string> {
+    const gameUrl = await createGame(pages[0], difficulty);
 
     // navigate all other pages to the game room
     for (const page of pages.slice(1)) {
@@ -38,11 +33,10 @@ export async function setupGame(pages: Page[]): Promise<string> {
     return gameUrl;
 }
 
-export async function createGame(page: Page): Promise<string> {
+export async function createGame(page: Page, difficulty: 'easy' | 'medium' | 'hard'): Promise<string> {
     await page.goto('/');
-    await Promise.all([
-        page.waitForURL(/\/game\/.+/),
-        page.click('[data-testid="create-room-button"]')
-    ]);
+    const navigationPromise = page.waitForURL(/\/game\/.+/, { timeout: 10000 });
+    await page.click(`[data-testid="create-room-button-${difficulty}"]`);
+    await navigationPromise;
     return page.url();
 }

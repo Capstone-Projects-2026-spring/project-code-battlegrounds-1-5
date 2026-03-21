@@ -35,6 +35,7 @@ export default function PlayGameRoom() {
   const [problem, setProblem] = useState<ActiveProblem | null>(null);
   const [teams, setTeams] = useState<TeamCount[]>([]);
   const [teamSelected, setTeamSelected] = useState<string | null>(null);
+  const [viewTeamId, setViewTeamId] = useState<string>("");
 
   const [liveCode, setLiveCode] = useState<string>("// Waiting for code...");
 
@@ -219,25 +220,31 @@ export default function PlayGameRoom() {
     <Box style={{ position: 'relative', height: '100vh' }}>
       {/* Spectator view switcher buttons */}
       {isSpectator && (
-        <Box style={{ position: 'absolute', top: 12, left: 12, zIndex: 20 }}>
-          <Group gap="xs">
-            <Button size="sm" onClick={() => setSpectatorView(Role.CODER)}>View Coder</Button>
-            <Button size="sm" onClick={() => setSpectatorView(Role.TESTER)}>View Tester</Button>
-            <Button size="sm" onClick={() => setSpectatorView(Role.SPECTATOR)}>Exit View</Button>
+      <Box data-testid="spectating-box" style={{ position: 'absolute', top: 12, left: 12, zIndex: 20 }}>
+        {teams.map((team, i) => (
+          <Group key={team.teamId} gap="xs">
+            <Button data-testid={`team-${i+1}-coder`} size="sm" onClick={() => { setSpectatorView(Role.CODER); setViewTeamId(team.teamId); }}>
+              Team {i + 1} Coder
+            </Button>
+            <Button data-testid={`team-${i+1}-tester`} size="sm" onClick={() => { setSpectatorView(Role.TESTER); setViewTeamId(team.teamId); }}>
+              Team {i + 1} Tester
+            </Button>
           </Group>
-        </Box>
+        ))}
+        <Button data-testid="exit-spectator" size="sm" onClick={() => setSpectatorView(Role.SPECTATOR)}>Exit View</Button>
+      </Box>
       )}
 
       {/* Spectator waiting message */}
       {isSpectator && spectatorView === Role.SPECTATOR && (
         <Center h="100vh">
-          <Text size="xl" c="dimmed">The room is full. You are spectating.</Text>
+          <Text data-testid="spectating-words" size="xl" c="dimmed">The room is full. You are spectating.</Text>
         </Center>
       )}
 
       {/* Main game UI */}
       {showGameUI && (
-        <Box h="100vh" style={{ display: "flex", flexDirection: "column" }}>
+        <Box data-testid={(effectiveRole === Role.CODER) ? "coder-pov" : "tester-pov"} h="100vh" style={{ display: "flex", flexDirection: "column" }}>
           <RoleFlipPopup gameState={gameState} />
           <Navbar
             links={["Timer", "Players", "Tournament"]}

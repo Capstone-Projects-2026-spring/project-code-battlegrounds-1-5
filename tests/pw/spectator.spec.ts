@@ -24,7 +24,7 @@ test.describe('Spectator flow', () => {
     });
 
     test('5th player is shown spectator mode', async () => {
-        await setupGame(pages); // navigates all 5 pages, joins 4 players
+        await setupGame(pages, 'easy'); // navigates all 5 pages, joins 4 players
 
         // player 5 should see both teams full
         await expect(pages[4].locator('[data-testid="team-1-full"]')).toBeVisible({ timeout: 10000 });
@@ -34,13 +34,13 @@ test.describe('Spectator flow', () => {
         await pages[4].click('[data-testid="spectator-button"]');
 
         // spectator should see spectator UI
-        await expect(pages[4].locator('[data-testid="spectating-words"]')).toBeVisible();
+        await expect(pages[4].locator('[data-testid="spectating-box"]')).toBeVisible();
         await expect(pages[4].locator('[data-testid="team-1-coder"]')).toBeVisible();
         await expect(pages[4].locator('[data-testid="team-2-coder"]')).toBeVisible();
     });
 
     test('spectator can switch between team views', async () => {
-        await setupGame(pages);
+        await setupGame(pages, 'medium');
 
         // player 5 should see both teams full
         await expect(pages[4].locator('[data-testid="team-1-full"]')).toBeVisible({ timeout: 10000 });
@@ -67,7 +67,7 @@ test.describe('Spectator flow', () => {
 
     test('spectator sees real time player count updates', async () => {
         // this test needs its own game so we can control when players join
-        const gameUrl = await createGame(pages[0]);
+        const gameUrl = await createGame(pages[0], 'hard');
 
         // all players navigate to the room but don't join yet
         for (const page of pages.slice(1)) {
