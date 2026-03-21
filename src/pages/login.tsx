@@ -25,25 +25,25 @@ export default function LoginPage() {
   });
 
   const handleLogin = async (email: string, password: string) => {
-    await authClient.signIn.email({
+    setLoading(true);
+    const { data, error } = await authClient.signIn.email({
       email,
       password,
       callbackURL: "/",
       rememberMe: false
-    }, {
-      onRequest: (ctx) => {
-        setLoading(true);
-      },
-      onSuccess: (ctx) => {
-        posthog.capture("user_login_success");
-        router.push("/")
-      },
-      onError: (ctx) => {
-        posthog.capture("user_login_failure");
-        alert(ctx.error.message);
-        setLoading(false);
-      },
     });
+
+    if (error) {
+      posthog.capture("user_login_failure");
+      alert(error.message);
+      setLoading(false);
+      return;
+    }
+
+    posthog.capture("user_login_success");
+    posthog.identify(data.user.id);
+    setLoading(false);
+    router.push("/");
   }
 
   return (
