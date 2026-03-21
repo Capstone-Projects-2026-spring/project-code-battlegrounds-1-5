@@ -12,13 +12,14 @@ export default function PartnerSearch() {
     console.log("Pick a random partner");
   };
 
-  const handleSearch = () => {
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
     //Using the input query, implement logic to search for a partner by room ID.
     console.log("Search room ID:", query);
     const roomId = query.trim();
     if (!roomId) return;
 
-    router.push(`/playGame/${roomId}`);
+    router.push(`/game/${roomId}`);
   };
 
   return (

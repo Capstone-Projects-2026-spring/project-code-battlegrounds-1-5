@@ -40,6 +40,7 @@ export default function SignUpPage() {
       onError: (ctx) => {
         // display the error message
         alert(ctx.error.message);
+        setLoading(false);
       },
     });
   }

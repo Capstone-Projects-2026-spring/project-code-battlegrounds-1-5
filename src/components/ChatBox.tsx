@@ -1,26 +1,23 @@
 import { useState, useEffect } from 'react';
 import { ScrollArea, TextInput, ActionIcon, Paper, Text, Stack, Box } from '@mantine/core';
-import { IconSend } from '@tabler/icons-react';
+import { IconSend2 } from '@tabler/icons-react';
 import type { Socket } from 'socket.io-client';
 
 export interface Message {
   id: string;
   text: string;
-  userId: string;
   role: string;
   timestamp: number;
 }
 interface ChatBoxProps {
   socket: Socket;
   roomId: string;
-  userId: string;
-  messages: Message[];
-  setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
   role: string;
   isSpectator?: boolean;
 }
 
-export default function ChatBox({ socket, roomId, userId, messages, setMessages, role, isSpectator = false }: ChatBoxProps) {
+export default function ChatBox({ socket, roomId, role, isSpectator = false }: ChatBoxProps) {
+  const [messages, setMessages] = useState<Message[]>([]);
 
   // State for the text currently being typed in the input box
   const [currentText, setCurrentText] = useState('');
@@ -52,7 +49,6 @@ export default function ChatBox({ socket, roomId, userId, messages, setMessages,
     const newMessage: Message = {
       id: Math.random().toString(36).substring(7), // Quick random ID
       text: currentText,
-      userId,
       role,
       timestamp: Date.now(),
     };
@@ -78,8 +74,8 @@ export default function ChatBox({ socket, roomId, userId, messages, setMessages,
               <Text size="xs" c="black" fw={500} tt="capitalize">
                 {msg.role}
               </Text>
-              <Paper withBorder p="xs" radius="sm" bg="var(--mantine-color-gray-0)">
-                <Text size="sm" c="black">
+              <Paper withBorder p="xs" radius="sm">
+                <Text size="sm">
                   {msg.text}
                 </Text>
               </Paper>
@@ -98,13 +94,12 @@ export default function ChatBox({ socket, roomId, userId, messages, setMessages,
         }}
         rightSection={
           <ActionIcon
-            variant="filled"
+            variant="subtle"
             color="blue"
-            radius="xl"
             onClick={handleSendMessage}
             disabled={isSpectator}
           >
-            <IconSend size={16} />
+            <IconSend2 size={16} />
           </ActionIcon>
         }
       />
