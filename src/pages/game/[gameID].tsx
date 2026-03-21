@@ -275,7 +275,7 @@ export default function PlayGameRoom() {
                   onChange={(value) => value && setLanguage(value)}
                   disabled={isSpectator || role !== 'coder'}
                   style={{ width: '150px' }}
-                  styles={{ option: { color: 'black' } }}
+                  styles={{ option: { color: 'white' } }}
                 />
 
                 {effectiveRole === 'coder' && (
