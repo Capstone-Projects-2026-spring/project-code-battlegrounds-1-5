@@ -36,6 +36,7 @@ export default function LoginPage() {
       },
       onError: (ctx) => {
         alert(ctx.error.message);
+        setLoading(false);
       },
     });
   }

@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { Text } from "@mantine/core";
 
-interface Props {
+interface GameTimerProps {
   _timeRemaining: number; // milliseconds remaining when game starts
   duration: number; // total duration (ms) - kept for possible display/use
   onExpire?: () => void;
 }
 
-export default function GameTimer({ _timeRemaining, duration, onExpire }: Props) {
+export default function GameTimer({ _timeRemaining, duration, onExpire }: GameTimerProps) {
   const [timeRemaining, setTimeRemaining] = useState<number>(_timeRemaining || 0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const endTimeRef = useRef<number>(0);

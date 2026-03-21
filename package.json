@@ -11,6 +11,16 @@
   "prisma": {
     "seed": "tsx prisma/seed.ts"
   },
+  "jest": {
+    "testEnvironment": "node",
+    "transform": {
+      "^.+\\.(ts|tsx)$": "babel-jest"
+    },
+    "moduleNameMapper": {
+      "^@/(.*)$": "<rootDir>/src/$1"
+    },
+    "testMatch": ["**/tests/**/*.spec.ts"]
+  },
   "dependencies": {
     "@emotion/react": "^11.14.0",
     "@mantine/core": "^8.3.14",
