@@ -4,11 +4,14 @@ import { useRouter } from "next/router";
 import { useForm } from "@mantine/form";
 import { Button, Card, Flex, PasswordInput, TextInput } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
+import { usePostHog } from "posthog-js/react";
 
 export default function LoginPage() {
   const router = useRouter();
   const [pwVisible, { toggle }] = useDisclosure();
   const [loading, setLoading] = useState(false);
+
+  const posthog = usePostHog();
 
   const form = useForm({
     mode: "uncontrolled",
@@ -32,9 +35,11 @@ export default function LoginPage() {
         setLoading(true);
       },
       onSuccess: (ctx) => {
+        posthog.capture("user_login_success");
         router.push("/")
       },
       onError: (ctx) => {
+        posthog.capture("user_login_failure");
         alert(ctx.error.message);
         setLoading(false);
       },

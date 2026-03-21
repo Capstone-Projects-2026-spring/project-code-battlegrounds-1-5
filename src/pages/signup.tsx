@@ -4,11 +4,14 @@ import { useRouter } from "next/router";
 import { useForm } from "@mantine/form";
 import { Button, Card, Flex, PasswordInput, TextInput } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
+import { usePostHog } from "posthog-js/react";
 
 export default function SignUpPage() {
   const router = useRouter();
   const [pwVisible, { toggle }] = useDisclosure();
   const [loading, setLoading] = useState(false);
+
+  const posthog = usePostHog();
 
   const form = useForm({
     mode: "uncontrolled",
@@ -34,10 +37,12 @@ export default function SignUpPage() {
         setLoading(true);
       },
       onSuccess: (ctx) => {
+        posthog.capture("user_signup_success");
         //redirect to the dashboard or sign in page
         router.push("/")
       },
       onError: (ctx) => {
+        posthog.capture("user_signup_failure");
         // display the error message
         alert(ctx.error.message);
         setLoading(false);
