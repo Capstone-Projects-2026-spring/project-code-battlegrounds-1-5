@@ -1,11 +1,18 @@
 import NavBar from '@/components/Navbar'
 import { Container, Grid, Image, Stack, Text, Title } from '@mantine/core';
 import Broadstats from '@/components/Broadstats';
+import { usePostHog } from 'posthog-js/react';
+import { useEffect } from 'react';
 
 
 export default function GameTutorial() {
 
-    
+    const posthog = usePostHog();
+
+    useEffect(() => {
+        posthog.capture("tutorial_viewed");
+    }, [posthog]);
+
     return(<>
     {/* Navbar with links (TODO: Make them work) */}
         <NavBar 

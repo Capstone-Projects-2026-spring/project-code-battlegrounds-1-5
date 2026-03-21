@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { ScrollArea, TextInput, ActionIcon, Paper, Text, Stack, Box } from '@mantine/core';
 import { IconSend2 } from '@tabler/icons-react';
 import type { Socket } from 'socket.io-client';
+import { usePostHog } from 'posthog-js/react';
 
 interface Message {
   id: string;
@@ -17,6 +18,8 @@ interface ChatBoxProps {
 }
 
 export default function ChatBox({ socket, roomId, role, isSpectator = false }: ChatBoxProps) {
+
+  const posthog = usePostHog();
 
   // State for the entire chat history
   const [messages, setMessages] = useState<Message[]>([]);
@@ -52,6 +55,8 @@ export default function ChatBox({ socket, roomId, role, isSpectator = false }: C
 
     // Send it to the server to broadcast to the other person
     socket.emit('sendChat', { roomId, message: newMessage });
+
+    posthog.capture("chat_message_sent", { roomId, role, message: newMessage });
 
     // Clear the input box
     setCurrentText('');

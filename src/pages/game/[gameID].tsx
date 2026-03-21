@@ -3,6 +3,7 @@ import { Editor } from '@monaco-editor/react';
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
+import { usePostHog } from 'posthog-js/react';
 
 import ChatBox from '@/components/ChatBox';
 import GameTimer from '@/components/GameTimer';
@@ -20,6 +21,7 @@ export default function PlayGameRoom() {
   // 1. Grab the ID from the URL (e.g., "624")
   const router = useRouter();
   const gameId = router.query.gameID as string;
+  const posthog = usePostHog();
 
   // 2. Set up our state for the socket connection and the user's role
   const [role, setRole] = useState<'coder' | 'tester' | 'spectator' | null>(null);
@@ -70,22 +72,26 @@ export default function PlayGameRoom() {
     });
 
     socketInstance.on('spectator', () => {
+      posthog.capture("game_spectated", { gameId });
       setGameState("In Progress");
     })
 
     socketInstance.on('gameStarted', ({ start, _duration }) => {
       if (isNaN(start) || isNaN(_duration)) return;
+      posthog.capture("game_started", { gameId, duration: _duration });
       setTimeRemaining(Number(start));
       setDuration(Number(_duration));
       setGameState("In Progress");
     });
 
     socketInstance.on("gameEnded", () => {
+      posthog.capture("game_ended", { gameId });
       setGameState("Completed");
     });
 
     // 5. Wait for the server to reply with our role (coder, tester, or spectator)
     socketInstance.on('roleAssigned', (assignedRole) => {
+      posthog.capture("game_role_assigned", { role: assignedRole, gameId });
       setRole(assignedRole);
     });
 
@@ -114,6 +120,7 @@ export default function PlayGameRoom() {
 
   const addNewTest = () => {
     if (testCases.length < 5) {
+      posthog.capture("test_case_added", { testNumber: testCases.length + 1, gameId });
       const newId = (testCases.length + 1).toString();
       setTestCases([...testCases, { id: newId, content: `// Write Test ${newId} here...` }]);
       setActiveTab(newId);
@@ -155,9 +162,18 @@ export default function PlayGameRoom() {
       {isSpectator && (
         <Box style={{ position: 'absolute', top: 12, left: 12, zIndex: 20 }}>
           <Group gap="xs">
-            <Button size="sm" onClick={() => setSpectatorView('coder')}>View Coder</Button>
-            <Button size="sm" onClick={() => setSpectatorView('tester')}>View Tester</Button>
-            <Button size="sm" onClick={() => setSpectatorView('none')}>Exit View</Button>
+            <Button size="sm" onClick={() => {
+              posthog.capture("spectator_view_changed", { view: 'coder', gameId });
+              setSpectatorView('coder');
+            }}>View Coder</Button>
+            <Button size="sm" onClick={() => {
+              posthog.capture("spectator_view_changed", { view: 'tester', gameId });
+              setSpectatorView('tester');
+            }}>View Tester</Button>
+            <Button size="sm" onClick={() => {
+              posthog.capture("spectator_view_changed", { view: 'none', gameId });
+              setSpectatorView('none');
+            }}>Exit View</Button>
           </Group>
         </Box>
       )}
@@ -222,10 +238,10 @@ export default function PlayGameRoom() {
                 />
                 {(effectiveRole === 'coder') && (
                   <>
-                    <Button size="xs" color="cyan" disabled={isSpectator}>
+                    <Button size="xs" color="cyan" disabled={isSpectator} onClick={() => posthog.capture("code_run_triggered", { gameId })}>
                       RUN ▷
                     </Button>
-                    <Button size="xs" color="green" disabled={isSpectator}>
+                    <Button size="xs" color="green" disabled={isSpectator} onClick={() => posthog.capture("code_submitted", { gameId })}>
                       Submit Final Code
                     </Button>
                   </>
@@ -296,7 +312,7 @@ export default function PlayGameRoom() {
                         <Button size="compact-xs" variant="outline" color="gray" disabled={isSpectator}>
                           Debug
                         </Button>
-                        <Button size="compact-xs" variant="filled" color="blue" disabled={isSpectator}>
+                        <Button size="compact-xs" variant="filled" color="blue" disabled={isSpectator} onClick={() => posthog.capture("test_run_triggered", { gameId })}>
                           Run Test
                         </Button>
                       </Group>

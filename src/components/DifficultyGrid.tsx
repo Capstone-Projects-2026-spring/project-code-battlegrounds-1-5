@@ -11,6 +11,7 @@ import {
 import { useState } from "react";
 import { useRouter } from "next/router";
 import { authClient } from "@/lib/auth-client";
+import { usePostHog } from "posthog-js/react";
 
 type Difficulty = "EASY" | "MEDIUM" | "HARD";
 
@@ -19,6 +20,7 @@ export default function Subgrid() {
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   const { data: session } = authClient.useSession();
+  const posthog = usePostHog();
   const handleCreateRoom = async (difficulty: Difficulty) => {
     
     if (!session) {
@@ -37,6 +39,9 @@ export default function Subgrid() {
       });
       const data = await response.json();
       if (response.ok) {
+        posthog.capture("room_created", {
+          difficulty: difficulty,
+        });
         router.push(`/game/${data.gameId}`); // Redirect to the new game room page using the returned gameId
       } else {
         alert(data.message || "Failed to create game room"); // Show error message from the server if available, otherwise show a generic error message
