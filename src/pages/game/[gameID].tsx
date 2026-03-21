@@ -211,7 +211,7 @@ export default function PlayGameRoom() {
               {/* Toolbar */}
               <Group
                 p="xs"
-                bg="#f8f9fa"
+                // bg="#f8f9fa"
                 style={{ borderBottom: "1px solid #ddd", flexShrink: 0 }}
               >
                 <Select
@@ -310,7 +310,7 @@ export default function PlayGameRoom() {
                     theme="vs-dark"
                     defaultLanguage="javascript"
                     options={{
-                      readOnly: isSpectator || role !== 'coder',
+                      readOnly: role !== 'tester',
                       minimap: { enabled: false }
                     }}
                   />

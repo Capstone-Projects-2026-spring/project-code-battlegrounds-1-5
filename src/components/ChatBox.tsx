@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { ScrollArea, TextInput, ActionIcon, Paper, Text, Stack, Box } from '@mantine/core';
-import { IconSend } from '@tabler/icons-react';
+import { IconSend2 } from '@tabler/icons-react';
 import type { Socket } from 'socket.io-client';
 
 interface Message {
@@ -65,11 +65,11 @@ export default function ChatBox({ socket, roomId, role, isSpectator = false }: C
         <Stack gap="xs">
           {messages.map((msg) => (
             <Box key={msg.id}>
-              <Text size="xs" c="black" fw={500} tt="capitalize">
+              <Text size="xs" fw={500} tt="capitalize">
                 {msg.user}
               </Text>
-              <Paper withBorder p="xs" radius="sm" bg="var(--mantine-color-gray-0)">
-                <Text size="sm" c="black">
+              <Paper withBorder p="xs" radius="sm">
+                <Text size="sm">
                   {msg.text}
                 </Text>
               </Paper>
@@ -88,13 +88,12 @@ export default function ChatBox({ socket, roomId, role, isSpectator = false }: C
         }}
         rightSection={
           <ActionIcon
-            variant="filled"
+            variant="subtle"
             color="blue"
-            radius="xl"
             onClick={handleSendMessage}
             disabled={isSpectator}
           >
-            <IconSend size={16} />
+            <IconSend2 size={16} />
           </ActionIcon>
         }
       />
