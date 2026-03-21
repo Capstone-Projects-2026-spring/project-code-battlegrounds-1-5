@@ -92,15 +92,17 @@ async function runCode(lang, code, ws) {
 
   ws.send(executionDescription);
   if (!useDocker) { //Another warning. This one doesnt have to be deleted.
-    ws.send('[Runner] Warning: fallback is less secure than Docker');
+    ws.send('[Runner] Warning: fallback is less secure than Docker \n');
   }
 
   proc.stdout.on('data', (chunk) => {
-    ws.send(chunk.toString());
+    const out = { stream: "stdout", data: chunk.toString() };
+    ws.send(JSON.stringify(out));
   });
 
   proc.stderr.on('data', (chunk) => {
-    ws.send(chunk.toString());
+    const out = { stream: "stderr", data: chunk.toString() };
+    ws.send(JSON.stringify(out));
   });
 
   proc.on('error', (err) => {

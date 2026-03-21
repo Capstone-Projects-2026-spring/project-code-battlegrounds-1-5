@@ -31,7 +31,7 @@ export default function PlayGameRoom() {
 
   const [liveCode, setLiveCode] = useState<string>("// Waiting for code...");
   const [language, setLanguage] = useState<string>("javascript");
-  const [consoleOutput, setConsoleOutput] = useState<string>("[Runner] Ready\n");
+  const [consoleOutput, setConsoleOutput] = useState<Array<{text: string, color?: string}>>([{text: "[Runner] Ready\n", color: 'green'}]);
 
   const [testCases, setTestCases] = useState([{ id: "1", content: "// Write Test 1 here..." }]);
   const [activeTab, setActiveTab] = useState<string | null>("1");
@@ -112,7 +112,23 @@ export default function PlayGameRoom() {
     if (!socket) return;
 
     const outputHandler = (message: string) => {
-      setConsoleOutput((prev) => (prev ? `${prev}\n${message}` : message));
+      try {
+        const parsed = JSON.parse(message);
+        if (parsed.stream === 'stdout') {
+          setConsoleOutput((prev) => [...prev, {text: parsed.data}]);
+        } else if (parsed.stream === 'stderr') {
+          //Adding red color through REACT
+          setConsoleOutput((prev) => [...prev, {text: parsed.data, color: 'red'}]);
+        } else {
+          // Fallback for old format or other messages
+          setConsoleOutput((prev) => [...prev, {text: `${message}\n`}]);
+        }
+      } catch {
+        // If not JSON, treat as plain message
+        const isWarning = message.toLowerCase().includes('warning');
+        const isRunnerMessage = message.startsWith('[Runner]');
+        setConsoleOutput((prev) => [...prev, {text: `${message}\n`, color: isWarning ? 'orange' : isRunnerMessage ? 'green' : undefined}]);
+      }
     };
 
     socket.on("runOutput", outputHandler);
@@ -133,14 +149,14 @@ export default function PlayGameRoom() {
   const handleRun = () => {
     if (!socket || isSpectator || gameState !== 'In Progress') return;
 
-    setConsoleOutput("[Runner] Executing...\n");
+    setConsoleOutput([{text: "[Runner] Executing...\n", color: 'green'}]);
     socket.emit("runCode", { roomId: gameId, code: liveCode, language });
   };
 
   const handleRunTest = () => {
     if (!socket || isSpectator || gameState !== 'In Progress') return;
 
-    setConsoleOutput("[Runner] Executing...\n");
+    setConsoleOutput([{text: "[Runner] Executing...\n", color: 'green'}]);
     socket.emit("runCode", { roomId: gameId, code: liveCode, language });
   };
 
@@ -346,13 +362,11 @@ export default function PlayGameRoom() {
                       </Group>
                     </Box>
                     <Box style={{ flex: 1 }}>
-                      <Editor
-                        height="100%"
-                        theme="vs-dark"
-                        defaultLanguage="javascript"
-                        value={consoleOutput}
-                        options={{ readOnly: true, minimap: { enabled: false } }}
-                      />
+                      <Box style={{ height: '100%', overflowY: 'auto', padding: '0.5rem', fontFamily: 'monospace', fontSize: '13px', backgroundColor: '#1e1e1e', color: 'white', whiteSpace: 'pre-wrap' }}>
+                        {consoleOutput.map((line, index) => (
+                          <span key={index} style={{ color: line.color || 'inherit' }}>{line.text}</span>
+                        ))}
+                      </Box>
                     </Box>
                   </>
                 ) : (
@@ -361,13 +375,11 @@ export default function PlayGameRoom() {
                       <Text size="xs" c="dimmed">Console Output</Text>
                     </Box>
                     <Box style={{ flex: 1 }}>
-                      <Editor
-                        height="100%"
-                        theme="vs-dark"
-                        defaultLanguage="javascript"
-                        value={consoleOutput}
-                        options={{ readOnly: true, minimap: { enabled: false } }}
-                      />
+                      <Box style={{ height: '100%', overflowY: 'auto', padding: '0.5rem', fontFamily: 'monospace', fontSize: '13px', backgroundColor: '#1e1e1e', color: 'white', whiteSpace: 'pre-wrap' }}>
+                        {consoleOutput.map((line, index) => (
+                          <span key={index} style={{ color: line.color || 'inherit' }}>{line.text}</span>
+                        ))}
+                      </Box>
                     </Box>
                   </>
                 )}
