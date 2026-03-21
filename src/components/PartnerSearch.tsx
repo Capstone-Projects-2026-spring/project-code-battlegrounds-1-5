@@ -2,12 +2,15 @@ import React, { useState } from "react";
 import { Stack, Text, Button, TextInput, Group, Divider } from "@mantine/core";
 import { useRouter } from "next/router";
 import { IconArrowRight } from "@tabler/icons-react";
+import { usePostHog } from "posthog-js/react";
 
 export default function PartnerSearch() {
   const [query, setQuery] = useState("");
   const router = useRouter();
+  const posthog = usePostHog();
 
   const handleRandom = () => {
+    posthog.capture("random_match_initiated");
     // replace with real random partner logic
     console.log("Pick a random partner");
     router.push("/matchmaking");
@@ -20,6 +23,9 @@ export default function PartnerSearch() {
     const roomId = query.trim();
     if (!roomId) return;
 
+    posthog.capture("room_joined_by_id", {
+      roomId: roomId
+    });
     router.push(`/game/${roomId}`);
   };
 

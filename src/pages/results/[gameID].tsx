@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Head from "next/head";
 import { Stack, Box, Title, Flex } from "@mantine/core";
 import Navbar from "@/components/Navbar";
@@ -7,6 +7,7 @@ import { authClient } from "@/lib/auth-client";
 import TestCaseResultsBox from "@/components/TestCaseResultsBox";
 import AnalysisBox from "@/components/Analysisbox";
 import ProblemBox from "@/components/ProblemBox";
+import { usePostHog } from "posthog-js/react";
 
 
 export default function Results() {
@@ -15,6 +16,11 @@ export default function Results() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { data: session } = authClient.useSession();
+  const posthog = usePostHog();
+
+  useEffect(() => {
+    posthog.capture("results_viewed");
+  }, [posthog]);
 
   if (!session) return null;
 
