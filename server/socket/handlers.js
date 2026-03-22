@@ -1,6 +1,5 @@
 // Socket event handlers isolated here
 // Expects io (Server), socket (Socket), and services to manage game state
-
 function registerSocketHandlers(io, socket, services) {
   const { gameService } = services;
 
@@ -77,6 +76,15 @@ function registerSocketHandlers(io, socket, services) {
   socket.on('disconnect', () => {
     console.log(`Disconnected: ${socket.id}`);
   });
+
+  socket.on('submitCode', async (data) => {
+    const { roomId, code } = data || {};
+    if (!roomId) return;
+    //TODO Store submission and evaluate results on the backend
+    //Broadcast to both players to redirect to results
+    io.to(roomId).emit('redirectToResults');
+  });
+
 }
 
 module.exports = { registerSocketHandlers };

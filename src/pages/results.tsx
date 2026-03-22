@@ -24,7 +24,7 @@ export default function Results() {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
 
-      <Stack h="100vh" gap={0} bg="#f8f9fa">
+      <Stack h="100vh" gap={0}>
         <Navbar
           links={["Time", "Players", "Tournament"]}
           title="Code BattleGrounds"
@@ -32,7 +32,7 @@ export default function Results() {
 
         <Box p="md" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
           
-          <Title order={2} mb="md" c="dark.8" ta="center">
+          <Title order={2} mb="md" ta="center">
             Match Results
           </Title>
 

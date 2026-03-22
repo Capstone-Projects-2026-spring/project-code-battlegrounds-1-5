@@ -124,6 +124,28 @@ export default function PlayGameRoom() {
       setActiveTab(newId);
     }
   };
+  //This useEffect listens for the "redirectToResults" event from the server, which signals that the game has ended and both players should be taken to the results page.
+  //When the event is received, it uses Next.js's router to navigate to the /results page, passing along the gameId as a query parameter.
+  //This allows both the coder and tester to see their match results after the game concludes.
+  useEffect(() => {
+    if (!socket) return;
+    const handleRedirectToResults = () => {
+      router.push(`/results?gameId=${gameId}`);
+    };
+    socket.on("redirectToResults", handleRedirectToResults);
+    return () => {
+      socket.off("redirectToResults", handleRedirectToResults);
+    };
+  }, [socket, gameId, router]);
+
+
+  const submitFinalCode = () => {
+    //Send bother Coder and Tester to the results page
+    //TODO Store submission and evaluate results on the backend, then fetch and display here
+    //server broadcasts the event to both players
+    if (!socket) return; //make sure the socket is connected before emitting
+    socket.emit("submitCode", { roomId: gameId, code: liveCode });
+  };
 
   // --- RENDERING LOGIC ---
 
@@ -250,7 +272,7 @@ export default function PlayGameRoom() {
                     <Button size="xs" color="cyan" disabled={isSpectator}>
                       RUN ▷
                     </Button>
-                    <Button size="xs" color="green" disabled={isSpectator}>
+                    <Button size="xs" color="green" onClick={submitFinalCode} disabled={isSpectator}>
                       Submit Final Code
                     </Button>
                   </>
