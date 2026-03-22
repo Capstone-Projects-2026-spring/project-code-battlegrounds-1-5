@@ -1,6 +1,5 @@
 // Socket event handlers isolated here
 // Expects io (Server), socket (Socket), and services to manage game state
-
 function registerSocketHandlers(io, socket, services) {
   const { gameService } = services;
 
@@ -41,86 +40,94 @@ function registerSocketHandlers(io, socket, services) {
           io.to(gameId).emit('gameStarted', { start: time?.remaining, _duration: gameService.GAME_DURATION_MS });
         }, 3000)
       } catch (e) {
-      console.error('Failed to start game', e);
+        console.error('Failed to start game', e);
+      }
     }
-  }
 
     // Send latest code state from Redis if present so the joiner syncs
     try {
-    const latestCode = await gameService.getLatestCode(teamId);
-    if (latestCode != null) {
-      socket.emit('receiveCodeUpdate', latestCode);
+      const latestCode = await gameService.getLatestCode(teamId);
+      if (latestCode != null) {
+        socket.emit('receiveCodeUpdate', latestCode);
+      }
+    } catch (e) {
+      console.error('Error fetching code from Redis', e);
     }
-  } catch (e) {
-    console.error('Error fetching code from Redis', e);
-  }
 
-  console.log(`Socket ${socket.id} joined room ${gameId} and team ${teamId}`);
-});
+    console.log(`Socket ${socket.id} joined room ${gameId} and team ${teamId}`);
+  });
 
-// 2. Handle live code relay (Coder -> Server -> Tester)
-socket.on('codeChange', async (data) => {
-  const { teamId, code } = data || {};
-  if (!teamId) return;
+  // 2. Handle live code relay (Coder -> Server -> Tester)
+  socket.on('codeChange', async (data) => {
+    const { teamId, code } = data || {};
+    if (!teamId) return;
 
-  try {
-    await gameService.saveLatestCode(teamId, code);
-  } catch (e) {
-    console.error('Error saving code to Redis', e);
-  }
+    try {
+      await gameService.saveLatestCode(teamId, code);
+    } catch (e) {
+      console.error('Error saving code to Redis', e);
+    }
 
-  // Broadcast the updated code to everyone else in the same room (except the sender)
-  socket.to(teamId).emit('receiveCodeUpdate', code);
-});
+    // Broadcast the updated code to everyone else in the same room (except the sender)
+    socket.to(teamId).emit('receiveCodeUpdate', code);
+  });
 
-socket.on('sendChat', async (data) => {
-  const { teamId, message } = data || {};
-  if (!teamId || !message) return;
+  socket.on('sendChat', async (data) => {
+    const { teamId, message } = data || {};
+    if (!teamId || !message) return;
 
-  try {
-    await gameService.saveChatMessage(teamId, message);
-  } catch (e) {
-    console.error('Error saving chat message to Redis', e);
-  }
+    try {
+      await gameService.saveChatMessage(teamId, message);
+    } catch (e) {
+      console.error('Error saving chat message to Redis', e);
+    }
 
-  // Broadcast the chat message to everyone else in the same room (except the sender)
-  socket.to(teamId).emit('receiveChat', message);
-});
+    // Broadcast the chat message to everyone else in the same room (except the sender)
+    socket.to(teamId).emit('receiveChat', message);
+  });
 
-socket.on('requestChatSync', async ({ teamId }) => {
-  try {
-    const parsed = await gameService.getChatMessages(teamId);
-    socket.emit('receiveChatHistory', parsed);
-  } catch (e) {
-    console.error('Error fetching chat history', e);
-  }
-});
+  socket.on('requestChatSync', async ({ teamId }) => {
+    try {
+      const parsed = await gameService.getChatMessages(teamId);
+      socket.emit('receiveChatHistory', parsed);
+    } catch (e) {
+      console.error('Error fetching chat history', e);
+    }
+  });
 
-socket.on('updateTestCases', async ({ teamId, testCases }) => {
-  try {
-    await gameService.saveTestCases(teamId, testCases);
-  } catch (e) {
-    console.error('Error saving test cases', e);
-  }
-  // socket.to(teamId).emit('receiveTestCaseSync', testCases);
-});
+  socket.on('updateTestCases', async ({ teamId, testCases }) => {
+    try {
+      await gameService.saveTestCases(teamId, testCases);
+    } catch (e) {
+      console.error('Error saving test cases', e);
+    }
+    // socket.to(teamId).emit('receiveTestCaseSync', testCases);
+  });
 
-socket.on('requestTestCaseSync', async ({ teamId }) => {
-  try {
-    const testCases = await gameService.getTestCases(teamId);
-    if (testCases) socket.emit('receiveTestCaseSync', testCases);
-  } catch (e) {
-    console.error('Error fetching test cases', e);
-  }
-});
+  socket.on('requestTestCaseSync', async ({ teamId }) => {
+    try {
+      const testCases = await gameService.getTestCases(teamId);
+      if (testCases) socket.emit('receiveTestCaseSync', testCases);
+    } catch (e) {
+      console.error('Error fetching test cases', e);
+    }
+  });
 
-// 3. Handle graceful disconnection
-socket.on('disconnect', async () => {
-  console.log(`Disconnected: ${socket.id}`);
-  if (socket.gameId & socket.userId) {
-    await gameService.cleanupGame(socket.gameId, socket.userId)
-  }
-});
+  socket.on('submitCode', async (data) => {
+    const { roomId, code } = data || {};
+    if (!roomId) return;
+    //TODO Store submission and evaluate results on the backend
+    //Broadcast to both players to redirect to results
+    io.to(roomId).emit('redirectToResults');
+  });
+
+  // 3. Handle graceful disconnection
+  socket.on('disconnect', async () => {
+    console.log(`Disconnected: ${socket.id}`);
+    if (socket.gameId & socket.userId) {
+      await gameService.cleanupGame(socket.gameId, socket.userId)
+    }
+  });
 }
 
 module.exports = { registerSocketHandlers };
