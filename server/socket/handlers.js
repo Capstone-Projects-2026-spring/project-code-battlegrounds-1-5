@@ -1,8 +1,5 @@
 // Socket event handlers isolated here
 // Expects io (Server), socket (Socket), and services to manage game state
-
-const { date } = require("better-auth");
-
 function registerSocketHandlers(io, socket, services) {
   const { gameService } = services;
 
