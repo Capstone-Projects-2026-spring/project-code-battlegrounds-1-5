@@ -1,8 +1,9 @@
-import { Box, Button, Center, Group, Loader, Select, Tabs, Text } from '@mantine/core';
+import { ActionIcon, Box, Button, Center, Group, Loader, Select, Tabs, Text, Tooltip } from '@mantine/core';
 import { Editor } from '@monaco-editor/react';
 import { useRouter } from 'next/router';
 import { useEffect, useState, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
+import { IconEye } from '@tabler/icons-react';
 
 import ChatBox from '@/components/ChatBox';
 import GameTimer from '@/components/GameTimer';
@@ -45,6 +46,9 @@ export default function PlayGameRoom() {
   const [spectatorView, setSpectatorView] = useState<Role>(Role.SPECTATOR);
 
   const endTimeRef = useRef<number | null>(null);
+  const [isProblemVisible, setIsProblemVisible] = useState(true); // State to manage problem box visibility
+  const toggleProblemVisibility = () => setIsProblemVisible((prev) => !prev); // Function to toggle visibility
+
 
   const isSpectator = role === Role.SPECTATOR;
 
@@ -256,21 +260,41 @@ export default function PlayGameRoom() {
             {/* Left Sidebar */}
             <Box
               style={{
-                width: "20%",
-                minWidth: "250px",
+                // Dynamic width based on visibility state
+                width: isProblemVisible ? "20%" : "50px",
+                minWidth: isProblemVisible ? "250px" : "50px",
                 backgroundColor: "#333",
                 color: "white",
-                padding: "1rem",
+                padding: "0",
                 overflowY: "auto",
-                display: "block",
+                display: "flex",
+                flexDirection: 'column',
+                alignItems: 'center',
+                // Justify content to center the icon when collapsed
+                justifyContent: isProblemVisible ? 'flex-start' : 'center',
+                flexShrink: 0,
+                // Smooth transition for width change
+                transition: 'width 0.2s ease, min-width 0.2s ease',
               }}
             >
               {(gameState === GameStatus.ACTIVE || gameState === GameStatus.FLIPPING) && (
-                <Box mb="md">
+                <Box mb="md" p="1rem" pb={isProblemVisible ? "md" : "1rem"}>
                   <GameTimer endTime={endTimeRef.current ?? 0} duration={duration} />
                 </Box>
               )}
-              <ProblemBox problem={problem} />
+              {/* Conditionally render either the ProblemBox or the "Show" icon */}
+              {isProblemVisible ? (
+                <Box style={{ width: '100%', flex: 1, minHeight: 0, padding: '0 1rem 1rem 1rem' }}>
+                  <ProblemBox problem={problem} onToggleVisibility={toggleProblemVisibility} />
+                </Box>
+              ) : (
+                <Tooltip label="Show Problem">
+                  <ActionIcon variant="transparent" color="gray" size="xl" onClick={toggleProblemVisibility} title="Show Problem">
+                    <IconEye size={24} />
+                  </ActionIcon>
+                </Tooltip>
+
+              )}
             </Box>
 
             {/* Main Workspace */}
