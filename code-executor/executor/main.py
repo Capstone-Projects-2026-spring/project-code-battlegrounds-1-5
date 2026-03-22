@@ -1,8 +1,6 @@
 import os
-import shutil
 import string
 import subprocess
-import tempfile
 import time
 import random
 from typing import List, Optional
@@ -84,13 +82,13 @@ def run_in_sandbox(code: str, stdin: str, language: str):
             "--rlimit_as", "2048",  # 2GB to avoid oom
             "--rlimit_cpu", "2",
             "--chroot", rootfs_path,
-            "--bindmount_ro", f"{host_code_path}:/solution",
+            "--bindmount_ro", f"{host_code_path}:/{host_code_path}",
             "--user", "99999",
             "--group", "99999",
             "--",
             "/usr/bin/node", # TODO: a quick mapping in languages to map language strings to executables and args
             "--max-old-space-size=64",
-            "/solution",
+            f"/{host_code_path}",
         ]
 
         # ensure we pipe
@@ -128,6 +126,7 @@ def run_in_sandbox(code: str, stdin: str, language: str):
         try:
             if host_code_path and os.path.exists(host_code_path):
                 os.remove(host_code_path)
+                # os.remove(os.path.join("./rootfs", host_code_path)) # TODO: this line doesnt remove the file copied into the tmp rootfs. why? not touching it rn, got too much chit to do
         except Exception:
             pass
 

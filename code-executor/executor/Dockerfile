@@ -1,7 +1,7 @@
 FROM alpine:latest
 
 # run with:
-# sudo docker run --name test -p 8000:8000 -d --cap-add=SYS_ADMIN --security-opt seccomp=unconfined js-runner:latest
+# docker run -d -p 8000:8000 --cap-add=SYS_ADMIN --security-opt seccomp=unconfined runner:latest
 
 RUN apk add --no-cache \
     nsjail \
