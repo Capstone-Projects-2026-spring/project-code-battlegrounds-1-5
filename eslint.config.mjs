@@ -13,6 +13,14 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
   ]),
+  {
+    "rules": {
+      "@typescript-eslint/no-require-imports": "off"
+    },
+    ignores: [
+      "types/validator.ts"
+    ]
+  },
 ]);
 
 export default eslintConfig;
