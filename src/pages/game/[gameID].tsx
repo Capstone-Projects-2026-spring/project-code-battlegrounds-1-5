@@ -356,9 +356,9 @@ export default function PlayGameRoom() {
                 />
                 {(effectiveRole === Role.CODER) && (
                   <>
-                    <Button size="xs" color="cyan" disabled={isSpectator}>
+                    {/* <Button size="xs" color="cyan" disabled={isSpectator}>
                       RUN ▷
-                    </Button>
+                    </Button> */}
                     <Button size="xs" color="green" onClick={submitFinalCode} disabled={isSpectator}>
                       Submit Final Code
                     </Button>
@@ -427,9 +427,9 @@ export default function PlayGameRoom() {
                         </Tabs.List>
                       </Tabs>
                       <Group gap="xs">
-                        <Button size="compact-xs" variant="outline" color="gray" disabled={isSpectator}>
+                        {/* <Button size="compact-xs" variant="outline" color="gray" disabled={isSpectator}>
                           Debug
-                        </Button>
+                        </Button> */}
                         <Button size="compact-xs" variant="filled" color="blue" disabled={isSpectator}>
                           Run Test
                         </Button>
