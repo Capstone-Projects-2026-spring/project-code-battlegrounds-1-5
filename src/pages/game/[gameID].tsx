@@ -33,7 +33,7 @@ export default function PlayGameRoom() {
   const [liveCode, setLiveCode] = useState<string>("// Waiting for code...");
 
   const [testCases, setTestCases] = useState([{ id: "1", content: "// Write Test 1 here..." }]);
-  const [activeTab, setActiveTab] = useState<string | null>("1");
+  const [activeTab, setActiveTab] = useState<string>("1");
 
   const [spectatorView, setSpectatorView] = useState<'none' | 'coder' | 'tester'>('none');
 
@@ -325,7 +325,12 @@ export default function PlayGameRoom() {
                 {effectiveRole === 'tester' && (
                   <Box p="xs" style={{ borderBottom: "1px solid #444" }}>
                     <Group justify="space-between">
-                      <Tabs value={activeTab} onChange={setActiveTab} variant="outline" color="gray">
+                      <Tabs
+                        value={activeTab}
+                        onChange={(val) => setActiveTab(val!)}
+                        variant="outline"
+                        color="gray"
+                      >
                         <Tabs.List>
                           {testCases.map((test) => (
                             <Tabs.Tab key={test.id} value={test.id} style={{ color: "white" }}>
@@ -356,6 +361,7 @@ export default function PlayGameRoom() {
                     height="100%"
                     theme="vs-dark"
                     defaultLanguage="javascript"
+                    value={testCases.find(t => t.id === activeTab)!.content}
                     options={{
                       readOnly: role !== 'tester',
                       minimap: { enabled: false }
