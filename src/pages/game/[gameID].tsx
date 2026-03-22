@@ -69,14 +69,24 @@ export default function PlayGameRoom() {
     };
     fetchCounts();
     const loadProblem = async () => {
-      try {
-        const response = await fetch(`/api/rooms/${gameId}`);
-        if (!response.ok) return;
-        const data = (await response.json()) as RoomDetailsResponse;
-        setProblem(data.problem);
-      } catch (error) {
-        console.error('Failed to load room problem', error);
+      const mock: ActiveProblem = {
+        id: "mock",
+        title: "Median",
+        description: "Given an array, find the median element in the array.",
+        difficulty: "EASY",
+        topics: ["Arrays"]
       }
+      console.log("MOCKING QUESTION", mock);
+      setProblem(mock);
+
+      // try {
+      //   const response = await fetch(`/api/rooms/${gameId}`);
+      //   if (!response.ok) return;
+      //   const data = (await response.json()) as RoomDetailsResponse;
+      //   setProblem(data.problem);
+      // } catch (error) {
+      //   console.error('Failed to load room problem', error);
+      // }
     };
 
     loadProblem();
