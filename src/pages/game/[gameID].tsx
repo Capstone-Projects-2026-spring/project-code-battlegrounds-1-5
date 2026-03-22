@@ -31,6 +31,8 @@ export default function PlayGameRoom() {
   const [problem, setProblem] = useState<ActiveProblem | null>(null);
 
   const [liveCode, setLiveCode] = useState<string>("// Waiting for code...");
+  const [language, setLanguage] = useState<string>("javascript");
+  const [consoleOutput, setConsoleOutput] = useState<Array<{text: string, color?: string}>>([{text: "[Runner] Ready\n", color: 'green'}]);
 
   const [testCases, setTestCases] = useState([{ id: "1", content: "// Write Test 1 here..." }]);
   const [activeTab, setActiveTab] = useState<string | null>("1");
@@ -111,10 +113,56 @@ export default function PlayGameRoom() {
     };
   }, [socket, role]);
 
+  useEffect(() => {
+    if (!socket) return;
+
+    const outputHandler = (message: string) => {
+      try {
+        const parsed = JSON.parse(message);
+        if (parsed.stream === 'stdout') {
+          setConsoleOutput((prev) => [...prev, {text: parsed.data}]);
+        } else if (parsed.stream === 'stderr') {
+          //Adding red color through REACT
+          setConsoleOutput((prev) => [...prev, {text: parsed.data, color: 'red'}]);
+        } else {
+          // Fallback for old format or other messages
+          setConsoleOutput((prev) => [...prev, {text: `${message}\n`}]);
+        }
+      } catch {
+        // If not JSON, treat as plain message
+        const isWarning = message.toLowerCase().includes('warning');
+        const isRunnerMessage = message.startsWith('[Runner]');
+        setConsoleOutput((prev) => [...prev, {text: `${message}\n`, color: isWarning ? 'orange' : isRunnerMessage ? 'green' : undefined}]);
+      }
+    };
+
+    socket.on("runOutput", outputHandler);
+    return () => {
+      socket.off("runOutput", outputHandler);
+    };
+  }, [socket]);
+
   const handleEditorChange = (value: string | undefined) => {
-    if (value !== undefined && role === 'coder' && socket) {
+    if (value === undefined) return;
+
+    setLiveCode(value);
+    if (role === 'coder' && socket) {
       socket.emit("codeChange", { roomId: gameId, code: value });
     }
+  };
+
+  const handleRun = () => {
+    if (!socket || isSpectator || gameState !== 'In Progress') return;
+
+    setConsoleOutput([{text: "[Runner] Executing...\n", color: 'green'}]);
+    socket.emit("runCode", { roomId: gameId, code: liveCode, language });
+  };
+
+  const handleRunTest = () => {
+    if (!socket || isSpectator || gameState !== 'In Progress') return;
+
+    setConsoleOutput([{text: "[Runner] Executing...\n", color: 'green'}]);
+    socket.emit("runCode", { roomId: gameId, code: liveCode, language });
   };
 
   const addNewTest = () => {
@@ -241,16 +289,26 @@ export default function PlayGameRoom() {
               >
                 <Select
                   size="xs"
-                  data={["Javascript"]}
-                  defaultValue="Javascript"
+                  data={
+                    [
+                      { value: 'javascript', label: 'JavaScript' },
+                      { value: 'python', label: 'Python (WIP)' },
+                      { value: 'cpp', label: 'C++' },
+                    ]
+                  }
+                  value={language}
+                  onChange={(value) => value && setLanguage(value)}
                   disabled={isSpectator || role !== 'coder'}
+                  style={{ width: '150px' }}
+                  styles={{ option: { color: 'white' } }}
                 />
-                {(effectiveRole === 'coder') && (
+
+                {effectiveRole === 'coder' && (
                   <>
-                    <Button size="xs" color="cyan" disabled={isSpectator}>
+                    <Button size="xs" color="cyan" disabled={isSpectator || gameState !== 'In Progress'} onClick={handleRun}>
                       RUN ▷
                     </Button>
-                    <Button size="xs" color="green" disabled={isSpectator}>
+                    <Button size="xs" color="green" disabled={isSpectator || gameState !== 'In Progress'}>
                       Submit Final Code
                     </Button>
                   </>
@@ -300,46 +358,56 @@ export default function PlayGameRoom() {
                   minHeight: 0,
                 }}
               >
-                {effectiveRole === 'tester' && (
-                  <Box p="xs" style={{ borderBottom: "1px solid #444" }}>
-                    <Group justify="space-between">
-                      <Tabs value={activeTab} onChange={setActiveTab} variant="outline" color="gray">
-                        <Tabs.List>
-                          {testCases.map((test) => (
-                            <Tabs.Tab key={test.id} value={test.id} style={{ color: "white" }}>
-                              Test {test.id}
-                            </Tabs.Tab>
-                          ))}
-                          {testCases.length < 5 && !isSpectator && (
-                            <Button variant="subtle" size="compact-xs" color="gray" onClick={addNewTest}>
-                              +
-                            </Button>
-                          )}
-                        </Tabs.List>
-                      </Tabs>
-                      <Group gap="xs">
-                        <Button size="compact-xs" variant="outline" color="gray" disabled={isSpectator}>
-                          Debug
-                        </Button>
-                        <Button size="compact-xs" variant="filled" color="blue" disabled={isSpectator}>
-                          Run Test
-                        </Button>
+                {effectiveRole === 'tester' ? (
+                  <>
+                    <Box p="xs" style={{ borderBottom: "1px solid #444" }}>
+                      <Group justify="space-between">
+                        <Tabs value={activeTab} onChange={setActiveTab} variant="outline" color="gray">
+                          <Tabs.List>
+                            {testCases.map((test) => (
+                              <Tabs.Tab key={test.id} value={test.id} style={{ color: "white" }}>
+                                Test {test.id}
+                              </Tabs.Tab>
+                            ))}
+                            {testCases.length < 5 && !isSpectator && (
+                              <Button variant="subtle" size="compact-xs" color="gray" onClick={addNewTest}>
+                                +
+                              </Button>
+                            )}
+                          </Tabs.List>
+                        </Tabs>
+                        <Group gap="xs">
+                          <Button size="compact-xs" variant="outline" color="gray" disabled={isSpectator}>
+                            Debug
+                          </Button>
+                          <Button size="compact-xs" variant="filled" color="blue" disabled={isSpectator || gameState !== 'In Progress'} onClick={handleRunTest}>
+                            Run Test
+                          </Button>
+                        </Group>
                       </Group>
-                    </Group>
-                  </Box>
+                    </Box>
+                    <Box style={{ flex: 1 }}>
+                      <Box style={{ height: '100%', overflowY: 'auto', padding: '0.5rem', fontFamily: 'monospace', fontSize: '13px', backgroundColor: '#1e1e1e', color: 'white', whiteSpace: 'pre-wrap' }}>
+                        {consoleOutput.map((line, index) => (
+                          <span key={index} style={{ color: line.color || 'inherit' }}>{line.text}</span>
+                        ))}
+                      </Box>
+                    </Box>
+                  </>
+                ) : (
+                  <>
+                    <Box p="xs" style={{ borderBottom: "1px solid #444" }}>
+                      <Text size="xs" c="dimmed">Console Output</Text>
+                    </Box>
+                    <Box style={{ flex: 1 }}>
+                      <Box style={{ height: '100%', overflowY: 'auto', padding: '0.5rem', fontFamily: 'monospace', fontSize: '13px', backgroundColor: '#1e1e1e', color: 'white', whiteSpace: 'pre-wrap' }}>
+                        {consoleOutput.map((line, index) => (
+                          <span key={index} style={{ color: line.color || 'inherit' }}>{line.text}</span>
+                        ))}
+                      </Box>
+                    </Box>
+                  </>
                 )}
-
-                <Box style={{ flex: 1 }}>
-                  <Editor
-                    height="100%"
-                    theme="vs-dark"
-                    defaultLanguage="javascript"
-                    options={{
-                      readOnly: role !== 'tester',
-                      minimap: { enabled: false }
-                    }}
-                  />
-                </Box>
               </Box>
             </Box>
           </Box>
