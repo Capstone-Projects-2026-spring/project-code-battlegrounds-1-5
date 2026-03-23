@@ -1,15 +1,39 @@
 import { Paper, Text, Group, Box, Badge, Title, Divider } from "@mantine/core";
+import type { TeamCount } from "@/components/TeamSelect";
 
-export default function AnalysisBox() {
+interface AnalysisProps {
+  teamSelected: string;
+  teams: TeamCount[];
+}
+
+export default function AnalysisBox({ teamSelected, teams }: AnalysisProps) {
+  const isTeamOne = teams[0]?.teamId === teamSelected;
+
+  const analysis = isTeamOne
+    ? {
+      text: `Your solution correctly identifies the upper median by using Math.floor(length / 2) as the index. 
+             For odd-length arrays this returns the true middle element, and for even-length arrays it returns 
+             the upper of the two middle elements as required. This is a clean O(1) solution with no extra space needed.`,
+      runtime: { grade: "A", color: "teal" },
+      space: { grade: "A", color: "teal" },
+      time: { grade: "A", color: "teal" },
+    }
+    : {
+      text: `Your solution attempts to average the two middle elements for even-length arrays, which would be correct 
+             for a standard median problem. However, this problem specifically requires returning the upper of the two 
+             middle elements rather than their average. For [1,2,3,4] your solution returns 2.5 but the expected 
+             answer is 3.`,
+      runtime: { grade: "B", color: "yellow" },
+      space: { grade: "A", color: "teal" },
+      time: { grade: "B", color: "yellow" },
+    };
   return (
     <Paper shadow="sm" radius="md" p="lg" withBorder style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
 
       <Box style={{ flex: 1 }}>
         <Title order={4} mb="sm" c="blue.7">Solution Analysis</Title>
         <Text size="sm" c="dimmed" lh={1.6}>
-          Your solution effectively utilizes a hash map to achieve the desired outcome, minimizing redundant iterations.
-          However, you could optimize the space complexity by mutating the array in place if the problem constraints allow it.
-          Below is a reference to an optimal approach...
+          {analysis.text}
         </Text>
       </Box>
 
@@ -19,14 +43,14 @@ export default function AnalysisBox() {
         <Text size="sm" fw={600}>Performance Metrics</Text>
 
         <Group gap="xs">
-          <Badge color="teal" variant="light" size="lg" radius="sm">
-            Runtime: A
+          <Badge color={analysis.runtime.color} variant="light" size="lg" radius="sm">
+            Runtime: {analysis.runtime.grade}
           </Badge>
-          <Badge color="yellow" variant="light" size="lg" radius="sm">
-            Space: B
+          <Badge color={analysis.space.color} variant="light" size="lg" radius="sm">
+            Space: {analysis.space.grade}
           </Badge>
-          <Badge color="orange" variant="light" size="lg" radius="sm">
-            Time: C
+          <Badge color={analysis.time.color} variant="light" size="lg" radius="sm">
+            Time: {analysis.time.grade}
           </Badge>
         </Group>
       </Group>

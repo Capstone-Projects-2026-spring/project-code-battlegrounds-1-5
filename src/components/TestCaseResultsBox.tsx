@@ -1,4 +1,5 @@
 import { Paper, Title, Table, Text } from "@mantine/core";
+import { TeamCount } from "@/components/TeamSelect";
 
 // Define the structure of a test case for TypeScript
 interface TestCase {
@@ -9,14 +10,24 @@ interface TestCase {
   passed: boolean;
 }
 
-export default function TestCaseResultsBox() {
-  // Mock data - in your real app, this will come from your backend via props
-  const testCases: TestCase[] = [
-    { id: 1, input: "[1, 2, 3, 4, 5]", expected: "3", actual: "3", passed: true },
-    { id: 2, input: "[5, 6, 7, 8, 9]", expected: "7", actual: "7", passed: true },
-    { id: 3, input: "[1, 2, 3, 4]", expected: "2.5", actual: "2", passed: false },
-  ];
+interface TestCaseResultsProps {
+  teams: TeamCount[];
+  teamSelected: string;
+}
 
+export default function TestCaseResultsBox({teams, teamSelected}: TestCaseResultsProps) {
+  // Mock data - in your real app, this will come from your backend via props
+  const testCases = teamSelected === teams[0]?.teamId
+    ? [
+      { id: "1", input: "[1, 2, 3, 4, 5]", expected: "3", actual: "3", passed: true },
+      { id: "2", input: "[5, 6, 7, 8, 9]", expected: "7", actual: "7", passed: true },
+      { id: "3", input: "[1, 2, 3, 4]", expected: "3", actual: "3", passed: true }  // passes fully
+    ]
+    : [
+      { id: "1", input: "[1, 2, 3, 4, 5]", expected: "3", actual: "3", passed: true },
+      { id: "2", input: "[5, 6, 7, 8, 9]", expected: "7", actual: "7", passed: true },
+      { id: "3", input: "[1, 2, 3, 4]", expected: "3", actual: "2.5", passed: false }  // fails
+    ];
   const rows = testCases.map((element) => (
     <Table.Tr key={element.id}>
       <Table.Td>

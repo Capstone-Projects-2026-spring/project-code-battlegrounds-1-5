@@ -43,16 +43,29 @@ export default function PlayGameRoom() {
   const [testCases, setTestCases] = useState([
     { id: "1", content: "// Test case 1..." },
   ]);
-  const solvedTestCases = [
-    { id: "1", content: "[1, 2, 3, 4, 5] -> 3" },
-    { id: "2", content: "[5, 6, 7, 8, 9] -> 7" },
-    { id: "3", content: "[1, 2, 3, 4] -> 2.5" }
-  ];
+  const solvedTestCases = teamSelected === teams[0]?.teamId
+    ? [
+      { id: "1", content: "[1, 2, 3, 4, 5] -> 3" },
+      { id: "2", content: "[5, 6, 7, 8, 9] -> 7" },
+      { id: "3", content: "[1, 2, 3, 4] -> 3" }  // passes fully
+    ]
+    : [
+      { id: "1", content: "[1, 2, 3, 4, 5] -> 3" },
+      { id: "2", content: "[5, 6, 7, 8, 9] -> 7" },
+      { id: "3", content: "[1, 2, 3, 4] -> 2.5" }  // fails
+    ];
+
+  const teamSelectedRef = useRef(teamSelected);
+  const teamsRef = useRef(teams);
+
+  useEffect(() => { teamSelectedRef.current = teamSelected; }, [teamSelected]);
+  useEffect(() => { teamsRef.current = teams; }, [teams]);
   const [activeTab, setActiveTab] = useState<string | null>("1");
 
   const [spectatorView, setSpectatorView] = useState<Role>(Role.SPECTATOR);
 
   const endTimeRef = useRef<number | null>(null);
+  const [endTime, setEndTime] = useState(0);
   const [isProblemVisible, setIsProblemVisible] = useState(true); // State to manage problem box visibility
   const toggleProblemVisibility = () => setIsProblemVisible((prev) => !prev); // Function to toggle visibility
 
@@ -79,7 +92,7 @@ export default function PlayGameRoom() {
       const mock: ActiveProblem = {
         id: "mock",
         title: "Median",
-        description: "Given a sorted array, find the median element in the array.",
+        description: "Given a sorted array, find the median element in the array. If the array has an even number of elements, return the upper of the two middle elements.",
         difficulty: "EASY",
         topics: ["Arrays"]
       }
@@ -113,6 +126,7 @@ export default function PlayGameRoom() {
       if (isNaN(start) || isNaN(_duration)) return;
       if (!endTimeRef.current) {
         endTimeRef.current = Date.now() + Number(start);
+        setEndTime(endTimeRef.current);
       }
       setDuration(Number(_duration));
       setGameState(GameStatus.ACTIVE);
@@ -120,7 +134,13 @@ export default function PlayGameRoom() {
 
     socketInstance.on("gameEnded", () => {
       setGameState(GameStatus.FINISHED);
-      router.push(`/results/${gameId}`);
+      router.push({
+        pathname: `/results/${gameId}`,
+        query: {
+          teamId: teamSelectedRef.current,
+          allTeams: JSON.stringify(teamsRef.current)
+        }
+      });
     });
 
     socketInstance.on("roleSwapping", () => {
@@ -190,7 +210,13 @@ export default function PlayGameRoom() {
   useEffect(() => {
     if (!socket) return;
     const handleRedirectToResults = () => {
-      router.push(`/results/gameId=${gameId}`);
+      router.push({
+        pathname: `/results/${gameId}`,
+        query: {
+          teamId: teamSelectedRef.current,
+          allTeams: JSON.stringify(teamsRef.current)
+        }
+      });
     };
     socket.on("redirectToResults", handleRedirectToResults);
     return () => {
@@ -332,7 +358,7 @@ export default function PlayGameRoom() {
             >
               {(gameState === GameStatus.ACTIVE || gameState === GameStatus.FLIPPING) && (
                 <Box mb="md" p="1rem" pb={isProblemVisible ? "md" : "1rem"}>
-                  <GameTimer endTime={endTimeRef.current ?? 0} duration={duration} />
+                  <GameTimer endTime={endTime} duration={duration} />
                 </Box>
               )}
               {/* Conditionally render either the ProblemBox or the "Show" icon */}

@@ -9,7 +9,7 @@ function registerSocketHandlers(io, socket, services) {
     socket.userId = userId
     await gameService.registerSocketToUser(userId, socket.id); // needed before to emit from api to socket leaving in case useful later down the road
   })
-
+  
   // 1. Handle joining a specific game room
   socket.on('joinGame', async ({ gameId, teamId }) => {
     await socket.join(gameId);
