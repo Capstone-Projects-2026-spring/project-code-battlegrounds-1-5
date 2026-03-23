@@ -76,6 +76,7 @@ def execute(req: ExecutionRequest):
             "--name", container_name,
             "runner:latest",
         ]
+        print(cmd)
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
         if result.returncode != 0:
             return JSONResponse(status_code=500, content={"error": "Failed to start executor container", "details": result.stderr.strip()})
