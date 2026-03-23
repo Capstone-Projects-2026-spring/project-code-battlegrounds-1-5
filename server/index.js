@@ -10,7 +10,7 @@ const { initSocket } = require('./socket');
 
 // Configure environment
 const dev = process.env.NODE_ENV !== 'production';
-const hostname = 'localhost';
+const hostname = '0.0.0.0';
 const port = Number(process.env.PORT) || 3000;
 
 // Initialize the Next.js app (page handling)
