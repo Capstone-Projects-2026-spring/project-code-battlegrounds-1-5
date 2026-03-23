@@ -204,7 +204,7 @@ export default function PlayGameRoom() {
     //TODO Store submission and evaluate results on the backend, then fetch and display here
     //server broadcasts the event to both players
     if (!socket) return; //make sure the socket is connected before emitting
-    socket.emit("submitCode", { roomId: gameId, code: liveCode });
+    socket.emit("submitCode", { roomId: teamSelected, code: liveCode });
   };
 
   const handleTestBoxChange = (val: string | undefined) => {
@@ -409,7 +409,7 @@ export default function PlayGameRoom() {
                 <Box style={{ width: "30%", minWidth: "200px" }}>
                   <ChatBox
                     socket={socket}
-                    roomId={gameId}
+                    roomId={teamSelected as string}
                     userName={session?.user.name as string}
                     isSpectator={isSpectator}
                   />
