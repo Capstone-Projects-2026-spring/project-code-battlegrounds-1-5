@@ -190,7 +190,7 @@ export default function PlayGameRoom() {
   useEffect(() => {
     if (!socket) return;
     const handleRedirectToResults = () => {
-      router.push(`/results?gameId=${gameId}`);
+      router.push(`/results/gameId=${gameId}`);
     };
     socket.on("redirectToResults", handleRedirectToResults);
     return () => {
