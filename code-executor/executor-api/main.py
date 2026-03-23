@@ -72,6 +72,7 @@ def execute(req: ExecutionRequest):
             "-p", f"{host_port}:8000",
             "--cap-add=SYS_ADMIN",
             "--security-opt", "seccomp=unconfined",
+            "--security-opt", "apparmor=unconfined"
             "--name", container_name,
             "runner:latest",
         ]
