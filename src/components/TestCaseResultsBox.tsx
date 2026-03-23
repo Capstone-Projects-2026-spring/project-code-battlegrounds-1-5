@@ -12,9 +12,9 @@ interface TestCase {
 export default function TestCaseResultsBox() {
   // Mock data - in your real app, this will come from your backend via props
   const testCases: TestCase[] = [
-    { id: 1, input: "1 2 1 4 5 6", expected: "1 1 2 4 5 6", actual: "1 2 1 4 5 6", passed: true },
-    { id: 2, input: "1 1 1 1 h 5", expected: "Error", actual: "1 1 1 1 h 5", passed: false },
-    { id: 3, input: "3 2 1", expected: "1 2 3", actual: "1 2 3", passed: true },
+    { id: 1, input: "[1, 2, 3, 4, 5]", expected: "3", actual: "1 2 1 4 5 6", passed: true },
+    { id: 2, input: "[5, 6, 7, 8, 9]", expected: "7", actual: "7", passed: true },
+    { id: 3, input: "[1, 2, 3, 4]", expected: "2.5", actual: "2", passed: false },
   ];
 
   const rows = testCases.map((element) => (
