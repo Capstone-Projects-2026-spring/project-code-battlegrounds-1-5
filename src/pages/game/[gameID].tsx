@@ -41,9 +41,7 @@ export default function PlayGameRoom() {
   const [liveCode, setLiveCode] = useState<string>("// Waiting for code...");
 
   const [testCases, setTestCases] = useState([
-    { id: "1", content: "[1, 2, 3, 4, 5]" },
-    { id: "2", content: "[5, 6, 7, 8, 9]" },
-    { id: "3", content: "[1, 2, 3, 4]" }
+    { id: "1", content: "// Test case 1..." },
   ]);
   const solvedTestCases = [
     { id: "1", content: "[1, 2, 3, 4, 5] -> 3" },
