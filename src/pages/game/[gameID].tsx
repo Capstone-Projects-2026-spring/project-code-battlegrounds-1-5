@@ -1,4 +1,4 @@
-import { ActionIcon, Box, Button, Center, Group, Loader, Select, Tabs, Text, Tooltip } from '@mantine/core';
+import { ActionIcon, Badge, Box, Button, Center, Group, Loader, Select, Tabs, Text, Tooltip } from '@mantine/core';
 import { Editor } from '@monaco-editor/react';
 import { useRouter } from 'next/router';
 import { useEffect, useState, useRef } from 'react';
@@ -40,7 +40,16 @@ export default function PlayGameRoom() {
 
   const [liveCode, setLiveCode] = useState<string>("// Waiting for code...");
 
-  const [testCases, setTestCases] = useState([{ id: "1", content: "// Write Test 1 here..." }]);
+  const [testCases, setTestCases] = useState([
+    { id: "1", content: "[1, 2, 3, 4, 5]" },
+    { id: "2", content: "[5, 6, 7, 8, 9]" },
+    { id: "3", content: "[1, 2, 3, 4]" }
+  ]);
+  const solvedTestCases = [
+    { id: "1", content: "[1, 2, 3, 4, 5] -> 3" },
+    { id: "2", content: "[5, 6, 7, 8, 9] -> 7" },
+    { id: "3", content: "[1, 2, 3, 4] -> 2.5" }
+  ];
   const [activeTab, setActiveTab] = useState<string | null>("1");
 
   const [spectatorView, setSpectatorView] = useState<Role>(Role.SPECTATOR);
@@ -72,7 +81,7 @@ export default function PlayGameRoom() {
       const mock: ActiveProblem = {
         id: "mock",
         title: "Median",
-        description: "Given an array, find the median element in the array.",
+        description: "Given a sorted array, find the median element in the array.",
         difficulty: "EASY",
         topics: ["Arrays"]
       }
@@ -440,7 +449,13 @@ export default function PlayGameRoom() {
                         {/* <Button size="compact-xs" variant="outline" color="gray" disabled={isSpectator}>
                           Debug
                         </Button> */}
-                        <Button size="compact-xs" variant="filled" color="blue" disabled={isSpectator}>
+                        <Button
+                          size="compact-xs"
+                          variant="filled"
+                          color="blue"
+                          disabled={isSpectator}
+                          onClick={() => setTestCases(solvedTestCases)}
+                        >
                           Run Test
                         </Button>
                       </Group>
@@ -452,7 +467,7 @@ export default function PlayGameRoom() {
                   <Editor
                     height="100%"
                     theme="vs-dark"
-                    defaultLanguage="javascript"
+                    // defaultLanguage="javascript"
                     value={role == Role.TESTER ? (testCases.find(test => test.id === activeTab)?.content ?? "") : ""}
                     onChange={handleTestBoxChange}
                     options={{
