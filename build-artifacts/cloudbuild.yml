@@ -1,4 +1,18 @@
 steps:
+  # build the rootjail container image
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -f
+      - code-executor/executor-image/Dockerfile
+      - -t
+      - "us-central1-docker.pkg.dev/code-battlegrounds/app/rootjail:latest"
+      - .
+
+  # push rootjail image
+  - name: gcr.io/cloud-builders/docker
+    args: ["push", "us-central1-docker.pkg.dev/code-battlegrounds/app/rootjail:latest"]
+
   # this bit builds the full prod image
   - name: gcr.io/cloud-builders/docker
     args:
@@ -26,20 +40,6 @@ steps:
   # push deployment image
   - name: gcr.io/cloud-builders/docker
     args: ["push", "us-central1-docker.pkg.dev/code-battlegrounds/app/migrate:latest"]
-    
-  # build the rootjail container image
-  - name: gcr.io/cloud-builders/docker
-    args:
-      - build
-      - -f
-      - code-executor/executor-image/Dockerfile
-      - -t
-      - "us-central1-docker.pkg.dev/code-battlegrounds/app/rootjail:latest"
-      - .
-
-  # push deployment image
-  - name: gcr.io/cloud-builders/docker
-    args: ["push", "us-central1-docker.pkg.dev/code-battlegrounds/app/rootjail:latest"]
 
 images:
   - "us-central1-docker.pkg.dev/code-battlegrounds/app/app:latest"

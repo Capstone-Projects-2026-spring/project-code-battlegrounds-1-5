@@ -18,8 +18,8 @@ RUN addgroup -g 99999 runner && adduser -D -H -u 99999 -G runner runner && chmod
 
 WORKDIR /app
 
-COPY main.py /app/main.py
-COPY rootfs /app/rootfs
+COPY code-executor/executor-image/main.py /app/main.py
+COPY code-executor/executor-image/rootfs /app/rootfs
 
 # ensure app files are readable by the non-root user
 RUN chown -R runner:runner /app
