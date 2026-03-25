@@ -4,7 +4,7 @@ steps:
     args:
       - build
       - -f
-      - code-executor/executor-image/Dockerfile
+      - build-artifacts/Dockerfile.executor-image
       - -t
       - "us-central1-docker.pkg.dev/code-battlegrounds/app/rootjail:latest"
       - .
