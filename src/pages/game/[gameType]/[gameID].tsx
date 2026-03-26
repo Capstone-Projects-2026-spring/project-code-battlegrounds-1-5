@@ -299,7 +299,7 @@ export default function PlayGameRoom() {
           <RoleFlipPopup gameState={gameState} />
           <Navbar
             links={["Timer", "Players", "Tournament"]}
-            title={`CODE BATTLEGROUNDS | GAMEMODE: TIMER | YOUR ROLE: ${effectiveRole.toUpperCase()}`}
+            title={`CODE BATTLEGROUNDS | GAMEMODE: TIMER | YOUR ROLE: ${effectiveRole?.toUpperCase()}`}
             isSpectator={isSpectator}
           />
 
