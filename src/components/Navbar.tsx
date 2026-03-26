@@ -1,7 +1,6 @@
 import { useState } from 'react';
-import { Burger, Container, Group, Text } from '@mantine/core';
+import { Burger, Container, Group, Text, Anchor} from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
-// import { MantineLogo } from '@mantinex/mantine-logo';
 import classes from '../styles/comps/Header.module.css';
 
 interface HeaderProps {
@@ -12,18 +11,22 @@ interface HeaderProps {
 
 export default function HeaderSimple(props: HeaderProps) {
   const [opened, { toggle }] = useDisclosure(false);
-  // const [active, setActive] = useState(props.links[0].link);
   const [active, setActive] = useState(props.links[0]);
+
+  // split the title
+  const titleParts = props.title.split('|');
+  // get the brand name
+  const brandName = titleParts[0]; // "CODE BATTLEGROUNDS "
+  // put the remaining info back together.
+  const gameInfo = titleParts.slice(1).join('|'); // " GAMEMODE: ... | YOUR ROLE: ..."
 
   const items = props.links.map((link) => (
     <a
       key={link}
-      // href={link.link}
       className={classes.link}
-      // data-active={active === link.link || undefined}
       onClick={(event) => {
         event.preventDefault();
-        setActive(link.link);
+        setActive(link);
       }}
     >
       {link}
@@ -33,14 +36,26 @@ export default function HeaderSimple(props: HeaderProps) {
   return (
     <header className={classes.header}>
       <Container size="md" className={classes.inner}>
-        {/* <MantineLogo size={28} /> */}
-
+        
         <Text c="blue.6" fw={600} mr="auto">
-          {props.title}
+          {/* mantine anchor tag instead a <a or whatever else we'd use  */}
+          <Anchor 
+            href="/auth" 
+            underline="hover" 
+            c="blue.6" 
+            fw={800} 
+            style={{ letterSpacing: '1px' }}
+          >
+            {brandName}
+          </Anchor>
 
-          {/** Optional spectating indicator */}
+          {/* Remaining status text */}
+          {gameInfo && <span style={{ opacity: 0.8, fontWeight: 400 }}> | {gameInfo}</span>}
+
           {props.isSpectator && (
-            <span style={{ marginLeft: 8, color: 'rgb(0, 102, 255)', fontWeight: 500 }}>(Spectating)</span>
+            <span style={{ marginLeft: 8, color: 'rgb(0, 102, 255)', fontWeight: 500 }}>
+              (Spectating)
+            </span>
           )}
         </Text>
 
@@ -53,7 +68,6 @@ export default function HeaderSimple(props: HeaderProps) {
           onClick={toggle}
           hiddenFrom="xs"
           size="sm"
-          aria-label="Toggle navigation"
         />
       </Container>
     </header>
