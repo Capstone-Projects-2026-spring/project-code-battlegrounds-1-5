@@ -223,7 +223,7 @@ export default function PlayGameRoom() {
       </Center>
     );
   }
-  
+
   if (!teamSelected && role !== Role.SPECTATOR) {
     return (
       <TeamSelect
@@ -326,7 +326,8 @@ export default function PlayGameRoom() {
             >
               {(gameState === GameStatus.ACTIVE || gameState === GameStatus.FLIPPING) && (
                 <Box mb="md" p="1rem" pb={isProblemVisible ? "md" : "1rem"}>
-                  <GameTimer endTime={endTime} duration={duration} />
+                  <GameTimer endTime={endTime} duration={duration}
+                  onExpire={()=> socket.emit("submitCode", { roomId: gameId, code: liveCode })} />
                 </Box>
               )}
               {/* Conditionally render either the ProblemBox or the "Show" icon */}
