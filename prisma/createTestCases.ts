@@ -78,23 +78,30 @@ for (const problem of problems) {
   // there could be multiple messages for some reason
   for (const content of msg.content) {
     if (content.type !== "text") continue; // if the msg is not text, continue.
+    try {
+      console.log(content.text);
+      // parse the json from string into object.
+      const parsed = JSON.parse(content.text);
+      // pass it through zod for schema validation
+      const { data } = ClaudeResponse.safeParse(parsed);
+      // console.log(data);
+      if (!data) {
+        console.warn("No data output. continuing.");
+        continue;
+      }
 
-    // parse the json from string into object.
-    const parsed = JSON.parse(content.text);
-    // pass it through zod for schema validation
-    const { data } = ClaudeResponse.safeParse(parsed);
-    console.log(data);
-    if (!data) {
-      console.warn("No data output. continuing.");
+      // claude spits out an array. loop over that array.
+      for (const test of data) {
+        // write each test to the file
+        writable.write(JSON.stringify(test, null, 2));
+        // with a comma at the end of the } lol
+        writable.write(",\n");
+      }
+
+    } catch (error) {
+      console.error(`Failed to generate a test case for:`, problem);
+      console.error(error);
       continue;
-    }
-
-    // claude spits out an array. loop over that array.
-    for (const test of data) {
-      // write each test to the file
-      writable.write(JSON.stringify(test, null, 2));
-      // with a comma at the end of the } lol
-      writable.write(",");
     }
 
   }
