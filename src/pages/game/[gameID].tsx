@@ -201,7 +201,7 @@ export default function PlayGameRoom() {
         <Box h="100vh" style={{ display: "flex", flexDirection: "column" }}>
           <Navbar
             links={["Timer", "Players", "Tournament"]}
-            title={`CODE BATTLEGROUNDS | GAMEMODE: TIMER | YOUR ROLE: ${effectiveRole.toUpperCase()}`}
+            title={`CODE BATTLEGROUNDS | GAMEMODE: TIMER | YOUR ROLE: ${effectiveRole?.toUpperCase()}`}
             isSpectator={isSpectator}
           />
 
