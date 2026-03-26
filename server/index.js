@@ -27,8 +27,13 @@ app.prepare().then(async () => {
   // Initialize Socket.IO, wire adapter + handlers + game timer
   const io = initSocket(httpServer, redis);
 
-  // set redis to notify us of events and start listening
-  await redis.pubClient.config('SET', 'notify-keyspace-events', 'Ex');
+  // set redis to notify us of events and start listening. note that in production, this line will stop the deploy as it will not return correctly. instead, this config needs to be set in memorystore config.
+  if (process.env.NODE_ENV === "development") {
+    console.log("In dev mode. Setting Redis NOTIFY_KEYSPACE_EVENTS to Ex.")
+    await redis.pubClient.config('SET', 'notify-keyspace-events', 'Ex');
+  } else if (process.env.NODE_ENV === "production") {
+    console.log("In prod mode. Assume Memorystore is properly configured")
+  }
   startExpirationListener(io,redis.pubClient);
 
   // Start listening

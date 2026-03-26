@@ -15,7 +15,3 @@ variable "db_user" {
   type = string
 }
 
-variable "better_auth_url" {
-  type = string
-}
-

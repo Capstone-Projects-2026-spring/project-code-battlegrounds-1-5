@@ -44,6 +44,9 @@ resource "google_redis_instance" "redis" {
   memory_size_gb     = 1
   region             = var.region
   authorized_network = var.vpc_network_id
+  redis_configs = {
+    notify-keyspace-events = "Ex"
+  }
 }
 
 # cloud run migrate job to apply db deployments
@@ -103,7 +106,7 @@ resource "google_cloud_run_service" "app" {
 
         env {
           name  = "BETTER_AUTH_URL"
-          value = var.better_auth_url
+          value = "https://app-hnjkqlohiq-uc.a.run.app"
         }
 
         env {

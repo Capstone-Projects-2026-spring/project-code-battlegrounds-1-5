@@ -34,7 +34,6 @@ module "app" {
   region             = var.region
   image_url          = var.image_url
   db_user            = var.db_user
-  better_auth_url    = var.better_auth_url
   # inputs from bootstrap outputs (which must be run first)
   vpc_network_id     = module.bootstrap.vpc_network_id
   vpc_connector_id   = module.bootstrap.vpc_connector_id

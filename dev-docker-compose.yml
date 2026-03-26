@@ -17,5 +17,15 @@ services:
     ports:
       - "${REDIS_PORT}:6379"
 
+  executor:
+    container_name: "battlegrounds-executor"
+    image: us-central1-docker.pkg.dev/code-battlegrounds/app/rootjail:latest
+    security_opt: # if youre not familiar with the wonders of seccomp, you can read up here: https://en.wikipedia.org/wiki/Seccomp. tl;dr, docker filters certain syscalls that our container needs to run rootjails in a container. this is why we treat these containers as disposable in prod, running one code execution per container before trashing it.
+      - seccomp:unconfined
+    cap_add: # similarly to above, the container needs access to some namespace and cgroup primitives. again, this would be a security risk IF we don't treat containers as disposible and set a reasonable ttl on the vms that spawn them themselves
+      - SYS_ADMIN
+    ports:
+      - "${EXECUTOR_PORT}:8000"
+
 volumes:
   postgres_data:

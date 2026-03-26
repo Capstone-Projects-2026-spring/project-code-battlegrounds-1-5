@@ -90,6 +90,9 @@ To develop, you will need a computer with Git, Node, Bun, and Docker Compose.
     # redis
     REDIS_HOST=localhost
     REDIS_PORT=6379
+   
+   # executor image
+    EXECUTOR_PORT=6969
 
     # for prisma
     DATABASE_URL=postgresql://appuser:SOME_SECRET_TOKEN@localhost:5432/appdb
