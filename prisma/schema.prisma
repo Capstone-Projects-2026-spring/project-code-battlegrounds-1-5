@@ -158,24 +158,27 @@ model Problem {
   totalAccepted    Int
   likes            Int
   dislikes         Int
-  hints            String? 
+  starterCode      String?
+  hints            String?
 
   gameRooms GameRoom[]
   tests     ProblemTest[]
 
-  @@map("problem")
+  @@unique([slug])
   @@index([title])
   @@index([slug])
-  @@unique([slug])
+  @@map("problem")
 }
 
 model ProblemTest {
-  id            String  @id @default(uuid())
-  testCode      String
-  language      String
-  problemId     String
-  optimalTimeMs Int
-  problem       Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  id             String @id @default(uuid())
+  problemId      String
+  functionInput  Json // Strongly typed in the frontend
+  expectedOutput Json // ^^
+  language       String
+  optimalTimeMs  Int
+
+  problem Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
 }
 
 model GameResult {
