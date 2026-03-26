@@ -18,6 +18,7 @@ const TestCaseResponse = z.object({
 const ClaudeResponse = z.array(TestCaseResponse);
 
 const writable = fs.createWriteStream("test-cases.json");
+// open the json properly
 writable.write("[\n");
 
 const adapter = new PrismaPg({
@@ -41,9 +42,11 @@ const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY
 });
 
-for (const problem of problems.slice(0, 3)) {
+for (const problem of problems) {
   // Replace placeholders like {{problemText}} with real values,
   // because the SDK does not support variables.
+
+  // get claude to generate the test cases
   const msg = await anthropic.messages.create({
     // stream: true,
     model: "claude-haiku-4-5-20251001",
@@ -69,10 +72,16 @@ for (const problem of problems.slice(0, 3)) {
       "type": "disabled"
     }
   });
+
   // console.log(msg);
+
+  // there could be multiple messages for some reason
   for (const content of msg.content) {
-    if (content.type !== "text") continue;
+    if (content.type !== "text") continue; // if the msg is not text, continue.
+
+    // parse the json from string into object.
     const parsed = JSON.parse(content.text);
+    // pass it through zod for schema validation
     const { data } = ClaudeResponse.safeParse(parsed);
     console.log(data);
     if (!data) {
@@ -80,12 +89,16 @@ for (const problem of problems.slice(0, 3)) {
       continue;
     }
 
+    // claude spits out an array. loop over that array.
     for (const test of data) {
+      // write each test to the file
       writable.write(JSON.stringify(test, null, 2));
+      // with a comma at the end of the } lol
       writable.write(",");
     }
 
   }
 }
 
+// close the json when we're done with it
 writable.write("\n]");
