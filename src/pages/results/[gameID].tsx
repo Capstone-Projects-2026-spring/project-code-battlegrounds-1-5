@@ -1,6 +1,6 @@
 import { useState } from "react";
 import Head from "next/head";
-import { Stack, Box, Title, Flex } from "@mantine/core"; 
+import { Stack, Box, Title, Flex } from "@mantine/core";
 import Navbar from "@/components/Navbar";
 import { useRouter } from "next/router";
 import { authClient } from "@/lib/auth-client";
@@ -11,11 +11,12 @@ import ProblemBox from "@/components/ProblemBox";
 
 export default function Results() {
   const router = useRouter();
+  const { gameID } = router.query;
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { data: session } = authClient.useSession();
 
-  if (!session) return null; 
+  if (!session) return null;
 
   return (
     <>
@@ -31,13 +32,13 @@ export default function Results() {
         />
 
         <Box p="md" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-          
+
           <Title order={2} mb="md" ta="center">
             Match Results
           </Title>
 
           <Flex gap="md" align="stretch" style={{ flex: 1 }}>
-            
+
             <Box style={{ flex: 1 }}>
               <ProblemBox />
             </Box>
