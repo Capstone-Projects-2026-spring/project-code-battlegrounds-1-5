@@ -2,7 +2,7 @@
 // The handler is called directly (no running server needed).
 import { beforeEach, describe, test, expect, jest } from "@jest/globals";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { ProblemDifficulty } from "@prisma/client";
+import { ProblemDifficulty, GameType } from "@prisma/client";
 import handler from "../../src/pages/api/rooms/create";
 import {auth} from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -93,7 +93,7 @@ const mockCreateGameRoom = prisma.gameRoom.create as unknown as jest.MockedFunct
 
         const req = {
             method: "POST",
-            body: { difficulty: ProblemDifficulty.EASY },
+            body: { difficulty: ProblemDifficulty.EASY, gameType: GameType.TWOPLAYER },
             headers: {},
         } as NextApiRequest;
         const res = makeRes();
@@ -110,7 +110,7 @@ const mockCreateGameRoom = prisma.gameRoom.create as unknown as jest.MockedFunct
 
             const req = {
                 method: "POST",
-                body: { difficulty: ProblemDifficulty.EASY },
+                body: { difficulty: ProblemDifficulty.EASY, gameType: GameType.TWOPLAYER },
                 headers: {},
             } as NextApiRequest;
             const res = makeRes();
@@ -121,15 +121,15 @@ const mockCreateGameRoom = prisma.gameRoom.create as unknown as jest.MockedFunct
             expect(res.body).toEqual({ message: "No problems found in the database" });
         });
 
-        test("returns 201 and gameId on success", async () => {
+        test("returns 201 and gameId on twoplayer success", async () => {
             mockGetSession.mockResolvedValue({ user: { id: "user1" } });
             mockCountProblems.mockResolvedValue(1);
             mockFindFirst.mockResolvedValue({ id: "problem1" });
-            mockCreateGameRoom.mockResolvedValue({ id: "abcd1234", problemId: "problem1", teams: { create: [{}, {}] } });
+            mockCreateGameRoom.mockResolvedValue({ id: "abcd1234", problemId: "problem1", gameType: GameType.TWOPLAYER, teams: { create: [{}, {}] } });
 
             const req = {
                 method: "POST",
-                body: { difficulty: ProblemDifficulty.EASY },
+                body: { difficulty: ProblemDifficulty.EASY, gameType: GameType.TWOPLAYER },
                 headers: {},
             } as NextApiRequest;
             const res = makeRes();
@@ -145,7 +145,37 @@ const mockCreateGameRoom = prisma.gameRoom.create as unknown as jest.MockedFunct
                 skip: 0,
             });
             expect(prisma.gameRoom.create).toHaveBeenCalledWith({
-                data: { id: "abcd1234", problemId: "problem1", teams: { create: [{}, {}] } }
+                data: { id: "abcd1234", problemId: "problem1", gameType: GameType.TWOPLAYER, teams: { create: [{}] } }
+            });
+            expect(res.status).toHaveBeenCalledWith(201);
+            expect(res.body).toEqual({ gameId: "abcd1234" });
+        });
+
+        test("returns 201 and gameId on fourplayer success", async () => {
+            mockGetSession.mockResolvedValue({ user: { id: "user1" } });
+            mockCountProblems.mockResolvedValue(1);
+            mockFindFirst.mockResolvedValue({ id: "problem1" });
+            mockCreateGameRoom.mockResolvedValue({ id: "abcd1234", problemId: "problem1", gameType: GameType.FOURPLAYER, teams: { create: [{}, {}] } });
+
+            const req = {
+                method: "POST",
+                body: { difficulty: ProblemDifficulty.EASY, gameType: GameType.FOURPLAYER },
+                headers: {},
+            } as NextApiRequest;
+            const res = makeRes();
+
+            await handler(req, res);
+
+            expect(prisma.problem.count).toHaveBeenCalledWith({
+                where: { difficulty: ProblemDifficulty.EASY },
+            });
+            expect(prisma.problem.findFirst).toHaveBeenCalledWith({
+                where: { difficulty: ProblemDifficulty.EASY },
+                orderBy: { id: "asc" },
+                skip: 0,
+            });
+            expect(prisma.gameRoom.create).toHaveBeenCalledWith({
+                data: { id: "abcd1234", problemId: "problem1", gameType: GameType.FOURPLAYER, teams: { create: [{}, {}] } }
             });
             expect(res.status).toHaveBeenCalledWith(201);
             expect(res.body).toEqual({ gameId: "abcd1234" });
