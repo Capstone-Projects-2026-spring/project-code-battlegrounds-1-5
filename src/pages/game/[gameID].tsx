@@ -30,20 +30,19 @@ export default function PlayGameRoom() {
   // 1. Grab the ID from the URL (e.g., "624")
   const router = useRouter();
   const gameId = router.query.gameID as string;
-  const gameType = router.query.gameType as GameType;
   const { data: session, error, isPending } = authClient.useSession();
 
   // 2. Set up our state for the socket connection and the user's role
   const [role, setRole] = useState<Role | null>(null);
   const [socket, setSocket] = useState<Socket | null>(null);
   const [gameState, setGameState] = useState<GameStatus>(GameStatus.WAITING);
-  const [duration, setDuration] = useState<number>(0);
   const [problem, setProblem] = useState<ActiveProblem | null>(null);
   const [teams, setTeams] = useState<TeamCount[]>([]);
   const [teamSelected, setTeamSelected] = useState<string | null>(null);
   const [liveCode, setLiveCode] = useState<string>("// Waiting for code...");
   const [testCases, setTestCases] = useState<TestCase[]>([{ id: "1", content: "// Write Test 1 here..." }]);
   const [activeTab, setActiveTab] = useState<string | null>("1");
+  const [gameType, setGameType] = useState<GameType | null>(null);
 
   const [spectatorView, setSpectatorView] = useState<Role>(Role.SPECTATOR);
 
@@ -57,17 +56,35 @@ export default function PlayGameRoom() {
 
   const isSpectator = role === Role.SPECTATOR;
 
+
+
   useEffect(() => {
     if (!isPending && !session) {
       router.push("/auth");
     }
-  }, [isPending, session, router])
+  }, [isPending, session, router]);
+
+  useEffect(() => {
+  if (router.query.teamId && router.query.role) {
+    setTeamSelected(router.query.teamId as string);
+    setRole(router.query.role as Role);
+  }
+}, [router.query.teamId, router.query.role]);
 
   // ONLY HAPPENS ON PAGE LAUNCH
   useEffect(() => {
     if (!session?.user.id) return;
     if (!gameId) return;
     if (socketRef.current) return;
+
+    const fetchGameType = async () => {
+      const res = await fetch(`/api/rooms/type?gameId=${gameId}`);
+      const data = await res.json();
+      if (data.gameType) {
+        setGameType(data.gameType);
+      }
+    }
+    fetchGameType();
 
     // fetch teams and their player counts
     const fetchCounts = async () => {
@@ -100,13 +117,12 @@ export default function PlayGameRoom() {
       setGameState(GameStatus.STARTING);
     });
 
-    socketInstance.on("gameStarted", ({ start, _duration }) => {
-      if (isNaN(start) || isNaN(_duration)) return;
+    socketInstance.on("gameStarted", ({ start }) => {
+      if (isNaN(start)) return;
       if (!endTimeRef.current) {
         endTimeRef.current = Date.now() + Number(start);
         setEndTime(endTimeRef.current);
       }
-      setDuration(Number(_duration));
       setGameState(GameStatus.ACTIVE);
     });
 
@@ -230,13 +246,13 @@ export default function PlayGameRoom() {
         userId={session?.user.id as string}
         teams={teams}
         gameRoomId={gameId}
-        onJoined={(teamId, role, playerCount: number | null) => {
+        gameType={gameType as GameType}
+        onJoined={(teamId, role) => {
           setTeamSelected(teamId);
           setRole(role); // TODO: add localStorage persistence
           if (role === Role.SPECTATOR) {
             setGameState(GameStatus.ACTIVE);
           }
-          socket.emit("requestTeamUpdate", { teamId, playerCount });
         }}
       />
     );
@@ -275,12 +291,18 @@ export default function PlayGameRoom() {
         <Box data-testid="spectating-box" style={{ position: 'absolute', top: 12, left: 12, zIndex: 20 }}>
           {teams.map((team, i) => (
             <Group key={team.teamId} gap="xs">
-              <Button data-testid={`team-${i + 1}-coder`} size="sm" onClick={() => { setSpectatorView(Role.CODER); }}>
+              <Button data-testid={`team-${i + 1}-coder`} size="sm" onClick={() => { 
+                setSpectatorView(Role.CODER); 
+                socket.emit("switchSpectatorView", { teamId: team.teamId });
+              }}>
                 Team {i + 1} Coder
               </Button>
-              <Button data-testid={`team-${i + 1}-tester`} size="sm" onClick={() => { setSpectatorView(Role.TESTER); }}>
+              <Button data-testid={`team-${i + 1}-tester`} size="sm" onClick={() => { 
+                setSpectatorView(Role.TESTER); 
+                socket.emit("switchSpectatorView", { teamId: team.teamId });
+              }}>
                 Team {i + 1} Tester
-              </Button>
+              </Button> 
             </Group>
           ))}
           <Button data-testid="exit-spectator" size="sm" onClick={() => setSpectatorView(Role.SPECTATOR)}>Exit View</Button>
@@ -300,7 +322,7 @@ export default function PlayGameRoom() {
           <RoleFlipPopup gameState={gameState} />
           <Navbar
             links={["Timer", "Players", "Tournament"]}
-            title={`CODE BATTLEGROUNDS | GAMEMODE: TIMER | YOUR ROLE: ${effectiveRole?.toUpperCase()}`}
+            title="CODE BATTLEGROUNDS | GAMEMODE: TIMER"
             isSpectator={isSpectator}
           />
 
@@ -327,7 +349,7 @@ export default function PlayGameRoom() {
             >
               {(gameState === GameStatus.ACTIVE || gameState === GameStatus.FLIPPING) && (
                 <Box mb="md" p="1rem" pb={isProblemVisible ? "md" : "1rem"}>
-                  <GameTimer endTime={endTime} duration={duration}
+                  <GameTimer endTime={endTime}
                   onExpire={()=> socket.emit("submitCode", { roomId: gameId, code: liveCode })} />
                 </Box>
               )}
@@ -405,7 +427,7 @@ export default function PlayGameRoom() {
                 <Box style={{ width: "30%", minWidth: "200px" }}>
                   <ChatBox
                     socket={socket as Socket}
-                    roomId={gameId}
+                    roomId={teamSelected as string}
                     userName={session?.user.name as string}
                     isSpectator={isSpectator}
                   />

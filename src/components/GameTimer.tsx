@@ -1,13 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { Text } from "@mantine/core";
 
-interface Props {
+interface GameTimerProps {
   endTime: number;
-  duration: number;
   onExpire?: () => void;
 }
 
-export default function GameTimer({ endTime, duration, onExpire }: Props) {
+export default function GameTimer({ endTime, onExpire }: GameTimerProps) {
   const [timeRemaining, setTimeRemaining] = useState<number>(() =>
     Math.max(0, endTime - Date.now())
   );
