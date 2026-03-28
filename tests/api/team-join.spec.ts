@@ -24,10 +24,6 @@ jest.mock("@/lib/prisma", () => ({
     },
 }));
 
-jest.mock("@/lib/server-context", () => ({
-    getIO: jest.fn(() => null),
-}));
-
 // --- Mock shortcuts ---
 const mockGetSession = auth.api.getSession as unknown as jest.MockedFunction<(...args: any[]) => any>;
 const mockFindFirst = prisma.teamPlayer.findFirst as unknown as jest.MockedFunction<(...args: any[]) => any>;
@@ -124,12 +120,12 @@ describe("POST /api/team/join unit tests", () => {
             where: { id: "team1" },
             data: {
                 players: {
-                    create: { userId: "user1", role: Role.CODER }
+                    create: { userId: "user1", role: Role.CODER}
                 }
             }
         });
         expect(res.status).toHaveBeenCalledWith(201);
-        expect(res.body).toEqual({ role: Role.CODER });
+        expect(res.body).toEqual({ role: Role.CODER, playerCount: 1  });
     });
 
     test("returns 201 and assigns TESTER to second player", async () => {
@@ -152,12 +148,12 @@ describe("POST /api/team/join unit tests", () => {
             where: { id: "team1" },
             data: {
                 players: {
-                    create: { userId: "user2", role: Role.TESTER }
+                    create: { userId: "user2", role: Role.TESTER}
                 }
             }
         });
         expect(res.status).toHaveBeenCalledWith(201);
-        expect(res.body).toEqual({ role: Role.TESTER });
+        expect(res.body).toEqual({ role: Role.TESTER, playerCount: 2  });
     });
 
     test("returns 201 and assigns SPECTATOR when team is full", async () => {
