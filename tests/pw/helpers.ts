@@ -42,13 +42,6 @@ export async function setupGame2(pages: Page[], difficulty: 'easy' | 'medium' | 
         await page.waitForLoadState('networkidle');
     }
 
-    // join teams sequentially to avoid race conditions
-    await pages[0].locator('[data-testid="team-1-button"]').waitFor({ state: 'visible' });
-    await pages[0].click('[data-testid="team-1-button"]');
-
-    await pages[1].locator('[data-testid="team-1-button"]').waitFor({ state: 'visible' });
-    await pages[1].click('[data-testid="team-1-button"]');
-
     return gameUrl;
 }
 
