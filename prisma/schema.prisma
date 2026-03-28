@@ -84,10 +84,17 @@ model InfraTestKv {
 }
 
 enum GameStatus {
+  WAITING
   STARTING
   ACTIVE
+  FLIPPING
   FINISHED
   CANCELLED
+}
+
+enum GameType {
+  TWOPLAYER
+  FOURPLAYER
 }
 
 model GameRoom {
@@ -96,6 +103,7 @@ model GameRoom {
   createdAt  DateTime    @default(now()) @map("created_at")
   endedAt    DateTime?
   problemId  String
+  gameType   GameType
   problem    Problem     @relation(fields: [problemId], references: [id])
   teams      Team[]
   gameResult GameResult?
@@ -114,11 +122,18 @@ model Team {
   @@index([gameRoomId])
 }
 
+enum Role {
+  CODER
+  TESTER
+  SPECTATOR
+}
+
 model TeamPlayer {
-  teamId String
-  userId String
-  team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  teamId      String
+  userId      String
+  role        Role
+  team        Team    @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([teamId, userId])
   @@index([teamId])

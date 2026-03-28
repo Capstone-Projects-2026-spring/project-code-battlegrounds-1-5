@@ -14,6 +14,7 @@ participant "Handlers" as H
 participant "GameService" as GS
 database "Redis (state + adapter)" as R
 participant "ExpirationListener" as EL
+database "Prisma ORM" as PR
 
 == Startup ==
 Client -> Http : HTTP request / WebSocket upgrade
@@ -29,26 +30,42 @@ IO -> H : registerSocketHandlers(io, socket, { gameService })
 H --> IO : handlers bound
 
 == Player joins a game ==
-Client -> Sock : emit("joinGame", gameId)
+Client -> Sock : emit("joinGame", { gameId, teamId })
 activate H
 Sock -> H : on("joinGame") callback
 H -> Sock : socket.join(gameId)
+H -> Sock : socket.join(teamId)
 H -> IO : io.in(gameId).allSockets()
 IO --> H : Set of socket ids (size = N)
-alt first player
-  H -> Sock : emit("waitingForTester")
-  H -> Sock : emit("roleAssigned", "coder")
-else second player
-  H -> GS : startGameIfNeeded(gameId)
+H -> GS : isGameStarted(gameId)
+activate GS
+GS -> R : EXISTS game:{id}:expires
+R --> GS : 1 | 0 (true or false)
+GS --> H : 1 | 0 (true or false)
+deactivate GS
+alt game already started
+  H -> Sock : emit("gameStarting")
+  H -> GS : startGameIfNeeded(gameId) 
   activate GS
   GS -> R : SET game:{id}:expires '1' PX GAME_DURATION_MS NX
   R --> GS : OK | null (already set)
   GS -> R : PTTL game:{id}:expires
   R --> GS : remaining ms
+  GS --> H : { duration: GAME_DURATION_MS, remaining } 
+  deactivate GS
+  H -> Sock : emit("gameStarted", { start: remaining, _duration: GAME_DURATION_MS })
+else if four players joined gameId
+  H -> IO : to(gameId).emit("startingGame")
+  H -> GS : startGameIfNeeded(gameId)
+  activate GS
+  GS -> R : SET game:{id}:expires '1' PX GAME_DURATION_MS NX
+  R --> GS : OK | null (already set)
+  GS -> R : SET game:{id}:flipped '1' PX (GAME_DURATION_MS * randomFlipTimeRatio) NX
+  GS -> R : PTTL game:{id}:expires
+  R --> GS : remaining ms
   GS --> H : { duration: GAME_DURATION_MS, remaining }
   deactivate GS
   H -> IO : to(gameId).emit("gameStarted", { start: remaining, _duration: GAME_DURATION_MS })
-  H -> Sock : emit("roleAssigned", "tester")
 end
 
 H -> GS : getLatestCode(gameId)
@@ -60,29 +77,73 @@ opt has latest code
 end
 
 == Live code relay ==
-Client -> Sock : emit("codeChange", { roomId, code })
+Client -> Sock : emit("codeChange", { teamId, code })
 Sock -> H : on("codeChange")
-H -> GS : saveLatestCode(roomId, code)
-GS -> R : SET game:{id}:code code
+H -> GS : saveLatestCode(teamId, code)
+GS -> R : SET game:{teamId}:code code
 R --> GS : OK
 H -> IO : socket.to(roomId).emit("receiveCodeUpdate", code)
 
 == Chat messages ==
-Client -> Sock : emit("sendChat", { roomId, message })
+Client -> Sock : emit("sendChat", { teamId, message })
 Sock -> H : on("sendChat")
+H -> GS : saveChatMessage(teamId, message)
+GS -> R : RPUSH game:{teamId}:chat message
+R --> GS : number of elements
 H -> IO : socket.to(roomId).emit("receiveChat", message)
+
+== Test cases ==
+Client -> Sock : emit("updateTestCases", { teamId, testCases })
+Sock -> H : on("updateTestCases")
+H -> GS : saveTestCases(teamId, testCases)
+GS -> R : SET game:{teamId}:testcases testCases
+R --> GS : OK
+
+== TestCase sync ==
+Client -> Sock : emit("requestTestCaseSync", { teamId })
+Sock -> H : on("requestTestCaseSync")
+H -> GS : getTestCases(teamId)
+GS -> R : GET game:{teamId}:testcases
+R --> GS : testcases object
+GS --> H : testcases
+H -> Sock : emit("receiveTestCaseSync", { cases: testcases })
+
+== Chat sync ==
+Client -> Sock : emit("requestChatSync", { teamId })
+Sock -> H : on("requestChatSync")
+H -> GS : getChatMessages(teamId)
+GS -> R : LRANGE game:{teamId}:chat
+R --> GS : messages
+H -> Sock : emit("receiveChatHistory")
 
 == Redis key expiration ==
 Http -> R : CONFIG SET notify-keyspace-events Ex
 activate EL
 EL -> R : SUBSCRIBE __keyevent@0__:expired
 R --> EL : expired key events
-EL -> EL : filter keys game:{id}:expires
-EL -> R : SET lock:game:{id}:end '1' NX PX 5000
-alt acquired
-  EL -> IO : to(gameId).emit("gameEnded")
-else not acquired
+EL -> EL : filter keys game:{id}
+alt key ends with roleswap
+  EL -> R : SET lock:game:{id}:roleswap '1' NX PX 5000
+  EL -> IO: to(gameId).emit('roleSwapping');
+  alt acquired roleswap lock
+    EL -> R : SISMEMBER "activeGames" gameId
+    R --> EL : true | false
+    alt activeGame true
+      EL -> PR : team.findMany({ where: {gameId}, select: {id: true}})
+      PR --> EL : teams associated with gameId with team ids
+      EL -> PR : teamPlayer.update({where: {teamId: in teamIds, role: Role.CODER}, data: {role: Role.SPECTATOR}})
+      EL -> PR : teamPlayer.update({where: {teamId: in teamIds, role: Role.TESTER}, data: {role: Role.CODER}})
+      EL -> PR : teamPlayer.update({where: {teamId: in teamIds, role: Role.SPECTATOR}, data: {role: Role.CODER}})
+      EL -> IO : to(teamIds[0]).emit("roleSwap", { teamId : teamIds[0]})
+      EL -> IO : to(teamIds[1]).emit("roleSwap", { teamId : teamIds[1]})
+    else game not active do nothing
+else not acquired roleswap lock
   EL -> EL : skip (another instance handled)
+alt key ends with expires
+  EL -> R : SET lock:game:{id}:end '1' NX PX 5000
+  alt acquired end lock
+else not acquired end lock other instance handling
+
 end
 
 == Disconnect ==

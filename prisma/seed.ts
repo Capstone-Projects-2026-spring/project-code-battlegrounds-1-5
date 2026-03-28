@@ -1,4 +1,4 @@
-import { PrismaClient, GameStatus, ProblemDifficulty } from "@prisma/client";
+import { PrismaClient, GameStatus, ProblemDifficulty, Role, GameType } from "@prisma/client";
 import { auth } from "../src/lib/auth";
 import { PrismaPg } from "@prisma/adapter-pg";
 import * as csv from "csv";
@@ -30,6 +30,7 @@ async function main() {
     { name: "Bob", email: "bob@test.com" },
     { name: "Charlie", email: "charlie@test.com" },
     { name: "Diana", email: "diana@test.com" },
+    { name: "Erik", email: "erik@test.com" }
   ];
 
   for (const u of userDefs) {
@@ -38,7 +39,7 @@ async function main() {
       .catch(() => console.log(`${u.name} already exists, skipping...`));
   }
 
-  const [alice, bob, charlie, diana] = await Promise.all(
+  const [alice, bob, charlie, diana, erik] = await Promise.all(
     userDefs.map((u) => prisma.user.findUniqueOrThrow({ where: { email: u.email } }))
   );
 
@@ -109,6 +110,7 @@ async function main() {
       status: GameStatus.FINISHED,
       problemId: easyProblem.id,
       endedAt: new Date(),
+      gameType: GameType.FOURPLAYER
     },
   });
 
@@ -119,7 +121,7 @@ async function main() {
     data: {
       gameRoomId: gameRoom.id,
       players: {
-        create: [{ userId: alice.id }, { userId: charlie.id }],
+        create: [{ userId: alice.id, role: Role.CODER }, { userId: charlie.id, role: Role.TESTER }],
       },
     },
   });
@@ -128,7 +130,7 @@ async function main() {
     data: {
       gameRoomId: gameRoom.id,
       players: {
-        create: [{ userId: bob.id }, { userId: diana.id }],
+        create: [{ userId: bob.id, role: Role.CODER }, { userId: diana.id, role: Role.TESTER }],
       },
     },
   });
@@ -159,6 +161,7 @@ async function main() {
   console.log("   bob@test.com     / password123");
   console.log("   charlie@test.com / password123");
   console.log("   diana@test.com   / password123");
+  console.log("   erik@test.com    / password123");
 }
 
 main()

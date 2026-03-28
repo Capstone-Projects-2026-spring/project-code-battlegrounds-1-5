@@ -1,51 +1,98 @@
 import { ActionIcon, Box, Button, Center, Group, Loader, Select, Tabs, Text, Tooltip } from '@mantine/core';
 import { Editor } from '@monaco-editor/react';
 import { useRouter } from 'next/router';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { IconEye } from '@tabler/icons-react';
 
 import ChatBox from '@/components/ChatBox';
 import GameTimer from '@/components/GameTimer';
 import Navbar from '@/components/Navbar';
+import TeamSelect from "@/components/TeamSelect";
+import { TeamCount } from "@/components/TeamSelect";
 import type { ActiveProblem } from '@/components/ProblemBox';
 import ProblemBox from '@/components/ProblemBox';
-import React from 'react';
+import RoleFlipPopup from '@/components/RoleFlipPopup';
+
+import { Role, GameStatus, GameType } from "@prisma/client";
+import { authClient } from "@/lib/auth-client";
 
 interface RoomDetailsResponse {
   problem: ActiveProblem;
 }
 
-// TODO: this route should be auth checked (only allow signed-in users to join, not anyone with the URL). See CODEBAT-56
+interface TestCase {
+  id: string
+  content: string
+}
+
 export default function PlayGameRoom() {
   // 1. Grab the ID from the URL (e.g., "624")
   const router = useRouter();
   const gameId = router.query.gameID as string;
+  const { data: session, error, isPending } = authClient.useSession();
 
   // 2. Set up our state for the socket connection and the user's role
-  const [role, setRole] = useState<'coder' | 'tester' | 'spectator' | null>(null);
+  const [role, setRole] = useState<Role | null>(null);
   const [socket, setSocket] = useState<Socket | null>(null);
-  const [gameState, setGameState] = useState<"Waiting" | "In Progress" | "Completed">("Waiting");
-  const [timeRemaining, setTimeRemaining] = useState<number>(0);
-  const [duration, setDuration] = useState<number>(0);
+  const [gameState, setGameState] = useState<GameStatus>(GameStatus.WAITING);
   const [problem, setProblem] = useState<ActiveProblem | null>(null);
-
+  const [teams, setTeams] = useState<TeamCount[]>([]);
+  const [teamSelected, setTeamSelected] = useState<string | null>(null);
   const [liveCode, setLiveCode] = useState<string>("// Waiting for code...");
-
-  const [testCases, setTestCases] = useState([{ id: "1", content: "// Write Test 1 here..." }]);
+  const [testCases, setTestCases] = useState<TestCase[]>([{ id: "1", content: "// Write Test 1 here..." }]);
   const [activeTab, setActiveTab] = useState<string | null>("1");
+  const [gameType, setGameType] = useState<GameType | null>(null);
 
-  const [spectatorView, setSpectatorView] = useState<'none' | 'coder' | 'tester'>('none');
+  const [spectatorView, setSpectatorView] = useState<Role>(Role.SPECTATOR);
 
+  const endTimeRef = useRef<number | null>(null);
+  const [endTime, setEndTime] = useState(0);
   const [isProblemVisible, setIsProblemVisible] = useState(true); // State to manage problem box visibility
   const toggleProblemVisibility = () => setIsProblemVisible((prev) => !prev); // Function to toggle visibility
 
+  const socketRef = useRef<Socket | null>(null);
 
-  const isSpectator = role === 'spectator';
+
+  const isSpectator = role === Role.SPECTATOR;
+
+
+
+  useEffect(() => {
+    if (!isPending && !session) {
+      router.push("/auth");
+    }
+  }, [isPending, session, router]);
+
+  useEffect(() => {
+  if (router.query.teamId && router.query.role) {
+    setTeamSelected(router.query.teamId as string);
+    setRole(router.query.role as Role);
+  }
+}, [router.query.teamId, router.query.role]);
 
   // ONLY HAPPENS ON PAGE LAUNCH
   useEffect(() => {
+    if (!session?.user.id) return;
     if (!gameId) return;
+    if (socketRef.current) return;
+
+    const fetchGameType = async () => {
+      const res = await fetch(`/api/rooms/type?gameId=${gameId}`);
+      const data = await res.json();
+      if (data.gameType) {
+        setGameType(data.gameType);
+      }
+    }
+    fetchGameType();
+
+    // fetch teams and their player counts
+    const fetchCounts = async () => {
+      const res = await fetch(`/api/team/count?gameId=${gameId}`);
+      const data = await res.json();
+      setTeams(data.teams);
+    };
+    fetchCounts();
 
     const loadProblem = async () => {
       try {
@@ -57,63 +104,86 @@ export default function PlayGameRoom() {
         console.error('Failed to load room problem', error);
       }
     };
-
     loadProblem();
 
     // 3. Initialize the connection to our custom server.js backend
     const socketInstance = io();
+    socketRef.current = socketInstance;
+    setSocket(socketRef.current);
 
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setSocket(socketInstance);
+    socketInstance.emit("register", session.user.id);
 
-    // 4. Ask the server to put us in the room for this specific game
-    // sends a signal to the server that we want to join a specific game room, identified by gameId
-    socketInstance.emit('joinGame', gameId);
-
-    socketInstance.on('waitingForTester', () => {
-      setGameState("Waiting");
+    socketInstance.on("gameStarting", () => {
+      setGameState(GameStatus.STARTING);
     });
 
-    socketInstance.on('spectator', () => {
-      setGameState("In Progress");
-    })
-
-    socketInstance.on('gameStarted', ({ start, _duration }) => {
-      if (isNaN(start) || isNaN(_duration)) return;
-      setTimeRemaining(Number(start));
-      setDuration(Number(_duration));
-      setGameState("In Progress");
+    socketInstance.on("gameStarted", ({ start }) => {
+      if (isNaN(start)) return;
+      if (!endTimeRef.current) {
+        endTimeRef.current = Date.now() + Number(start);
+        setEndTime(endTimeRef.current);
+      }
+      setGameState(GameStatus.ACTIVE);
     });
 
     socketInstance.on("gameEnded", () => {
-      setGameState("Completed");
+      setGameState(GameStatus.FINISHED);
+      router.push(`/results/${gameId}`);
     });
 
-    // 5. Wait for the server to reply with our role (coder, tester, or spectator)
-    socketInstance.on('roleAssigned', (assignedRole) => {
-      setRole(assignedRole);
+    socketInstance.on("roleSwapping", () => {
+      setGameState(GameStatus.FLIPPING);
+    });
+
+    socketInstance.on("roleSwap", () => {
+      setGameState(GameStatus.ACTIVE);
+      setRole((prev) => (prev === Role.CODER ? Role.TESTER : Role.CODER));
+    });
+
+    // This is so if another person picks while someone is deciding
+    socketInstance.on("teamUpdated", ({ teamId, playerCount }) => {
+      setTeams((prev) =>
+        prev.map((t) => (t.teamId === teamId ? { ...t, playerCount } : t)),
+      );
     });
 
     // 6. Cleanup: disconnect the socket if the user leaves the page
     return () => {
       socketInstance.disconnect();
     };
-  }, [gameId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameId, session?.user.id]);
 
   useEffect(() => {
-    if (role === 'coder' || !socket) return;
+    // Runs after team gets selected
+    if (!socket || !teamSelected || !gameId || !gameType) return;
+    socket.emit("joinGame", { gameId, teamId: teamSelected, gameType });
+  }, [socket, teamSelected, gameId, gameType]);
+
+
+
+  useEffect(() => {
+    if (!socket || !role) return;
+    socket.emit('requestCodeSync', { teamId: teamSelected });
+    socket.emit('requestTestCaseSync', { teamId: teamSelected });
+
+    const testHandler = (cases: TestCase[]) => {
+      setTestCases(cases);
+    }
+    socket.on('receiveTestCaseSync', testHandler)
 
     const handler = (newCode: string) => setLiveCode(newCode);
 
     socket.on("receiveCodeUpdate", handler);
     return () => {
+      socket.off("recieveTestCaseSync", testHandler);
       socket.off("receiveCodeUpdate", handler);
     };
-  }, [socket, role]);
+  }, [socket, role, teamSelected]);
 
   const handleEditorChange = (value: string | undefined) => {
-    if (value !== undefined && role === 'coder' && socket) {
-      socket.emit("codeChange", { roomId: gameId, code: value });
+    if (value !== undefined && role === Role.CODER && socket) {
+      socket.emit("codeChange", { teamId: teamSelected, code: value });
     }
   };
 
@@ -124,6 +194,7 @@ export default function PlayGameRoom() {
       setActiveTab(newId);
     }
   };
+
   //This useEffect listens for the "redirectToResults" event from the server, which signals that the game has ended and both players should be taken to the results page.
   //When the event is received, it uses Next.js's router to navigate to the /results page, passing along the gameId as a query parameter.
   //This allows both the coder and tester to see their match results after the game concludes.
@@ -147,25 +218,63 @@ export default function PlayGameRoom() {
     socket.emit("submitCode", { roomId: gameId, code: liveCode });
   };
 
-  // --- RENDERING LOGIC ---
+  const handleTestBoxChange = (val: string | undefined) => {
+    if (role !== Role.TESTER || !val || !socket) return;
+    const updated = testCases.map(t => t.id === activeTab ? { ...t, content: val } : t);
+    setTestCases(updated);
+    socket.emit('updateTestCases', { teamId: teamSelected, testCases: updated });
+  }
 
+  // --- RENDERING LOGIC ---
   // State A: Still connecting to the WebSocket server
-  if (!role || !socket) {
+  if (!socket) {
     return (
       <Center h="100vh">
         <Group>
           <Loader color="blue" type="bars" />
-          <Text size="xl" fw={500}>Entering BattleGround {gameId}...</Text>
+          <Text size="xl" fw={500}>
+            Entering BattleGround {gameId}...
+          </Text>
         </Group>
       </Center>
     );
   }
 
-  if (gameState === "Waiting") {
+  if (!teamSelected && role !== Role.SPECTATOR) {
+    return (
+      <TeamSelect
+        userId={session?.user.id as string}
+        teams={teams}
+        gameRoomId={gameId}
+        gameType={gameType as GameType}
+        onJoined={(teamId, role, playerCount) => {
+          setTeamSelected(teamId);
+          setRole(role); // TODO: add localStorage persistence
+          if (role === Role.SPECTATOR) {
+            setGameState(GameStatus.ACTIVE);
+          }
+        socket.emit('requestTeamUpdate', { teamId, playerCount })
+        }}
+      />
+    );
+  }
+
+  if (gameState == GameStatus.STARTING) {
     return (
       <Center h="100vh">
         <Group align="center">
-          <Text size="xl" c="dimmed">Waiting for another player to join...</Text>
+          <Text size="xl" c="dimmed" data-testid="waiting-for-second">Starting in 3...2...1...Battle!</Text>
+          <Text size="md" fw={600}>Room ID: {gameId}</Text>
+        </Group>
+      </Center>
+    );
+  }
+
+  if (gameState === GameStatus.WAITING) {
+    return (
+      <Center h="100vh">
+        <Group align="center">
+          <Text size="xl" c="dimmed" data-testid="waiting-for-second">Waiting for another player to join...</Text>
           <Text size="md" fw={600}>Room ID: {gameId}</Text>
         </Group>
       </Center>
@@ -173,35 +282,49 @@ export default function PlayGameRoom() {
   }
 
   // Determine effective view role for rendering
-  const effectiveRole = isSpectator && spectatorView !== 'none' ? spectatorView : role;
-  const showGameUI = !isSpectator || spectatorView !== 'none';
+  const effectiveRole = isSpectator && spectatorView !== Role.SPECTATOR ? spectatorView : role;
+  const showGameUI = !isSpectator || spectatorView !== Role.SPECTATOR;
 
   return (
     <Box style={{ position: 'relative', height: '100vh' }}>
       {/* Spectator view switcher buttons */}
+      {/* SPECTATOR VIEW BROKEN FOR BOTH 2PLAYER (CANT JOIN) AND 4PLAYER (CANT SEE) */}
       {isSpectator && (
-        <Box style={{ position: 'absolute', top: 12, left: 12, zIndex: 20 }}>
-          <Group gap="xs">
-            <Button size="sm" onClick={() => setSpectatorView('coder')}>View Coder</Button>
-            <Button size="sm" onClick={() => setSpectatorView('tester')}>View Tester</Button>
-            <Button size="sm" onClick={() => setSpectatorView('none')}>Exit View</Button>
-          </Group>
+        <Box data-testid="spectating-box" style={{ position: 'absolute', top: 12, left: 12, zIndex: 20 }}>
+          {teams.map((team, i) => (
+            <Group key={team.teamId} gap="xs">
+              <Button data-testid={`team-${i + 1}-coder`} size="sm" onClick={() => { 
+                setSpectatorView(Role.CODER); 
+                socket.emit("switchSpectatorView", { teamId: team.teamId });
+              }}>
+                Team {i + 1} Coder
+              </Button>
+              <Button data-testid={`team-${i + 1}-tester`} size="sm" onClick={() => { 
+                setSpectatorView(Role.TESTER); 
+                socket.emit("switchSpectatorView", { teamId: team.teamId });
+              }}>
+                Team {i + 1} Tester
+              </Button> 
+            </Group>
+          ))}
+          <Button data-testid="exit-spectator" size="sm" onClick={() => setSpectatorView(Role.SPECTATOR)}>Exit View</Button>
         </Box>
       )}
 
       {/* Spectator waiting message */}
-      {isSpectator && spectatorView === 'none' && (
+      {isSpectator && spectatorView === Role.SPECTATOR && (
         <Center h="100vh">
-          <Text size="xl" c="dimmed">The room is full. You are spectating.</Text>
+          <Text data-testid="spectating-words" size="xl" c="dimmed">The room is full. You are spectating.</Text>
         </Center>
       )}
 
       {/* Main game UI */}
       {showGameUI && (
-        <Box h="100vh" style={{ display: "flex", flexDirection: "column" }}>
+        <Box data-testid={(effectiveRole === Role.CODER) ? "coder-pov" : "tester-pov"} h="100vh" style={{ display: "flex", flexDirection: "column" }}>
+          <RoleFlipPopup gameState={gameState} />
           <Navbar
             links={["Timer", "Players", "Tournament"]}
-            title={`CODE BATTLEGROUNDS | GAMEMODE: TIMER | YOUR ROLE: ${effectiveRole.toUpperCase()}`}
+            title="CODE BATTLEGROUNDS | GAMEMODE: TIMER"
             isSpectator={isSpectator}
           />
 
@@ -226,9 +349,9 @@ export default function PlayGameRoom() {
                 transition: 'width 0.2s ease, min-width 0.2s ease',
               }}
             >
-              {gameState === "In Progress" && (
-                <Box p="1rem" pb={isProblemVisible ? "md" : "1rem"}>
-                  <GameTimer _timeRemaining={timeRemaining} duration={duration}
+              {(gameState === GameStatus.ACTIVE || gameState === GameStatus.FLIPPING) && (
+                <Box mb="md" p="1rem" pb={isProblemVisible ? "md" : "1rem"}>
+                  <GameTimer endTime={endTime}
                   onExpire={()=> socket.emit("submitCode", { roomId: gameId, code: liveCode })} />
                 </Box>
               )}
@@ -266,9 +389,9 @@ export default function PlayGameRoom() {
                   size="xs"
                   data={["Javascript"]}
                   defaultValue="Javascript"
-                  disabled={isSpectator || role !== 'coder'}
+                  disabled={isSpectator || role !== Role.CODER}
                 />
-                {(effectiveRole === 'coder') && (
+                {(effectiveRole === Role.CODER) && (
                   <>
                     <Button size="xs" color="cyan" disabled={isSpectator}>
                       RUN ▷
@@ -297,17 +420,17 @@ export default function PlayGameRoom() {
                     value={liveCode}
                     onChange={!isSpectator ? handleEditorChange : undefined}
                     options={{
-                      readOnly: isSpectator || role !== 'coder',
-                      domReadOnly: isSpectator || role !== 'coder',
+                      readOnly: isSpectator || role !== Role.CODER,
+                      domReadOnly: isSpectator || role !== Role.CODER,
                       minimap: { enabled: false }
                     }}
                   />
                 </Box>
                 <Box style={{ width: "30%", minWidth: "200px" }}>
                   <ChatBox
-                    socket={socket}
-                    roomId={gameId}
-                    role={role === 'coder' ? "Coder" : role === 'tester' ? "Tester" : "Spectator"}
+                    socket={socket as Socket}
+                    roomId={teamSelected as string}
+                    userName={session?.user.name as string}
                     isSpectator={isSpectator}
                   />
                 </Box>
@@ -323,7 +446,7 @@ export default function PlayGameRoom() {
                   minHeight: 0,
                 }}
               >
-                {effectiveRole === 'tester' && (
+                {effectiveRole === Role.TESTER && (
                   <Box p="xs" style={{ borderBottom: "1px solid #444" }}>
                     <Group justify="space-between">
                       <Tabs value={activeTab} onChange={setActiveTab} variant="outline" color="gray">
@@ -357,8 +480,10 @@ export default function PlayGameRoom() {
                     height="100%"
                     theme="vs-dark"
                     defaultLanguage="javascript"
+                    value={role == Role.TESTER ? (testCases.find(test => test.id === activeTab)?.content ?? "") : ""}
+                    onChange={handleTestBoxChange}
                     options={{
-                      readOnly: role !== 'tester',
+                      readOnly: role !== Role.TESTER,
                       minimap: { enabled: false }
                     }}
                   />
@@ -370,30 +495,4 @@ export default function PlayGameRoom() {
       )}
     </Box>
   );
-
-  // State C: Successfully joined as a player! Render the correct layout.
-  // return (
-  //   <>
-  //     {role === 'coder' && (
-  //       <CoderPOV
-  //         socket={socket}
-  //         roomId={gameId}
-  //         timeRemaining={timeRemaining}
-  //         duration={duration}
-  //         gameState={gameState}
-  //         problem={problem}
-  //       />
-  //     )}
-  //     {role === 'tester' && (
-  //       <TesterPOV
-  //         socket={socket}
-  //         roomId={gameId}
-  //         timeRemaining={timeRemaining}
-  //         duration={duration}
-  //         gameState={gameState}
-  //         problem={problem}
-  //       />
-  //     )}
-  //   </>
-  // );
 }

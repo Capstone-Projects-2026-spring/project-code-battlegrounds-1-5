@@ -8,7 +8,7 @@ import type { QuestionQuery, QuestionAPIResponse } from "@/pages/api/question";
 
 const PROTO = process.env.PROTO || "http://"
 const HOST = process.env.HOST || "localhost";
-const PORT = process.env.PORT || 8080;
+const PORT = process.env.PORT || 3000;
 const BASE_URL = `${PROTO}${HOST}:${PORT}`;
 
 async function get(opts?: QuestionQuery) {

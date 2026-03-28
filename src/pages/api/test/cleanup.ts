@@ -1,4 +1,3 @@
-// /pages/api/test/cleanup.ts
 import type { NextApiRequest, NextApiResponse } from "next";
 import { prisma } from "@/lib/prisma";
 
