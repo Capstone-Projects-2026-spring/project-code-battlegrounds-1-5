@@ -28,5 +28,5 @@ export const TestCase = z.object({
   expectedOutput: z.array(Parameter),
   language: Language,
   optimalTimeMs: z.number(),
-  hidden: z.boolean()
+  hidden: z.boolean().optional().default(true)
 });
