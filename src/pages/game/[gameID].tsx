@@ -247,12 +247,13 @@ export default function PlayGameRoom() {
         teams={teams}
         gameRoomId={gameId}
         gameType={gameType as GameType}
-        onJoined={(teamId, role) => {
+        onJoined={(teamId, role, playerCount) => {
           setTeamSelected(teamId);
           setRole(role); // TODO: add localStorage persistence
           if (role === Role.SPECTATOR) {
             setGameState(GameStatus.ACTIVE);
           }
+        socket.emit('requestTeamUpdate', { teamId, playerCount })
         }}
       />
     );
@@ -287,6 +288,7 @@ export default function PlayGameRoom() {
   return (
     <Box style={{ position: 'relative', height: '100vh' }}>
       {/* Spectator view switcher buttons */}
+      {/* SPECTATOR VIEW BROKEN FOR BOTH 2PLAYER (CANT JOIN) AND 4PLAYER (CANT SEE) */}
       {isSpectator && (
         <Box data-testid="spectating-box" style={{ position: 'absolute', top: 12, left: 12, zIndex: 20 }}>
           {teams.map((team, i) => (
