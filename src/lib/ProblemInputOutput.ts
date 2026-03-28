@@ -15,7 +15,7 @@ export type ParameterPrimitiveType = z.infer<typeof ParameterPrimitive>
 export const Parameter = z.object({
   name: z.string(),
   type: ParameterPrimitive,
-  value: z.string() // Will be coerced into the correct primitive based on type.
+  value: z.string().nullable() // Will be coerced into the correct primitive based on type.
 });
 export type ParameterType = z.infer<typeof Parameter>
 
