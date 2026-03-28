@@ -4,6 +4,8 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import * as csv from "csv";
 import * as fs from "node:fs";
 import * as path from "node:path";
+import * as z from "zod";
+import { TestCase } from "@/lib/ProblemInputOutput";
 
 const adapter = new PrismaPg({
   connectionString: process.env.DATABASE_URL!,
@@ -99,6 +101,35 @@ async function main() {
 
   await prisma.problem.createMany({ data: problemsData });
   console.log(`Problems created: ${problemsData.length}`);
+
+  // ── Problem Tests from JSON ──
+  const testCasesPath = path.join(__dirname, "../public/test-cases.json");
+  console.log("Loading test cases...");
+  const testCasesRaw = JSON.parse(fs.readFileSync(testCasesPath, "utf-8"));
+
+  console.log(`Loaded ${testCasesRaw.length} test cases...`);
+  console.log("Sample case:", testCasesRaw[0]);
+
+  const TestCaseArray = z.array(TestCase);
+  const { data: testCases, success, error } = TestCaseArray.safeParse(testCasesRaw);
+  if (!success) {
+    console.error("Error parsing test cases:", error);
+    process.exit(1);
+  } else {
+    console.log("Successfully parsed test cases");
+  }
+
+  const mapped = testCases.map((tc) => ({
+    problemId: tc.problemId,
+    functionInput: tc.functionInput,
+    expectedOutput: tc.expectedOutput,
+    language: tc.language,
+    optimalTimeMs: tc.optimalTimeMs,
+  }));
+
+  await prisma.problemTest.createMany({ data: mapped, skipDuplicates: true });
+
+  console.log(`Test cases created: ${mapped.length}`);
 
   // ── Game Room (completed, using first easy problem) ──
   const easyProblem = await prisma.problem.findFirstOrThrow({
