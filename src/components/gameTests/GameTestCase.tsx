@@ -1,12 +1,6 @@
-import { type ParameterType } from "@/lib/ProblemInputOutput";
-import { Button, Stack, Table, Text, TextInput } from "@mantine/core";
-import { IconPlayerPlay } from "@tabler/icons-react";
-
-export interface TestableCase {
-  id: number,
-  functionInput: ParameterType[],
-  expectedOutput: ParameterType
-}
+import { Button, Group, Stack, Table, Text, TextInput } from "@mantine/core";
+import { IconCode, IconPlayerPlay } from "@tabler/icons-react";
+import { TestableCase } from "./GameTestCasesContext";
 
 export interface GameTestCaseProps {
   testableCase: TestableCase,
@@ -46,13 +40,19 @@ export default function GameTestCase(props: GameTestCaseProps) {
         </Table.Tbody>
       </Table>
 
-      <Button
-        color="green"
-        rightSection={<IconPlayerPlay />}
-        style={{ alignSelf: "flex-start" }}
-      >
-        RUN
-      </Button>
+      <Group align="flex-start" gap="sm">
+        <Button
+          rightSection={<IconCode />}
+        >
+          New Parameter
+        </Button>
+        <Button
+          color="green"
+          rightSection={<IconPlayerPlay />}
+        >
+          Run
+        </Button>
+      </Group>
     </Stack>
   )
 }

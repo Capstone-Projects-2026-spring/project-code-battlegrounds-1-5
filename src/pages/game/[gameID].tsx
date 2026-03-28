@@ -3,7 +3,7 @@ import { Editor } from '@monaco-editor/react';
 import { useRouter } from 'next/router';
 import { useEffect, useState, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { IconEye, IconPlayerPlay, IconPlus } from '@tabler/icons-react';
+import { IconEye, IconPlayerPlay, IconPlayerTrackNext, IconPlayerTrackNextFilled, IconPlus } from '@tabler/icons-react';
 
 import ChatBox from '@/components/ChatBox';
 import GameTimer from '@/components/GameTimer';
@@ -16,7 +16,8 @@ import RoleFlipPopup from '@/components/RoleFlipPopup';
 
 import { Role, GameStatus, GameType } from "@prisma/client";
 import { authClient } from "@/lib/auth-client";
-import GameTestCase, { TestableCase } from '@/components/GameTestCase';
+import GameTestCase from '@/components/gameTests/GameTestCase';
+import { TestableCase } from "@/components/gameTests/GameTestCasesContext";
 
 interface RoomDetailsResponse {
   problem: ActiveProblem;
@@ -165,8 +166,6 @@ export default function PlayGameRoom() {
     socket.emit("joinGame", { gameId, teamId: teamSelected, gameType });
   }, [socket, teamSelected, gameId, gameType]);
 
-
-
   useEffect(() => {
     if (!socket || !role) return;
     socket.emit('requestCodeSync', { teamId: teamSelected });
@@ -193,11 +192,17 @@ export default function PlayGameRoom() {
   };
 
   const addNewTest = () => {
-    if (testCases.length < 5) {
-      const newId = (testCases.length + 1).toString();
-      setTestCases([...testCases, { id: newId, content: `// Write Test ${newId} here...` }]);
-      setActiveTestTab(newId);
-    }
+    if (testCases.length >= 5) return;
+
+    const newId = testCases.length // zero-based index
+    setTestCases([
+      ...testCases,
+      {
+        id: newId,
+        content: `// Write Test ${newId} here...`
+      }]
+    );
+    setActiveTestTab(newId);
   };
 
   //This useEffect listens for the "redirectToResults" event from the server, which signals that the game has ended and both players should be taken to the results page.
@@ -466,20 +471,20 @@ export default function PlayGameRoom() {
                             setActiveTestTab(+(val ?? 0))
                           }}
                           variant="outline"
-                          // color="gray"
+                        // color="gray"
                         >
                           <Tabs.List>
                             {testCases.map((test) => (
                               <Tabs.Tab
                                 key={test.id}
                                 value={String(test.id)}
-                                // style={{ color: "white" }}
+                              // style={{ color: "white" }}
                               >
                                 Test {test.id + 1}
                               </Tabs.Tab>
                             ))}
                             {testCases.length < 5 && !isSpectator && (
-                              <ActionIcon 
+                              <ActionIcon
                                 variant="subtle"
                                 color="gray"
                                 onClick={addNewTest}
@@ -493,7 +498,17 @@ export default function PlayGameRoom() {
                           </Tabs.List>
                         </Tabs>
                         <Group gap="xs">
-                          <Button size="compact-xs" variant="filled" color="blue" disabled={isSpectator}>
+                          <Button
+                            size="compact-sm"
+                            variant="filled"
+                            color="blue"
+                            disabled={isSpectator}
+                            rightSection={
+                              <IconPlayerTrackNextFilled
+                                size="var(--mantine-font-size-lg)"
+                              />
+                            }
+                          >
                             Run All Tests
                           </Button>
                         </Group>
