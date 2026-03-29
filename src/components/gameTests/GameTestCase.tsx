@@ -1,6 +1,6 @@
 import { Button, Group, Stack, Table, Text } from "@mantine/core";
 import { IconCode, IconPlayerPlay } from "@tabler/icons-react";
-import { TestableCase } from "./GameTestCasesContext";
+import { TestableCase, useTestCases } from "./GameTestCasesContext";
 import { type Socket } from "socket.io-client";
 import ParameterInput from "./ParameterInput";
 
@@ -14,11 +14,27 @@ export interface GameTestCaseProps {
 
   // so we can send test case updates over the wire
   // (optional because of results screen)
-  socket?: Socket
+  socket?: Socket,
+  teamId?: string | null,
 }
 
 export default function GameTestCase(props: GameTestCaseProps) {
-  const { testableCase } = props;
+  const { testableCase, socket, teamId } = props;
+  const testCaseCtx = useTestCases();
+
+  const handleTestCaseUpdate = (updatedCase: TestableCase) => {
+    // First update the local context
+    props.onTestCaseChange(updatedCase);
+    
+    // Then emit over socket if available and user is a tester
+    if (socket && teamId) {
+      // Get the updated full array of test cases
+      const updated = testCaseCtx.cases.map(t => 
+        t.id === updatedCase.id ? updatedCase : t
+      );
+      socket.emit('updateTestCases', { teamId, testCases: updated });
+    }
+  };
 
   return (
     <Stack gap="md" style={{ overflow: "auto", minHeight: 0, flex: 1 }}>
@@ -38,7 +54,7 @@ export default function GameTestCase(props: GameTestCaseProps) {
                   onChange={(value) => {
                     const updatedInputs = [...testableCase.functionInput];
                     updatedInputs[idx] = { ...input, value };
-                    props.onTestCaseChange({
+                    handleTestCaseUpdate({
                       ...testableCase,
                       functionInput: updatedInputs
                     });
@@ -63,7 +79,7 @@ export default function GameTestCase(props: GameTestCaseProps) {
                   onChange={(value) => {
                     const updatedOutputs = [...testableCase.expectedOutput];
                     updatedOutputs[idx] = { ...output, value };
-                    props.onTestCaseChange({
+                    handleTestCaseUpdate({
                       ...testableCase,
                       expectedOutput: updatedOutputs
                     });

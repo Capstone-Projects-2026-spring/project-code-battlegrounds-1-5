@@ -211,11 +211,7 @@ function PlayGameRoom() {
     testCaseCtx.addCase({
       id: newId,
       functionInput: testCaseCtx.parameters,
-      expectedOutput: [{
-        name: "out",
-        type: testCaseCtx.parameters.find(p => p.isOutputParameter)?.type ?? "string",
-        value: null
-      }]
+      expectedOutput: testCaseCtx.parameters.filter(p => p.isOutputParameter)
     });
     setActiveTestTab(newId);
   };
@@ -241,13 +237,6 @@ function PlayGameRoom() {
     //server broadcasts the event to both players
     if (!socket) return; //make sure the socket is connected before emitting
     socket.emit("submitCode", { roomId: gameId, code: liveCode });
-  };
-
-  const handleTestBoxChange = (val: string | undefined) => {
-    if (role !== Role.TESTER || !val || !socket) return;
-    const updated = testCaseCtx.cases.map(t => t.id === activeTestTab ? { ...t, content: val } : t);
-    // setTestCases(updated);
-    socket.emit('updateTestCases', { teamId: teamSelected, testCases: updated });
   };
 
   // --- RENDERING LOGIC ---
@@ -525,7 +514,9 @@ function PlayGameRoom() {
 
                       <GameTestCase
                         testableCase={testCaseCtx.cases.find(t => t.id === activeTestTab)!}
-                        onTestCaseChange={() => { }}
+                        onTestCaseChange={testCaseCtx.updateCase}
+                        socket={socket ?? undefined}
+                        teamId={teamSelected}
                       />
                     </Stack>
                   </Box>
