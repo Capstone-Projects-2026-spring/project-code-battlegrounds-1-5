@@ -137,7 +137,7 @@ export default function PlayGameRoom() {
 
     socketInstance.on("roleSwap", () => {
       setGameState(GameStatus.ACTIVE);
-      setRole((prev) => (prev === Role.CODER ? Role.TESTER : Role.CODER));
+      setRole((prev) => (prev === Role.SPECTATOR ? Role.SPECTATOR : prev === Role.CODER ? Role.TESTER : Role.CODER));
     });
 
     // This is so if another person picks while someone is deciding
@@ -163,7 +163,7 @@ export default function PlayGameRoom() {
 
 
   useEffect(() => {
-    if (!socket || !role) return;
+    if (!socket || !role || !teamSelected) return;
     socket.emit('requestCodeSync', { teamId: teamSelected });
     socket.emit('requestTestCaseSync', { teamId: teamSelected });
 
@@ -176,7 +176,7 @@ export default function PlayGameRoom() {
 
     socket.on("receiveCodeUpdate", handler);
     return () => {
-      socket.off("recieveTestCaseSync", testHandler);
+      socket.off("receiveTestCaseSync", testHandler);
       socket.off("receiveCodeUpdate", handler);
     };
   }, [socket, role, teamSelected]);
@@ -195,25 +195,10 @@ export default function PlayGameRoom() {
     }
   };
 
-  //This useEffect listens for the "redirectToResults" event from the server, which signals that the game has ended and both players should be taken to the results page.
-  //When the event is received, it uses Next.js's router to navigate to the /results page, passing along the gameId as a query parameter.
-  //This allows both the coder and tester to see their match results after the game concludes.
-  useEffect(() => {
-    if (!socket) return;
-    const handleRedirectToResults = () => {
-      router.push(`/results/${gameId}`);
-    };
-    socket.on("redirectToResults", handleRedirectToResults);
-    return () => {
-      socket.off("redirectToResults", handleRedirectToResults);
-    };
-  }, [socket, gameId, router]);
-
-
   const submitFinalCode = () => {
     //Send bother Coder and Tester to the results page
     //TODO Store submission and evaluate results on the backend, then fetch and display here
-    //server broadcasts the event to both players
+    //server broadcasts the event to both player
     if (!socket) return; //make sure the socket is connected before emitting
     socket.emit("submitCode", { roomId: gameId, code: liveCode });
   };
@@ -253,7 +238,7 @@ export default function PlayGameRoom() {
           if (role === Role.SPECTATOR) {
             setGameState(GameStatus.ACTIVE);
           }
-        socket.emit('requestTeamUpdate', { teamId, playerCount })
+        socket.emit('requestTeamUpdate', { gameId, teamId, playerCount })
         }}
       />
     );
@@ -294,14 +279,18 @@ export default function PlayGameRoom() {
           {teams.map((team, i) => (
             <Group key={team.teamId} gap="xs">
               <Button data-testid={`team-${i + 1}-coder`} size="sm" onClick={() => { 
+                setTeamSelected(team.teamId);
                 setSpectatorView(Role.CODER); 
-                socket.emit("switchSpectatorView", { teamId: team.teamId });
+                console.log("Effective role: ", effectiveRole);
+                // socket.emit("switchSpectatorView", { teamId: team.teamId });
               }}>
                 Team {i + 1} Coder
               </Button>
               <Button data-testid={`team-${i + 1}-tester`} size="sm" onClick={() => { 
-                setSpectatorView(Role.TESTER); 
-                socket.emit("switchSpectatorView", { teamId: team.teamId });
+                setTeamSelected(team.teamId);
+                setSpectatorView(Role.TESTER);
+                console.log("Effective role: ", effectiveRole); 
+                // socket.emit("switchSpectatorView", { teamId: team.teamId });
               }}>
                 Team {i + 1} Tester
               </Button> 
@@ -352,7 +341,7 @@ export default function PlayGameRoom() {
               {(gameState === GameStatus.ACTIVE || gameState === GameStatus.FLIPPING) && (
                 <Box mb="md" p="1rem" pb={isProblemVisible ? "md" : "1rem"}>
                   <GameTimer endTime={endTime}
-                  onExpire={()=> socket.emit("submitCode", { roomId: gameId, code: liveCode })} />
+                  onExpire={()=> {if (role === Role.CODER) socket.emit("submitCode", { roomId: gameId, code: liveCode })}} />
                 </Box>
               )}
               {/* Conditionally render either the ProblemBox or the "Show" icon */}
@@ -480,7 +469,7 @@ export default function PlayGameRoom() {
                     height="100%"
                     theme="vs-dark"
                     defaultLanguage="javascript"
-                    value={role == Role.TESTER ? (testCases.find(test => test.id === activeTab)?.content ?? "") : ""}
+                    value={effectiveRole == Role.TESTER ? (testCases.find(test => test.id === activeTab)?.content ?? "") : ""}
                     onChange={handleTestBoxChange}
                     options={{
                       readOnly: role !== Role.TESTER,
