@@ -19,6 +19,7 @@ export interface GameTestCasesContextAPI {
   setParameters: React.Dispatch<SetStateAction<ParameterType[]>>,
 
   cases: TestableCase[],
+  setCases: React.Dispatch<SetStateAction<TestableCase[]>>
   addCase: (testCase: TestableCase) => void;
   removeCase: (caseID: TestableCase["id"]) => void;
   updateCase: (testCase: TestableCase) => void;
@@ -29,7 +30,8 @@ export const GameTestCasesContext = createContext<GameTestCasesContextAPI | null
 export const GameTestCasesProvider = ({ children }: { children: ReactNode }) => {
   const [parameters, setParameters] = useState<ParameterType[]>([
     { name: "nums", type: "array_number", value: null },
-    { name: "target", type: "number", value: null }
+    { name: "target", type: "number", value: null },
+    { name: "result", type: "array_number", value: null, isOutputParameter: true }
   ]);
   const [cases, setCases] = useState<TestableCase[]>([
     {
@@ -61,6 +63,8 @@ export const GameTestCasesProvider = ({ children }: { children: ReactNode }) => 
       setParameters,
 
       cases,
+      setCases,
+
       addCase,
       removeCase,
       updateCase
