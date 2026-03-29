@@ -3,6 +3,7 @@ import {
   createContext,
   useContext,
   useState,
+  useRef,
   type ReactNode,
   type SetStateAction
 } from "react";
@@ -53,17 +54,22 @@ export const GameTestCasesProvider = ({ children }: { children: ReactNode }) => 
     setCases(prev => prev.map(c => c.id === testCase.id ? testCase : c));
   };
 
-  const value: GameTestCasesContextAPI = {
-    parameters,
-    setParameters,
-    cases,
-    addCase,
-    removeCase,
-    updateCase
-  };
+  const providerRef = useRef<GameTestCasesContextAPI | null>(null);
+  if (providerRef.current === null) {
+    providerRef.current = {
+      parameters,
+      setParameters,
+
+      cases,
+      addCase,
+      removeCase,
+      updateCase
+    };
+  }
 
   return (
-    <GameTestCasesContext.Provider value={value}>
+    // eslint-disable-next-line react-hooks/refs
+    <GameTestCasesContext.Provider value={providerRef.current}>
       {children}
     </GameTestCasesContext.Provider>
   );
