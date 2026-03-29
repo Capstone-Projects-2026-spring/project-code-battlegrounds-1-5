@@ -204,6 +204,29 @@ function PlayGameRoom() {
     }
   };
 
+  //This useEffect listens for the "redirectToResults" event from the server, which signals that the game has ended and both players should be taken to the results page.
+  //When the event is received, it uses Next.js's router to navigate to the /results page, passing along the gameId as a query parameter.
+  //This allows both the coder and tester to see their match results after the game concludes.
+  useEffect(() => {
+    if (!socket) return;
+    const handleRedirectToResults = () => {
+      router.push(`/results/${gameId}`);
+    };
+    socket.on("redirectToResults", handleRedirectToResults);
+    return () => {
+      socket.off("redirectToResults", handleRedirectToResults);
+    };
+  }, [socket, gameId, router]);
+
+
+  const submitFinalCode = () => {
+    //Send bother Coder and Tester to the results page
+    //TODO Store submission and evaluate results on the backend, then fetch and display here
+    //server broadcasts the event to both players
+    if (!socket) return; //make sure the socket is connected before emitting
+    socket.emit("submitCode", { roomId: gameId, code: liveCode });
+  };
+
   const addNewTest = () => {
     if (testCaseCtx.cases.length >= 5) return;
 
@@ -231,33 +254,10 @@ function PlayGameRoom() {
     socket?.emit("updateTestCases", { teamId: teamSelected, testCases: [...testCaseCtx.cases, newCase] });
   };
 
-  //This useEffect listens for the "redirectToResults" event from the server, which signals that the game has ended and both players should be taken to the results page.
-  //When the event is received, it uses Next.js's router to navigate to the /results page, passing along the gameId as a query parameter.
-  //This allows both the coder and tester to see their match results after the game concludes.
-  useEffect(() => {
-    if (!socket) return;
-    const handleRedirectToResults = () => {
-      router.push(`/results/${gameId}`);
-    };
-    socket.on("redirectToResults", handleRedirectToResults);
-    return () => {
-      socket.off("redirectToResults", handleRedirectToResults);
-    };
-  }, [socket, gameId, router]);
-
-
-  const submitFinalCode = () => {
-    //Send bother Coder and Tester to the results page
-    //TODO Store submission and evaluate results on the backend, then fetch and display here
-    //server broadcasts the event to both players
-    if (!socket) return; //make sure the socket is connected before emitting
-    socket.emit("submitCode", { roomId: gameId, code: liveCode });
-  };
-
-  const handleTestBoxChange = (val: string | undefined) => {
-    if (role !== Role.TESTER || !val || !socket) return;
-    const updated = testCaseCtx.cases.map(t => t.id === activeTestTab ? { ...t, content: val } : t);
-    // setTestCases(updated);
+  const handleTestBoxChange = (testCase: TestableCase) => {
+    console.log("handling test box change");
+    if (role !== Role.TESTER || !socket) return;
+    const updated = testCaseCtx.cases.map(t => t.id === activeTestTab ? testCase : t);
     socket.emit('updateTestCases', { teamId: teamSelected, testCases: updated });
   };
 
@@ -538,7 +538,7 @@ function PlayGameRoom() {
                         return currentTestCase ? (
                           <GameTestCase
                             testableCase={currentTestCase}
-                            onTestCaseChange={() => { }}
+                            onTestCaseChange={handleTestBoxChange}
                           />
                         ) : null;
                       })()}

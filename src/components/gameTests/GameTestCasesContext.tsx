@@ -3,7 +3,6 @@ import {
   createContext,
   useContext,
   useState,
-  useRef,
   type ReactNode,
   type SetStateAction,
 } from "react";
