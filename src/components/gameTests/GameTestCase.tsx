@@ -24,7 +24,7 @@ export default function GameTestCase(props: GameTestCaseProps) {
     <Stack gap="md" style={{ overflow: "auto", minHeight: 0, flex: 1 }}>
       <Table>
         <Table.Tbody>
-          {testableCase.functionInput.map((input, idx) => (
+          {testableCase.functionInput?.map((input, idx) => (
             <Table.Tr key={idx}>
               <Table.Td align="right">
                 <Text c="dimmed">

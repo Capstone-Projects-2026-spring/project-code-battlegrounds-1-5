@@ -202,20 +202,31 @@ function PlayGameRoom() {
     }
   };
 
-  const addNewTest = () => {
+  const addNewTest = async () => {
     if (testCaseCtx.cases.length >= 5) return;
 
     const newId = testCaseCtx.cases.length; // zero-based index
-    testCaseCtx.addCase({
+    console.log("creating new test with id", newId);
+    const newCase = {
       id: newId,
-      functionInput: testCaseCtx.parameters,
-      expectedOutput: [{
-        name: "out",
-        type: testCaseCtx.parameters.find(p => p.isOutputParameter)?.type ?? "string",
-        value: null
-      }]
-    });
+      functionInput: testCaseCtx.parameters
+        .filter(p => !p.isOutputParameter)
+        .map(c => ({
+          ...c,
+          value: null
+        })),
+      expectedOutput: testCaseCtx.parameters
+        .filter(p => p.isOutputParameter)
+        .map(c => ({
+          ...c,
+          value: null
+        })),
+    };
+    testCaseCtx.addCase(newCase);
+
     setActiveTestTab(newId);
+    console.log("emitting new test cases", [...testCaseCtx.cases, newCase]);
+    socket?.emit("updateTestCases", { teamId: teamSelected, testCases: [...testCaseCtx.cases, newCase] });
   };
 
   //This useEffect listens for the "redirectToResults" event from the server, which signals that the game has ended and both players should be taken to the results page.
@@ -504,27 +515,31 @@ function PlayGameRoom() {
                             )}
                           </Tabs.List>
                         </Tabs>
-                        <Group gap="xs">
-                          <Button
-                            size="compact-sm"
-                            variant="filled"
-                            color="blue"
-                            disabled={isSpectator}
-                            rightSection={
-                              <IconPlayerTrackNextFilled
-                                size="var(--mantine-font-size-lg)"
-                              />
-                            }
-                          >
-                            Run All Tests
-                          </Button>
-                        </Group>
+
+                        <Button
+                          size="compact-sm"
+                          variant="filled"
+                          color="blue"
+                          disabled={isSpectator}
+                          rightSection={
+                            <IconPlayerTrackNextFilled
+                              size="var(--mantine-font-size-lg)"
+                            />
+                          }
+                        >
+                          Run All Tests
+                        </Button>
                       </Group>
 
-                      <GameTestCase
-                        testableCase={testCaseCtx.cases.find(t => t.id === activeTestTab)!}
-                        onTestCaseChange={() => { }}
-                      />
+                      {(() => {
+                        const currentTestCase = testCaseCtx.cases.find(t => t.id === activeTestTab);
+                        return currentTestCase ? (
+                          <GameTestCase
+                            testableCase={currentTestCase}
+                            onTestCaseChange={() => { }}
+                          />
+                        ) : null;
+                      })()}
                     </Stack>
                   </Box>
                 )}
