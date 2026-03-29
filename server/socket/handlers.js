@@ -7,15 +7,16 @@ function registerSocketHandlers(io, socket, services) {
 
   console.log(`New connection: ${socket.id}`);
 
-  socket.on('register', async (userId) => {
+  socket.on('register', async ({userId }) => {
     socket.userId = userId
     await gameService.registerSocketToUser(userId, socket.id); // needed before to emit from api to socket leaving in case useful later down the road
   })
 
   // 1. Handle joining a specific game room
   socket.on('joinGame', async ({ gameId, teamId, gameType }) => {
-    await socket.join(gameId);
     await socket.join(teamId);
+    await socket.join(gameId);
+    socket.teamId = teamId;
     socket.gameId = gameId;
 
     // Determine how many people are currently in this specific room (cluster-aware)
@@ -102,7 +103,7 @@ function registerSocketHandlers(io, socket, services) {
     } catch (e) {
       console.error('Error saving test cases', e);
     }
-    // socket.to(teamId).emit('receiveTestCaseSync', testCases);
+    socket.to(teamId).emit('receiveTestCaseSync', testCases);
   });
 
   socket.on('requestTestCaseSync', async ({ teamId }) => {
@@ -119,18 +120,19 @@ function registerSocketHandlers(io, socket, services) {
     if (!roomId) return;
     //TODO Store submission and evaluate results on the backend
     //Broadcast to both players to redirect to results
-    io.to(roomId).emit('redirectToResults');
+    io.to(roomId).emit('gameEnded');
   });
 
-  socket.on('requestTeamUpdate', async ({ teamId, playerCount }) => {
+  socket.on('requestTeamUpdate', async ({ gameId, teamId, playerCount }) => {
     if (!playerCount) return;
-    io.emit('teamUpdated', { teamId, playerCount });
+    io.emit('teamUpdated', { teamId, playerCount }); // TODO: fix - this emits to everyone, scope it to game room except users don't join game room until after TeamSelect, 
+    // so need to figure out a way to emit to all users in the game room including those in team select but not in the game room yet thinking another id to join off of that can be left after teamselect is done
   });
 
   // 3. Handle graceful disconnection
   socket.on('disconnect', async () => {
     console.log(`Disconnected: ${socket.id}`);
-    if (socket.gameId & socket.userId) {
+    if (socket.gameId && socket.userId) {
       await gameService.cleanupGame(socket.gameId, socket.userId)
     }
   });
