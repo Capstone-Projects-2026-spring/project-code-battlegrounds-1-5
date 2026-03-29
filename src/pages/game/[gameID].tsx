@@ -17,7 +17,7 @@ import RoleFlipPopup from '@/components/RoleFlipPopup';
 import { Role, GameStatus, GameType } from "@prisma/client";
 import { authClient } from "@/lib/auth-client";
 import GameTestCase from '@/components/gameTests/GameTestCase';
-import { TestableCase } from "@/components/gameTests/GameTestCasesContext";
+import { GameTestCasesProvider, TestableCase } from "@/components/gameTests/GameTestCasesContext";
 
 interface RoomDetailsResponse {
   problem: ActiveProblem;
@@ -28,7 +28,15 @@ interface RoomDetailsResponse {
 //   content: string
 // }
 
-export default function PlayGameRoom() {
+export default function Page() {
+  return (
+    <GameTestCasesProvider>
+      <PlayGameRoom />
+    </GameTestCasesProvider>
+  )
+}
+
+function PlayGameRoom() {
   // 1. Grab the ID from the URL (e.g., "624")
   const router = useRouter();
   const gameId = router.query.gameID as string;
