@@ -1,9 +1,11 @@
-import { ParameterPrimitiveType, ParameterType } from "@/lib/ProblemInputOutput";
 import { Button, ComboboxData, Flex, Group, Popover, Select, SelectProps, Stack, Table, Text, TextInput } from "@mantine/core";
+import { useForm } from "@mantine/form";
 import { useDisclosure } from "@mantine/hooks";
 import { IconCheck, IconCode, IconHash, IconList, IconListNumbers, IconMatrix, IconPlayerPlay, IconTable, IconTextSize, IconToggleRight } from "@tabler/icons-react";
 import React from "react";
 import { type Socket } from "socket.io-client";
+
+import { ParameterPrimitiveType, ParameterType } from "@/lib/ProblemInputOutput";
 import { TestableCase } from "./GameTestCasesContext";
 import ParameterInput from "./ParameterInput";
 
@@ -82,7 +84,7 @@ export default function GameTestCase(props: GameTestCaseProps) {
       </Table>
 
       <Group align="flex-start" gap="sm">
-        <NewParameterButton />
+        <NewParameterButton onNewParameter={props.onNewParameter} />
         <Button
           color="green"
           rightSection={<IconPlayerPlay />}
@@ -94,7 +96,23 @@ export default function GameTestCase(props: GameTestCaseProps) {
   );
 }
 
-function NewParameterButton() {
+
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+interface NewParameterButtonProps extends Pick<GameTestCaseProps, "onNewParameter"> { }
+
+function NewParameterButton(props: NewParameterButtonProps) {
+  interface FormValues {
+    name: string;
+    type: ParameterPrimitiveType | null
+  }
+  const form = useForm<FormValues>({
+    mode: "uncontrolled",
+    initialValues: {
+      name: '',
+      type: null
+    }
+  });
+
   const data: ComboboxData = [
     { value: "string", label: "String" },
     { value: "number", label: "Number" },
@@ -130,6 +148,21 @@ function NewParameterButton() {
   );
 
   const [opened, { close, toggle }] = useDisclosure();
+
+  const handleSubmit = (values: FormValues) => {
+    console.log(values);
+    form.reset();
+    close();
+
+    const parameter: ParameterType = {
+      name: values.name,
+      type: values.type!,
+      value: "",
+      isOutputParameter: false
+    };
+    props.onNewParameter(parameter);
+  };
+
   return (
     <Popover opened={opened} onClose={close}>
       <Popover.Target>
@@ -142,27 +175,41 @@ function NewParameterButton() {
       </Popover.Target>
 
       <Popover.Dropdown>
-        <Flex direction={"column"} gap="xs">
-          <TextInput
-            withAsterisk
-            label="Parameter Name"
-          />
-          <Select
-            withAsterisk
-            label="Type"
-            data={data}
-            renderOption={renderSelectOption}
-            comboboxProps={{ withinPortal: false }}
-          />
+        <form onSubmit={form.onSubmit(handleSubmit)}>
+          <Flex direction={"column"} gap="xs">
+            <TextInput
+              required
+              label="Parameter Name"
+              {...form.getInputProps("name")}
+            />
+            <Select
+              required
+              label="Type"
+              data={data}
+              renderOption={renderSelectOption}
+              comboboxProps={{ withinPortal: false }}
+              {...form.getInputProps("type")}
+            />
 
-          <Button
-            mt="sm"
-            size="sm"
-            onClick={close}
-          >
-            Done
-          </Button>
-        </Flex>
+            <Group gap="xs" flex={1} mt="sm">
+              <Button
+                size="sm"
+                onClick={close}
+                variant="outline"
+                flex={1}
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                type="submit"
+                flex={1}
+              >
+                Done
+              </Button>
+            </Group>
+          </Flex>
+        </form>
       </Popover.Dropdown>
     </Popover>
   );

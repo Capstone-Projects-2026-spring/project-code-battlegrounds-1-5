@@ -18,6 +18,7 @@ import { Role, GameStatus, GameType } from "@prisma/client";
 import { authClient } from "@/lib/auth-client";
 import GameTestCase from '@/components/gameTests/GameTestCase';
 import { GameTestCasesProvider, TestableCase, useTestCases } from "@/components/gameTests/GameTestCasesContext";
+import { ParameterType } from '@/lib/ProblemInputOutput';
 
 interface RoomDetailsResponse {
   problem: ActiveProblem;
@@ -269,6 +270,20 @@ function PlayGameRoom() {
     setActiveTestId(newId);
     console.log("emitting new test cases", [...testCaseCtx.cases.filter(c => c.id !== testId)]);
     socket?.emit("updateTestCases", { teamId: teamSelected, testCases: [...testCaseCtx.cases.filter(c => c.id !== testId)] });
+  };
+
+  const handleNewParameter = (parameter: ParameterType) => {
+    const cases = testCaseCtx.cases;
+    const newCases = cases.map(c => ({
+      ...c,
+      functionInput: [
+        ...c.functionInput,
+        parameter
+      ]
+    }));
+    console.log("emitting new test cases", newCases);
+    testCaseCtx.setCases(newCases);
+    socket?.emit("updateTestCases", { teamId: teamSelected, testCases: newCases });
   };
 
   const handleTestBoxChange = (testCase: TestableCase) => {
@@ -573,6 +588,7 @@ function PlayGameRoom() {
                           <GameTestCase
                             testableCase={currentTestCase}
                             onTestCaseChange={handleTestBoxChange}
+                            onNewParameter={handleNewParameter}
                           />
                         ) : null;
                       })()}
