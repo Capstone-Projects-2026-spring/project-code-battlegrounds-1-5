@@ -1,7 +1,8 @@
-import { Button, Group, Stack, Table, Text, TextInput } from "@mantine/core";
+import { Button, Group, Stack, Table, Text } from "@mantine/core";
 import { IconCode, IconPlayerPlay } from "@tabler/icons-react";
 import { TestableCase } from "./GameTestCasesContext";
 import { type Socket } from "socket.io-client";
+import ParameterInput from "./ParameterInput";
 
 export interface GameTestCaseProps {
   testableCase: TestableCase,
@@ -31,25 +32,47 @@ export default function GameTestCase(props: GameTestCaseProps) {
                 </Text>
               </Table.Td>
               <Table.Td>
-                <TextInput
+                <ParameterInput
+                  parameter={input}
+                  value={input.value}
+                  onChange={(value) => {
+                    const updatedInputs = [...testableCase.functionInput];
+                    updatedInputs[idx] = { ...input, value };
+                    props.onTestCaseChange({
+                      ...testableCase,
+                      functionInput: updatedInputs
+                    });
+                  }}
                   disabled={props.disabled}
                 />
               </Table.Td>
             </Table.Tr>
           ))}
 
-          <Table.Tr>
-            <Table.Td align="right">
-              <Text c="dimmed">
-                Output =
-              </Text>
-            </Table.Td>
-            <Table.Td>
-              <TextInput
-                disabled={props.disabled}
-              />
-            </Table.Td>
-          </Table.Tr>
+          {testableCase.expectedOutput.map((output, idx) => (
+            <Table.Tr key={`output-${idx}`}>
+              <Table.Td align="right">
+                <Text c="dimmed">
+                  {output.name} =
+                </Text>
+              </Table.Td>
+              <Table.Td>
+                <ParameterInput
+                  parameter={output}
+                  value={output.value}
+                  onChange={(value) => {
+                    const updatedOutputs = [...testableCase.expectedOutput];
+                    updatedOutputs[idx] = { ...output, value };
+                    props.onTestCaseChange({
+                      ...testableCase,
+                      expectedOutput: updatedOutputs
+                    });
+                  }}
+                  disabled={props.disabled}
+                />
+              </Table.Td>
+            </Table.Tr>
+          ))}
         </Table.Tbody>
       </Table>
 
