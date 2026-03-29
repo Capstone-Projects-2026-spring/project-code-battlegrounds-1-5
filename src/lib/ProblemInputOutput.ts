@@ -15,7 +15,8 @@ export type ParameterPrimitiveType = z.infer<typeof ParameterPrimitive>
 export const Parameter = z.object({
   name: z.string(),
   type: ParameterPrimitive,
-  value: z.string() // Will be coerced into the correct primitive based on type.
+  value: z.string().nullable(), // Will be coerced into the correct primitive based on type.
+  isOutputParameter: z.optional(z.boolean().default(false))
 });
 export type ParameterType = z.infer<typeof Parameter>
 
@@ -24,11 +25,11 @@ export const Language = z.union([
 ]);
 
 export const TestCase = z.object({
-  id: z.uuid().optional(),
+  id: z.optional(z.uuid()),
   problemId: z.string(),
   functionInput: z.array(Parameter),
   expectedOutput: z.array(Parameter),
   language: Language,
   optimalTimeMs: z.number(),
-  hidden: z.boolean().optional().default(true)
+  hidden: z.optional(z.boolean().default(false))
 });
