@@ -1,10 +1,19 @@
 import { Button, Group, Stack, Table, Text, TextInput } from "@mantine/core";
 import { IconCode, IconPlayerPlay } from "@tabler/icons-react";
 import { TestableCase } from "./GameTestCasesContext";
+import { type Socket } from "socket.io-client";
 
 export interface GameTestCaseProps {
   testableCase: TestableCase,
   onTestCaseChange: (test: TestableCase) => void;
+
+  // because we might want to show these test cases
+  // on the results screen
+  disabled?: boolean,
+
+  // so we can send test case updates over the wire
+  // (optional because of results screen)
+  socket?: Socket
 }
 
 export default function GameTestCase(props: GameTestCaseProps) {
@@ -22,7 +31,9 @@ export default function GameTestCase(props: GameTestCaseProps) {
                 </Text>
               </Table.Td>
               <Table.Td>
-                <TextInput />
+                <TextInput
+                  disabled={props.disabled}
+                />
               </Table.Td>
             </Table.Tr>
           ))}
@@ -34,7 +45,9 @@ export default function GameTestCase(props: GameTestCaseProps) {
               </Text>
             </Table.Td>
             <Table.Td>
-              <TextInput />
+              <TextInput
+                disabled={props.disabled}
+              />
             </Table.Td>
           </Table.Tr>
         </Table.Tbody>
@@ -54,5 +67,5 @@ export default function GameTestCase(props: GameTestCaseProps) {
         </Button>
       </Group>
     </Stack>
-  )
+  );
 }
