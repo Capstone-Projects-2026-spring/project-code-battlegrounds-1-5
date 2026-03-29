@@ -188,13 +188,15 @@ function PlayGameRoom() {
     socket.on('receiveTestCaseSync', testHandler);
 
     const handler = (newCode: string) => setLiveCode(newCode);
-
     socket.on("receiveCodeUpdate", handler);
+
     return () => {
-      socket.off("recieveTestCaseSync", testHandler);
+      socket.off("receiveTestCaseSync", testHandler);
       socket.off("receiveCodeUpdate", handler);
     };
-  }, [socket, role, teamSelected, testCaseCtx]);
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [socket, role, teamSelected]);
 
   const handleEditorChange = (value: string | undefined) => {
     if (value !== undefined && role === Role.CODER && socket) {
@@ -202,7 +204,7 @@ function PlayGameRoom() {
     }
   };
 
-  const addNewTest = async () => {
+  const addNewTest = () => {
     if (testCaseCtx.cases.length >= 5) return;
 
     const newId = testCaseCtx.cases.length; // zero-based index
