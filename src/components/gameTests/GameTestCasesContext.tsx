@@ -5,7 +5,7 @@ import {
   useState,
   useRef,
   type ReactNode,
-  type SetStateAction
+  type SetStateAction,
 } from "react";
 
 export interface TestableCase {
@@ -47,6 +47,7 @@ export const GameTestCasesProvider = ({ children }: { children: ReactNode }) => 
   ]);
 
   const addCase = (testCase: TestableCase) => {
+    console.log("adding a new case!", "existing cases", cases, "new case", testCase);
     setCases(c => ([...c, testCase]));
   };
   const removeCase = (caseID: TestableCase["id"]) => {
@@ -56,24 +57,18 @@ export const GameTestCasesProvider = ({ children }: { children: ReactNode }) => 
     setCases(prev => prev.map(c => c.id === testCase.id ? testCase : c));
   };
 
-  const providerRef = useRef<GameTestCasesContextAPI | null>(null);
-  if (providerRef.current === null) {
-    providerRef.current = {
-      parameters,
-      setParameters,
-
-      cases,
-      setCases,
-
-      addCase,
-      removeCase,
-      updateCase
-    };
-  }
+  const contextValue: GameTestCasesContextAPI = {
+    parameters,
+    setParameters,
+    cases,
+    setCases,
+    addCase,
+    removeCase,
+    updateCase
+  };
 
   return (
-    // eslint-disable-next-line react-hooks/refs
-    <GameTestCasesContext.Provider value={providerRef.current}>
+    <GameTestCasesContext.Provider value={contextValue}>
       {children}
     </GameTestCasesContext.Provider>
   );
