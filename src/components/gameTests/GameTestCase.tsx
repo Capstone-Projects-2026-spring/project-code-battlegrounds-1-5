@@ -21,7 +21,7 @@ export default function GameTestCase(props: GameTestCaseProps) {
   const { testableCase } = props;
 
   return (
-    <Stack gap="md">
+    <Stack gap="md" style={{ overflow: "auto", minHeight: 0, flex: 1 }}>
       <Table>
         <Table.Tbody>
           {testableCase.functionInput.map((input, idx) => (

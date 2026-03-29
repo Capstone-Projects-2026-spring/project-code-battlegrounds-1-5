@@ -473,8 +473,8 @@ function PlayGameRoom() {
                 }}
               >
                 {effectiveRole === Role.TESTER && (
-                  <Box p="xs">
-                    <Stack>
+                  <Box p="xs" style={{ display: "flex", flexDirection: "column", minHeight: 0, flex: 1 }}>
+                    <Stack style={{ minHeight: 0, flex: 1 }}>
                       <Group justify="space-between">
                         <Tabs
                           value={String(activeTestTab)}
