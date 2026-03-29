@@ -3,7 +3,7 @@ import { Editor } from '@monaco-editor/react';
 import { useRouter } from 'next/router';
 import { useEffect, useState, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { IconEye, IconPlayerPlay, IconPlayerTrackNext, IconPlayerTrackNextFilled, IconPlus } from '@tabler/icons-react';
+import { IconEye, IconPlayerPlay, IconPlayerTrackNextFilled, IconPlus } from '@tabler/icons-react';
 
 import ChatBox from '@/components/ChatBox';
 import GameTimer from '@/components/GameTimer';
@@ -17,7 +17,7 @@ import RoleFlipPopup from '@/components/RoleFlipPopup';
 import { Role, GameStatus, GameType } from "@prisma/client";
 import { authClient } from "@/lib/auth-client";
 import GameTestCase from '@/components/gameTests/GameTestCase';
-import { GameTestCasesProvider, TestableCase } from "@/components/gameTests/GameTestCasesContext";
+import { GameTestCasesProvider, TestableCase, useTestCases } from "@/components/gameTests/GameTestCasesContext";
 
 interface RoomDetailsResponse {
   problem: ActiveProblem;
@@ -29,18 +29,33 @@ interface RoomDetailsResponse {
 // }
 
 export default function Page() {
+  const { data: session, isPending } = authClient.useSession();
+  const router = useRouter();
+
+  // Early auth check to prevent loading all the heavy stuff
+  // if we aren't even logged in
+  useEffect(() => {
+    if (!isPending && !session) {
+      router.replace("/auth");
+    }
+  }, [isPending, session, router]);
+
+  if (isPending) {
+    return <EnteringBattleground />;
+  }
+
   return (
     <GameTestCasesProvider>
       <PlayGameRoom />
     </GameTestCasesProvider>
-  )
+  );
 }
 
 function PlayGameRoom() {
   // 1. Grab the ID from the URL (e.g., "624")
   const router = useRouter();
   const gameId = router.query.gameID as string;
-  const { data: session, error, isPending } = authClient.useSession();
+  const { data: session } = authClient.useSession();
 
   // 2. Set up our state for the socket connection and the user's role
   const [role, setRole] = useState<Role | null>(null);
@@ -50,16 +65,11 @@ function PlayGameRoom() {
   const [teams, setTeams] = useState<TeamCount[]>([]);
   const [teamSelected, setTeamSelected] = useState<string | null>(null);
   const [liveCode, setLiveCode] = useState<string>("// Waiting for code...");
-  const [testCases, setTestCases] = useState<TestableCase[]>([{
-    id: 0,
-    functionInput: [
-      { name: "a", type: "number", value: null },
-      { name: "b", type: "string", value: null }
-    ],
-    expectedOutput: { name: "out", type: "number", value: null }
-  }]);
   const [activeTestTab, setActiveTestTab] = useState<number>(0);
   const [gameType, setGameType] = useState<GameType | null>(null);
+
+  // Context <3
+  const testCaseCtx = useTestCases();
 
   const [spectatorView, setSpectatorView] = useState<Role>(Role.SPECTATOR);
 
@@ -73,12 +83,6 @@ function PlayGameRoom() {
   const isSpectator = role === Role.SPECTATOR;
 
   useEffect(() => {
-    if (!isPending && !session) {
-      router.push("/auth");
-    }
-  }, [isPending, session, router]);
-
-  useEffect(() => {
     if (router.query.teamId && router.query.role) {
       setTeamSelected(router.query.teamId as string);
       setRole(router.query.role as Role);
@@ -87,9 +91,7 @@ function PlayGameRoom() {
 
   // ONLY HAPPENS ON PAGE LAUNCH
   useEffect(() => {
-    if (!session?.user.id) return;
-    if (!gameId) return;
-    if (socketRef.current) return;
+    if (!session?.user.id || !gameId || socketRef.current) return;
 
     const fetchGameType = async () => {
       const res = await fetch(`/api/rooms/type?gameId=${gameId}`);
@@ -97,7 +99,7 @@ function PlayGameRoom() {
       if (data.gameType) {
         setGameType(data.gameType);
       }
-    }
+    };
     fetchGameType();
 
     // fetch teams and their player counts
@@ -180,9 +182,12 @@ function PlayGameRoom() {
     socket.emit('requestTestCaseSync', { teamId: teamSelected });
 
     const testHandler = (cases: TestableCase[]) => {
-      setTestCases(cases);
-    }
-    socket.on('receiveTestCaseSync', testHandler)
+      for (const c of cases) {
+        console.log("Adding test case", c);
+        testCaseCtx.addCase(c);
+      }
+    };
+    socket.on('receiveTestCaseSync', testHandler);
 
     const handler = (newCode: string) => setLiveCode(newCode);
 
@@ -191,7 +196,7 @@ function PlayGameRoom() {
       socket.off("recieveTestCaseSync", testHandler);
       socket.off("receiveCodeUpdate", handler);
     };
-  }, [socket, role, teamSelected]);
+  }, [socket, role, teamSelected, testCaseCtx]);
 
   const handleEditorChange = (value: string | undefined) => {
     if (value !== undefined && role === Role.CODER && socket) {
@@ -200,16 +205,18 @@ function PlayGameRoom() {
   };
 
   const addNewTest = () => {
-    if (testCases.length >= 5) return;
+    if (testCaseCtx.cases.length >= 5) return;
 
-    const newId = testCases.length // zero-based index
-    setTestCases([
-      ...testCases,
-      {
-        id: newId,
-        content: `// Write Test ${newId} here...`
+    const newId = testCaseCtx.cases.length; // zero-based index
+    testCaseCtx.addCase({
+      id: newId,
+      functionInput: testCaseCtx.parameters,
+      expectedOutput: [{
+        name: "out",
+        type: testCaseCtx.parameters.find(p => p.isOutputParameter)?.type ?? "string",
+        value: null
       }]
-    );
+    });
     setActiveTestTab(newId);
   };
 
@@ -238,24 +245,15 @@ function PlayGameRoom() {
 
   const handleTestBoxChange = (val: string | undefined) => {
     if (role !== Role.TESTER || !val || !socket) return;
-    const updated = testCases.map(t => t.id === activeTestTab ? { ...t, content: val } : t);
-    setTestCases(updated);
+    const updated = testCaseCtx.cases.map(t => t.id === activeTestTab ? { ...t, content: val } : t);
+    // setTestCases(updated);
     socket.emit('updateTestCases', { teamId: teamSelected, testCases: updated });
-  }
+  };
 
   // --- RENDERING LOGIC ---
   // State A: Still connecting to the WebSocket server
   if (!socket) {
-    return (
-      <Center h="100vh">
-        <Group>
-          <Loader color="blue" type="bars" />
-          <Text size="xl" fw={500}>
-            Entering BattleGround {gameId}...
-          </Text>
-        </Group>
-      </Center>
-    );
+    return <EnteringBattleground />;
   }
 
   if (!teamSelected && role !== Role.SPECTATOR) {
@@ -271,7 +269,7 @@ function PlayGameRoom() {
           if (role === Role.SPECTATOR) {
             setGameState(GameStatus.ACTIVE);
           }
-          socket.emit('requestTeamUpdate', { teamId, playerCount })
+          socket.emit('requestTeamUpdate', { teamId, playerCount });
         }}
       />
     );
@@ -325,7 +323,13 @@ function PlayGameRoom() {
               </Button>
             </Group>
           ))}
-          <Button data-testid="exit-spectator" size="sm" onClick={() => setSpectatorView(Role.SPECTATOR)}>Exit View</Button>
+          <Button
+            data-testid="exit-spectator"
+            size="sm"
+            onClick={() => setSpectatorView(Role.SPECTATOR)}
+          >
+            Exit View
+          </Button>
         </Box>
       )}
 
@@ -462,8 +466,7 @@ function PlayGameRoom() {
               {/* Bottom Row: Console / Test Cases */}
               <Box
                 style={{
-                  // flex: "1 1 35%",
-                  // backgroundColor: "#1e1e1e",
+                  flex: "1 1 35%",
                   display: "flex",
                   flexDirection: "column",
                   minHeight: 0,
@@ -476,22 +479,20 @@ function PlayGameRoom() {
                         <Tabs
                           value={String(activeTestTab)}
                           onChange={val => {
-                            setActiveTestTab(+(val ?? 0))
+                            setActiveTestTab(+(val ?? 0));
                           }}
                           variant="outline"
-                        // color="gray"
                         >
                           <Tabs.List>
-                            {testCases.map((test) => (
+                            {testCaseCtx.cases.map((test) => (
                               <Tabs.Tab
                                 key={test.id}
                                 value={String(test.id)}
-                              // style={{ color: "white" }}
                               >
                                 Test {test.id + 1}
                               </Tabs.Tab>
                             ))}
-                            {testCases.length < 5 && !isSpectator && (
+                            {testCaseCtx.cases.length < 5 && !isSpectator && (
                               <ActionIcon
                                 variant="subtle"
                                 color="gray"
@@ -523,7 +524,7 @@ function PlayGameRoom() {
                       </Group>
 
                       <GameTestCase
-                        testableCase={testCases.find(t => t.id === activeTestTab)!}
+                        testableCase={testCaseCtx.cases.find(t => t.id === activeTestTab)!}
                         onTestCaseChange={() => { }}
                       />
                     </Stack>
@@ -551,5 +552,18 @@ function PlayGameRoom() {
         </Box>
       )}
     </Box>
+  );
+}
+
+function EnteringBattleground() {
+  return (
+    <Center h="100vh">
+      <Group>
+        <Loader color="blue" type="bars" />
+        <Text size="xl" fw={500}>
+          Entering BattleGround...
+        </Text>
+      </Group>
+    </Center>
   );
 }
