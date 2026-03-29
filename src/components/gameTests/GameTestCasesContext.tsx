@@ -11,7 +11,7 @@ import {
 export interface TestableCase {
   id: number;
   functionInput: ParameterType[];
-  expectedOutput: ParameterType;
+  expectedOutput: ParameterType[];
 }
 
 export interface GameTestCasesContextAPI {
@@ -27,18 +27,32 @@ export interface GameTestCasesContextAPI {
 export const GameTestCasesContext = createContext<GameTestCasesContextAPI | null>(null);
 
 export const GameTestCasesProvider = ({ children }: { children: ReactNode }) => {
-  const [parameters, setParameters] = useState<ParameterType[]>([]);
-  const [cases, setCases] = useState<TestableCase[]>([]);
+  const [parameters, setParameters] = useState<ParameterType[]>([
+    { name: "nums", type: "array_number", value: null },
+    { name: "target", type: "number", value: null }
+  ]);
+  const [cases, setCases] = useState<TestableCase[]>([
+    {
+      id: 0,
+      functionInput: [
+        { name: "nums", type: "array_number", value: "[2, 7, 11, 15]" },
+        { name: "target", type: "number", value: "9" }
+      ],
+      expectedOutput: [
+        { name: "result", type: "array_number", value: "[0, 1]", isOutputParameter: true }
+      ]
+    }
+  ]);
 
   const addCase = (testCase: TestableCase) => {
-    setCases(c => ([...c, testCase]))
-  }
+    setCases(c => ([...c, testCase]));
+  };
   const removeCase = (caseID: TestableCase["id"]) => {
-    setCases(prev => prev.filter(c => c.id !== caseID))
-  }
+    setCases(prev => prev.filter(c => c.id !== caseID));
+  };
   const updateCase = (testCase: TestableCase) => {
-    setCases(prev => prev.map(c => c.id === testCase.id ? testCase : c))
-  }
+    setCases(prev => prev.map(c => c.id === testCase.id ? testCase : c));
+  };
 
   const providerRef = useRef<GameTestCasesContextAPI | null>(null);
   if (providerRef.current === null) {
@@ -50,7 +64,7 @@ export const GameTestCasesProvider = ({ children }: { children: ReactNode }) => 
       addCase,
       removeCase,
       updateCase
-    }
+    };
   }
 
   return (
@@ -58,8 +72,8 @@ export const GameTestCasesProvider = ({ children }: { children: ReactNode }) => 
     <GameTestCasesContext.Provider value={providerRef.current}>
       {children}
     </GameTestCasesContext.Provider>
-  )
-}
+  );
+};
 
 export function useTestCases() {
   const ctx = useContext(GameTestCasesContext);
