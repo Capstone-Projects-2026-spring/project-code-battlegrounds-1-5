@@ -182,10 +182,8 @@ function PlayGameRoom() {
     socket.emit('requestTestCaseSync', { teamId: teamSelected });
 
     const testHandler = (cases: TestableCase[]) => {
-      for (const c of cases) {
-        console.log("Adding test case", c);
-        testCaseCtx.addCase(c);
-      }
+      console.log("Receiving test case sync!", cases);
+      testCaseCtx.setCases(cases);
     };
     socket.on('receiveTestCaseSync', testHandler);
 
