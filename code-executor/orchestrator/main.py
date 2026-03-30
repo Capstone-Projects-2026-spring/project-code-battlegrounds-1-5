@@ -3,6 +3,7 @@ from typing import Optional, List
 
 from fastapi import FastAPI, status
 from fastapi.responses import JSONResponse, PlainTextResponse
+from google.cloud import compute_v1
 from pydantic import BaseModel
 from enum import Enum
 from contextlib import asynccontextmanager
@@ -17,11 +18,29 @@ class Status(Enum):
     KMS = 4
     ERROR = 5
 
+PROJECT_ID = "code-battlegrounds"
+MACHINE_IMAGE = "executor-vm"
+ZONE = "us-central"
+
 class VM:
+    def _create(self):
+        client = compute_v1.InstancesClient()
+
+        instance = compute_v1.Instance()
+        instance.name = self.game_id
+        instance.source_machine_image = MACHINE_IMAGE
+        operation = client.insert(
+            project=PROJECT_ID,
+            zone=ZONE,
+            instance_resource=instance,
+        )
+        return operation
+
     def __init__(self, game_id):
-        self.game_id = game_id
+        self.game_id = "game-{game_id}".format(game_id=game_id)
         self.ip = None
         self.status = Status.STARTING
+        self._create()
 
 class Pool: # we're gonna make a VM per game. based on my math, if a VM is 50$ a month, it will cost us a whopping .8 cents to keep a vm up per game
     def __init__(self):
@@ -29,6 +48,7 @@ class Pool: # we're gonna make a VM per game. based on my math, if a VM is 50$ a
 
     def scale(self, game_id: str): # TODO: not yet implemented
         self.games[game_id] = VM(game_id)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI): # ignore the warning here. mess with this line and everything breaks. you have been warned!
