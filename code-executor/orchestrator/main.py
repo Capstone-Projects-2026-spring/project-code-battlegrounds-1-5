@@ -42,7 +42,7 @@ class VM:
             except Exception as e:
                 print("Unable to create instance in zone {}".format(zone))
 
-        print("No instances available!")
+        print("No instances available!") # TODO: getting this every time. why?
         return None
 
     def __init__(self, game_id):
