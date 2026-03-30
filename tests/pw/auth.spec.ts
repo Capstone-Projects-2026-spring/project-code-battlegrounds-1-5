@@ -81,6 +81,12 @@ test.describe('Auth flow', () => {
     await expect(page).toHaveURL("/auth");
   });
 
+  test("matchmaking requires auth", async ({ page }) => {
+    await page.goto("/matchmaking");
+
+    await expect(page).toHaveURL("/auth");
+  })
+
 
   test.afterAll(async ({ request }) => {
     await request.post("/api/test/cleanup", {

@@ -127,6 +127,7 @@ model GameRoom {
 model Team {
   id         String       @id @default(uuid())
   gameRoomId String
+  createdAt  DateTime     @default(now())
   gameRoom   GameRoom     @relation(fields: [gameRoomId], references: [id], onDelete: Cascade)
   players    TeamPlayer[]
   wonGame    GameResult?  @relation("WinningTeamRelation")

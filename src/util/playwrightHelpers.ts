@@ -8,6 +8,11 @@ export async function loginAs(page: Page, email: string, password: string) {
     await page.waitForURL('**/');
 }
 
+export async function goToMatchmaking(page: Page) {
+    await page.click('[data-testid="matchmaking-link"]');
+    await page.waitForURL('**/matchmaking');
+}
+
 export async function setupGame4(pages: Page[], difficulty: 'easy' | 'medium' | 'hard'): Promise<string> {
     const gameUrl = await createGame4(pages[0], difficulty);
 

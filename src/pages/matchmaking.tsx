@@ -102,6 +102,7 @@ export default function QueuePage() {
 
                 <Text size="sm" fw={500} mb="xs">Mode</Text>
                 <SegmentedControl
+                    data-testid="mode-control"
                     fullWidth
                     mb="md"
                     value={gameType}

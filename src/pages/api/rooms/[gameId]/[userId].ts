@@ -71,6 +71,7 @@ export default async function handler(
         },
         gameType: true,
         teams: {
+          orderBy: { createdAt: "asc" },
           select: {
             id: true,
             players: {
@@ -95,7 +96,7 @@ export default async function handler(
 
 
     // Find which team this user is on
-    const userTeam = room.teams.find(t => t.players.length > 0);
+    const userTeam = room.teams.find(t => t.players.some(p => p.userId === userId));
     const teamId = userTeam?.id ?? null;
     const role = userTeam?.players.find(p => p.userId === userId)?.role ?? null;
 

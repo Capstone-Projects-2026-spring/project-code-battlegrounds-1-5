@@ -132,7 +132,7 @@ function createMatchmakingService(stateRedis, io) {
             }
 
             const gameRoom = await this._createGameInDB(players, gameType, difficulty);
-            await this._notifyPlayers(gameRoom, gameType, difficulty);
+            await this._notifyPlayers(gameRoom);
             return { status: 'matched', gameId: gameRoom.id };
         },
 
@@ -147,11 +147,11 @@ function createMatchmakingService(stateRedis, io) {
 
             const players = lobby.members.map(m => ({ userId: m.userId, lobbyId }));
             const gameRoom = await this._createGameInDB(players, gameType, difficulty);
-            await this._notifyPlayers(gameRoom, gameType, difficulty);
+            await this._notifyPlayers(gameRoom);
             return { status: 'matched', gameId: gameRoom.id };
         },
 
-        async _notifyPlayers(gameRoom, gameType, difficulty) {
+        async _notifyPlayers(gameRoom) {
             for (const team of gameRoom.teams) {
                 for (const teamPlayer of team.players) {
                     const socketId = await stateRedis.get(`socket:${teamPlayer.userId}`);
@@ -176,8 +176,14 @@ function createMatchmakingService(stateRedis, io) {
 
             const teamGroups = [];
             for (let i = 0; i < players.length; i += 2) {
-                teamGroups.push(players.slice(i, i + 2));
+                const group = players.slice(i, i + 2);
+                if (group.length < 2) {
+                    throw new Error(`Invalid team group at index ${i} — only ${group.length} player(s)`);
+                }
+                teamGroups.push(group);
             }
+
+            console.log('teamGroups:', JSON.stringify(teamGroups, null, 2));
 
             const roomID = nanoid(8);
 

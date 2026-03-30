@@ -68,6 +68,7 @@ export default function PartnerSearch() {
           <Divider orientation="vertical" />
 
           <Button
+            data-testid="matchmaking-link"
             size="lg"
             color="black"
             onClick={handleRandom}

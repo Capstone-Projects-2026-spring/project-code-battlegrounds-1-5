@@ -119,7 +119,8 @@ function PlayGameRoom() {
         setTeams(data.teams as TeamCount[]);
         if (data.teamId) setTeamSelected(data.teamId as string);
         if (data.role) setRole(data.role as Role);
-        
+        console.log("Fetched room details:", data);
+
         if (data.gameType === GameType.TWOPLAYER && !data.teamId && !data.role) {
           // Auto-join team if it's a 2 player game and the user isn't assigned to a team yet
           const teamId = data.teams[0]?.teamId;

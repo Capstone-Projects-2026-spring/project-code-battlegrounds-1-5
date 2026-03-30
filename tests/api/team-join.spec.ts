@@ -25,9 +25,13 @@ jest.mock("@/lib/prisma", () => ({
 }));
 
 // --- Mock shortcuts ---
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const mockGetSession = auth.api.getSession as unknown as jest.MockedFunction<(...args: any[]) => any>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const mockFindFirst = prisma.teamPlayer.findFirst as unknown as jest.MockedFunction<(...args: any[]) => any>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const mockCount = prisma.teamPlayer.count as unknown as jest.MockedFunction<(...args: any[]) => any>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const mockUpdate = prisma.team.update as unknown as jest.MockedFunction<(...args: any[]) => any>;
 
 // --- Fake HTTP response ---
