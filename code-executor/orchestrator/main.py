@@ -23,7 +23,7 @@ class VM:
         self.ip = None
         self.status = Status.STARTING
 
-class Pool(): # we're gonna make a VM per game. based on my math, if a VM is 50$ a month, it will cost us a whopping .8 cents to keep a vm up per game
+class Pool: # we're gonna make a VM per game. based on my math, if a VM is 50$ a month, it will cost us a whopping .8 cents to keep a vm up per game
     def __init__(self):
         self.games = {}
 
@@ -49,7 +49,10 @@ def health():
 class PrewarmRequest(BaseModel):
     gameId: str
 
-@app.post("/request-warm-vm", response_class=Response)
+@app.post("/request-warm-vm", response_class=Response, responses={
+    200: {"description": "Warm VM has been requested and is ready"},
+    201: {"description": "Warm VM creation requested"},
+})
 def request_warm_vm(request: PrewarmRequest):
     print("Requested warm VM for gameId " + request.gameId)
     # sometimes the lifecycle shit is weird so check manually too
