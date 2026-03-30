@@ -236,6 +236,7 @@ console.log("Cases before", cases.length)
 for (const c of cases) {
   const t = toRemove.find(t => t === c.problemId)
   if (t)
+    // @ts-expect-error // oh fuck off
     cases = cases.filter(c => c.problemId !== t);
 }
 console.log("Cases after", cases.length);
