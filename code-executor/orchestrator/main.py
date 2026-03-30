@@ -20,21 +20,30 @@ class Status(Enum):
 
 PROJECT_ID = "code-battlegrounds"
 MACHINE_IMAGE = "projects/code-battlegrounds/global/machineImages/executor-vm"
-ZONE = "us-central"
+ZONES = ["us-central-a", "us-central-b", "us-central-c", "us-central-d"]
 
 class VM:
     def _create(self):
         client = compute_v1.InstancesClient()
 
-        instance = compute_v1.Instance()
-        instance.name = self.game_id
-        instance.source_machine_image = MACHINE_IMAGE
-        operation = client.insert(
-            project=PROJECT_ID,
-            zone=ZONE,
-            instance_resource=instance,
-        )
-        return operation
+        for zone in ZONES:
+            try:
+                instance = compute_v1.Instance()
+                instance.name = self.game_id
+                instance.source_machine_image = MACHINE_IMAGE
+
+                op = client.insert(
+                    project=PROJECT_ID,
+                    zone=zone,
+                    instance_resource=instance,
+                )
+                print("instance created in zone {}".format(zone))
+                return op
+            except Exception as e:
+                print("Unable to create instance in zone {}".format(zone))
+
+        print("No instances available!")
+        return None
 
     def __init__(self, game_id):
         self.game_id = "game-{game_id}".format(game_id=game_id)
