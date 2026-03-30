@@ -121,7 +121,8 @@ function registerSocketHandlers(io, socket, services) {
   socket.on('submitCode', async (data) => {
     const { roomId, code } = data || {};
     if (!roomId) return;
-    //TODO Store submission
+    
+    // TODO: Store submission
     //Broadcast to both players to redirect to results
 
     try {
@@ -161,7 +162,7 @@ function registerSocketHandlers(io, socket, services) {
       body: {
         roomId,
         code,
-        testCases
+        testCases: JSON.stringify(testCases)
       },
     });
     const json = await res.json();
