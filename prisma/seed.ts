@@ -173,7 +173,7 @@ async function main() {
     data: {
       gameRoomId: gameRoom.id,
       winningTeamId: team1.id,
-      bestCode: `function solution(nums, target) {
+      team1Code: `function solution(nums, target) {
   const map = {};
   for (let i = 0; i < nums.length; i++) {
     const complement = target - nums[i];
