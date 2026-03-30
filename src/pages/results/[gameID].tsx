@@ -38,10 +38,13 @@ export function Results() {
   const router = useRouter();
   const gameId = router.query.gameID as string;
   const { data: session } = authClient.useSession();
-  const { gameID } = router.query;
+  const [socket, setSocket] = useState<Socket | null>(null);
+
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [problem, setProblem] = useState<ActiveProblem | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const [gameType, setGameType] = useState<GameType | null>(null);
   
   useEffect(() => {
     const loadProblem = async () => {
