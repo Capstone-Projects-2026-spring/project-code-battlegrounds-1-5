@@ -19,7 +19,7 @@ class Status(Enum):
     ERROR = 5
 
 PROJECT_ID = "code-battlegrounds"
-MACHINE_IMAGE = "executor-vm"
+MACHINE_IMAGE = "projects/code-battlegrounds/global/machineImages/executor-vm"
 ZONE = "us-central"
 
 class VM:
