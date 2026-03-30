@@ -128,6 +128,7 @@ function PlayGameRoom() {
       }
     };
     loadRoomDetails();
+    setLoading(false);
 
     // 3. Initialize the connection to our custom server.js backend
     const socketInstance = io();
