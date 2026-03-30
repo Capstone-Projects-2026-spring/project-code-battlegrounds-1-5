@@ -185,7 +185,8 @@ model GameResult {
   id            String @id @default(uuid())
   gameRoomId    String @unique
   winningTeamId String @unique
-  bestCode      String
+  team1Code     String
+  team2Code     String //nullable if gamemode is cooperative
   timeToPassMs  Int
 
   winningTeam Team     @relation("WinningTeamRelation", fields: [winningTeamId], references: [id])
