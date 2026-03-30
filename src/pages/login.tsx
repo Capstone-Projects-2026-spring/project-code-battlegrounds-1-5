@@ -26,7 +26,7 @@ export default function LoginPage() {
       email,
       password,
       callbackURL: "/",
-      rememberMe: false
+      rememberMe: true
     }, {
       onRequest: (ctx) => {
         setLoading(true);

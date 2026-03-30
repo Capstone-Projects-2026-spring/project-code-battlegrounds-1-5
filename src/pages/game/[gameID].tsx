@@ -3,7 +3,7 @@ import { Editor } from '@monaco-editor/react';
 import { useRouter } from 'next/router';
 import { useEffect, useState, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { IconEye, IconPlayerPlay, IconPlayerTrackNextFilled, IconPlus, IconTrash } from '@tabler/icons-react';
+import { IconEye, IconPlayerPlay, IconPlayerTrackNextFilled, IconPlus } from '@tabler/icons-react';
 
 import ChatBox from '@/components/ChatBox';
 import GameTimer from '@/components/GameTimer';
@@ -63,6 +63,7 @@ function PlayGameRoom() {
   const [role, setRole] = useState<Role | null>(null);
   const [socket, setSocket] = useState<Socket | null>(null);
   const [gameState, setGameState] = useState<GameStatus>(GameStatus.WAITING);
+  const [loading, setLoading] = useState(true);
   const [problem, setProblem] = useState<ActiveProblem | null>(null);
   const [teams, setTeams] = useState<TeamCount[]>([]);
   const [teamSelected, setTeamSelected] = useState<string | null>(null);
@@ -118,6 +119,7 @@ function PlayGameRoom() {
         if (!response.ok) return;
         const data = (await response.json()) as RoomDetailsResponse;
         setProblem(data.problem);
+        setLoading(false);
       } catch (error) {
         console.error('Failed to load room problem', error);
       }
@@ -155,7 +157,7 @@ function PlayGameRoom() {
 
     socketInstance.on("roleSwap", () => {
       setGameState(GameStatus.ACTIVE);
-      setRole((prev) => (prev === Role.CODER ? Role.TESTER : Role.CODER));
+      setRole((prev) => (prev === Role.SPECTATOR ? Role.SPECTATOR : prev === Role.CODER ? Role.TESTER : Role.CODER));
     });
 
     // This is so if another person picks while someone is deciding
@@ -179,7 +181,7 @@ function PlayGameRoom() {
   }, [socket, teamSelected, gameId, gameType]);
 
   useEffect(() => {
-    if (!socket || !role) return;
+    if (!socket || !role || !teamSelected) return;
     socket.emit('requestCodeSync', { teamId: teamSelected });
     socket.emit('requestTestCaseSync', { teamId: teamSelected });
 
@@ -206,27 +208,13 @@ function PlayGameRoom() {
     }
   };
 
-  //This useEffect listens for the "redirectToResults" event from the server, which signals that the game has ended and both players should be taken to the results page.
-  //When the event is received, it uses Next.js's router to navigate to the /results page, passing along the gameId as a query parameter.
-  //This allows both the coder and tester to see their match results after the game concludes.
-  useEffect(() => {
-    if (!socket) return;
-    const handleRedirectToResults = () => {
-      router.push(`/results/${gameId}`);
-    };
-    socket.on("redirectToResults", handleRedirectToResults);
-    return () => {
-      socket.off("redirectToResults", handleRedirectToResults);
-    };
-  }, [socket, gameId, router]);
-
 
   const submitFinalCode = () => {
     //Send bother Coder and Tester to the results page
     //TODO Store submission and evaluate results on the backend, then fetch and display here
-    //server broadcasts the event to both players
+    //server broadcasts the event to both player
     if (!socket) return; //make sure the socket is connected before emitting
-    socket.emit("submitCode", { roomId: gameId, code: liveCode });
+    socket.emit("submitCode", { roomId: teamSelected, code: liveCode });
   };
 
   const addNewTest = () => {
@@ -309,7 +297,7 @@ function PlayGameRoom() {
 
   // --- RENDERING LOGIC ---
   // State A: Still connecting to the WebSocket server
-  if (!socket) {
+  if (!socket || loading) {
     return <EnteringBattleground />;
   }
 
@@ -361,20 +349,22 @@ function PlayGameRoom() {
   return (
     <Box style={{ position: 'relative', height: '100vh' }}>
       {/* Spectator view switcher buttons */}
-      {/* SPECTATOR VIEW BROKEN FOR BOTH 2PLAYER (CANT JOIN) AND 4PLAYER (CANT SEE) */}
+      {/* spectator view bug for 4PLAYER (Teams ordered wrong?) */}
       {isSpectator && (
         <Box data-testid="spectating-box" style={{ position: 'absolute', top: 12, left: 12, zIndex: 20 }}>
           {teams.map((team, i) => (
             <Group key={team.teamId} gap="xs">
-              <Button data-testid={`team-${i + 1}-coder`} size="sm" onClick={() => {
-                setSpectatorView(Role.CODER);
-                socket.emit("switchSpectatorView", { teamId: team.teamId });
+              <Button data-testid={`team-${i + 1}-coder`} size="sm" onClick={() => { 
+                setTeamSelected(team.teamId);
+                setSpectatorView(Role.CODER); 
+                console.log("Effective role: ", effectiveRole);
               }}>
                 Team {i + 1} Coder
               </Button>
-              <Button data-testid={`team-${i + 1}-tester`} size="sm" onClick={() => {
+              <Button data-testid={`team-${i + 1}-tester`} size="sm" onClick={() => { 
+                setTeamSelected(team.teamId);
                 setSpectatorView(Role.TESTER);
-                socket.emit("switchSpectatorView", { teamId: team.teamId });
+                console.log("Effective role: ", effectiveRole); 
               }}>
                 Team {i + 1} Tester
               </Button>
@@ -383,7 +373,7 @@ function PlayGameRoom() {
           <Button
             data-testid="exit-spectator"
             size="sm"
-            onClick={() => setSpectatorView(Role.SPECTATOR)}
+            onClick={() => {setTeamSelected(null); setSpectatorView(Role.SPECTATOR)}}
           >
             Exit View
           </Button>
@@ -431,7 +421,7 @@ function PlayGameRoom() {
               {(gameState === GameStatus.ACTIVE || gameState === GameStatus.FLIPPING) && (
                 <Box mb="md" p="1rem" pb={isProblemVisible ? "md" : "1rem"}>
                   <GameTimer endTime={endTime}
-                    onExpire={() => socket.emit("submitCode", { roomId: gameId, code: liveCode })} />
+                  onExpire={()=> {if (role === Role.CODER) socket.emit("submitCode", { roomId: gameId, code: liveCode });}} />
                 </Box>
               )}
               {/* Conditionally render either the ProblemBox or the "Show" icon */}

@@ -99,16 +99,16 @@ To develop, you will need a computer with Git, Node, Bun, and Docker Compose.
     ```
    Remember to `source` as needed!
 3. Run `bun install` to install the dependencies.
-4. Run `bunx prisma generate` to generate the Prisma client and database migrations.
+4. Run `bunx --bun prisma generate` to generate the Prisma client and database migrations.
 5. Run `docker compose -f ./dev-docker-compose.yml up -d` to bring up the containers (you may need to run as root).
-6. Run `bunx prisma migrate dev` to bring the database up to schema.
-7. Run `bunx prisma db seed` to add mock data to the dev database.
+6. Run `bunx --bun prisma migrate dev` to bring the database up to schema.
+7. Run `bunx --bun prisma db seed` to add mock data to the dev database.
 8. Run `bun dev` to launch the development server and navigate to `localhost:3000` to view the page.
 9. When done, `docker compose -f ./dev-docker-compose.yml down` will bring the containers down.
 
 ### Helpful Common Commands and Tricks
 - `docker compose -f ./dev-docker-compose.yml down -v` will stop the containers and purge the volumes. Good if you _really_ mess something up (you WILL lose data!).
-- `bunx prisma migrate reset` will drop the DB (you WILL lose data!).
+- `bunx --bun prisma migrate reset` will drop the DB (you WILL lose data!).
 - If your database is stuck out of sync and you can't apply migrations, run `rm -rf ./prisma/migrations/**` to remove all pending migrations. Then recreate the migration with `bunx prisma migrate dev --name dev` and apply it.
 - To see how the websockets are working, try opening up the game page in an incognito tab to be registered as a different client.
 
