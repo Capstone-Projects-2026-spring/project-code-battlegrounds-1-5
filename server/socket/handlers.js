@@ -144,25 +144,31 @@ function registerSocketHandlers(io, socket, services) {
 
   /**
    * data: object
-   * data.roomId: string,
+   * data.gameId: string,
+   * data.teamId: string,
    * data.code: string,
-   * data.testCases: Array<TestableCase> 
+   * data.testCases: Array<TestableCase>
+   * data.runIDs: Array<number> test case IDs to run
    * 
    * @see GameTestCasesContext#TestableCase
    */
   socket.on("submitTestCases", async (data) => {
     const {
-      roomId,
+      gameId,
+      teamId,
       code,
-      testCases
+      testCases,
+      runIDs
     } = data;
 
     const res = await fetch("http://fake-backend.lol:6969/execute-tests", {
       method: "POST",
       body: {
-        roomId,
+        gameId,
+        teamId,
         code,
-        testCases: JSON.stringify(testCases)
+        testCases: JSON.stringify(testCases),
+        runIDs: JSON.stringify(runIDs)
       },
     });
     const json = await res.json();

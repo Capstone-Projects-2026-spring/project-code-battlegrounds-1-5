@@ -18,9 +18,10 @@ import { showRoleSwapWarning } from '@/components/notifications';
 import { Role, GameStatus, GameType } from "@prisma/client";
 import { authClient } from "@/lib/auth-client";
 import GameTestCase from '@/components/gameTests/GameTestCase';
-import { GameTestCasesProvider, TestableCase, useTestCases } from "@/components/gameTests/GameTestCasesContext";
+import { GameTestCasesProvider, TestableCase, useTestCases } from "@/components/contexts/GameTestCasesContext";
 import { ParameterType } from '@/lib/ProblemInputOutput';
 import NewParameterButton from '@/components/gameTests/NewParameterButton';
+import { GameStateProvider, useGameState } from '@/components/contexts/GameStateContext';
 
 interface RoomDetailsResponse {
   problem: ActiveProblem;
@@ -48,9 +49,11 @@ export default function Page() {
   }
 
   return (
-    <GameTestCasesProvider>
-      <PlayGameRoom />
-    </GameTestCasesProvider>
+    <GameStateProvider>
+      <GameTestCasesProvider>
+        <PlayGameRoom />
+      </GameTestCasesProvider>
+    </GameStateProvider>
   );
 }
 
@@ -72,8 +75,11 @@ function PlayGameRoom() {
   const [activeTestId, setActiveTestId] = useState<number>(0);
   const [gameType, setGameType] = useState<GameType | null>(null);
 
+  const [runningAllTests, setRunningAllTests] = useState<boolean>(false);
+
   // Context <3
   const testCaseCtx = useTestCases();
+  const gameStateCtx = useGameState();
 
   const [spectatorView, setSpectatorView] = useState<Role>(Role.SPECTATOR);
 
@@ -89,13 +95,18 @@ function PlayGameRoom() {
   useEffect(() => {
     if (router.query.teamId && router.query.role) {
       setTeamSelected(router.query.teamId as string);
+      gameStateCtx.setTeamId(router.query.teamId as string);
       setRole(router.query.role as Role);
     }
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router.query.teamId, router.query.role]);
 
   // ONLY HAPPENS ON PAGE LAUNCH
   useEffect(() => {
     if (!session?.user.id || !gameId || socketRef.current) return;
+
+    gameStateCtx.setGameId(gameId);
 
     const fetchGameType = async () => {
       const res = await fetch(`/api/rooms/type?gameId=${gameId}`);
@@ -131,6 +142,7 @@ function PlayGameRoom() {
     const socketInstance = io();
     socketRef.current = socketInstance;
     setSocket(socketRef.current);
+    gameStateCtx.setSocket(socketRef.current);
 
     socketInstance.emit("register", session.user.id);
 
@@ -156,7 +168,7 @@ function PlayGameRoom() {
       if (role) {
         showRoleSwapWarning(role);
       } else {
-        showRoleSwapWarning(Role.CODER); 
+        showRoleSwapWarning(Role.CODER);
       }
     });
 
@@ -187,6 +199,9 @@ function PlayGameRoom() {
     // Runs after team gets selected
     if (!socket || !teamSelected || !gameId || !gameType) return;
     socket.emit("joinGame", { gameId, teamId: teamSelected, gameType });
+    gameStateCtx.setGameType(gameType);
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [socket, teamSelected, gameId, gameType]);
 
   useEffect(() => {
@@ -197,6 +212,7 @@ function PlayGameRoom() {
     const testHandler = (cases: TestableCase[]) => {
       console.log("Receiving test case sync!", cases);
       testCaseCtx.setCases(cases);
+      setRunningAllTests(false);
     };
     socket.on('receiveTestCaseSync', testHandler);
 
@@ -214,6 +230,7 @@ function PlayGameRoom() {
   const handleEditorChange = (value: string | undefined) => {
     if (value !== undefined && role === Role.CODER && socket) {
       socket.emit("codeChange", { teamId: teamSelected, code: value });
+      gameStateCtx.setCode(value);
     }
   };
 
@@ -304,6 +321,19 @@ function PlayGameRoom() {
     socket.emit('updateTestCases', { teamId: teamSelected, testCases: updated });
   };
 
+  const handleRunAllTests = () => {
+    if (role !== Role.TESTER || !socket) return;
+
+    setRunningAllTests(true);
+    socket.emit("submitTestCases", {
+      gameId,
+      teamId: teamSelected,
+      code: liveCode,
+      testCases: testCaseCtx.cases,
+      runIDs: testCaseCtx.cases.map(t => t.id) // all of em!
+    });
+  };
+
   // --- RENDERING LOGIC ---
   // State A: Still connecting to the WebSocket server
   if (!socket || loading) {
@@ -363,17 +393,17 @@ function PlayGameRoom() {
         <Box data-testid="spectating-box" style={{ position: 'absolute', top: 12, left: 12, zIndex: 20 }}>
           {teams.map((team, i) => (
             <Group key={team.teamId} gap="xs">
-              <Button data-testid={`team-${i + 1}-coder`} size="sm" onClick={() => { 
+              <Button data-testid={`team-${i + 1}-coder`} size="sm" onClick={() => {
                 setTeamSelected(team.teamId);
-                setSpectatorView(Role.CODER); 
+                setSpectatorView(Role.CODER);
                 console.log("Effective role: ", effectiveRole);
               }}>
                 Team {i + 1} Coder
               </Button>
-              <Button data-testid={`team-${i + 1}-tester`} size="sm" onClick={() => { 
+              <Button data-testid={`team-${i + 1}-tester`} size="sm" onClick={() => {
                 setTeamSelected(team.teamId);
                 setSpectatorView(Role.TESTER);
-                console.log("Effective role: ", effectiveRole); 
+                console.log("Effective role: ", effectiveRole);
               }}>
                 Team {i + 1} Tester
               </Button>
@@ -382,7 +412,10 @@ function PlayGameRoom() {
           <Button
             data-testid="exit-spectator"
             size="sm"
-            onClick={() => {setTeamSelected(null); setSpectatorView(Role.SPECTATOR)}}
+            onClick={() => {
+              setTeamSelected(null);
+              setSpectatorView(Role.SPECTATOR);
+            }}
           >
             Exit View
           </Button>
@@ -430,7 +463,7 @@ function PlayGameRoom() {
               {(gameState === GameStatus.ACTIVE || gameState === GameStatus.FLIPPING) && (
                 <Box mb="md" p="1rem" pb={isProblemVisible ? "md" : "1rem"}>
                   <GameTimer endTime={endTime}
-                  onExpire={()=> {if (role === Role.CODER) socket.emit("submitCode", { roomId: gameId, code: liveCode });}} />
+                    onExpire={() => { if (role === Role.CODER) socket.emit("submitCode", { roomId: gameId, code: liveCode }); }} />
                 </Box>
               )}
               {/* Conditionally render either the ProblemBox or the "Show" icon */}
@@ -574,7 +607,9 @@ function PlayGameRoom() {
                             size="compact-sm"
                             variant="filled"
                             color="green"
-                            disabled={isSpectator}
+                            disabled={isSpectator || runningAllTests}
+                            loading={runningAllTests}
+                            onClick={handleRunAllTests}
                             rightSection={
                               <IconPlayerTrackNextFilled
                                 size="var(--mantine-font-size-lg)"
@@ -597,6 +632,8 @@ function PlayGameRoom() {
 
                             onTestCaseDelete={removeTest}
                             showDelete={testCaseCtx.cases.length !== 1}
+
+                            disabled={runningAllTests}
                           />
                         ) : null;
                       })()}
