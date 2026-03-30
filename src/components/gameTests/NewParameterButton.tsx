@@ -1,0 +1,124 @@
+import { ParameterPrimitiveType, ParameterType } from "@/lib/ProblemInputOutput";
+import { ComboboxData, SelectProps, Group, Popover, Button, Flex, TextInput, Select } from "@mantine/core";
+import { useForm } from "@mantine/form";
+import { useDisclosure } from "@mantine/hooks";
+import { IconTextSize, IconHash, IconToggleRight, IconList, IconListNumbers, IconTable, IconMatrix, IconCheck, IconCode } from "@tabler/icons-react";
+
+export interface NewParameterButtonProps {
+  onNewParameter: (p: ParameterType) => void;
+}
+export default function NewParameterButton(props: NewParameterButtonProps) {
+  interface FormValues {
+    name: string;
+    type: ParameterPrimitiveType | null
+  }
+  const form = useForm<FormValues>({
+    mode: "uncontrolled",
+    initialValues: {
+      name: '',
+      type: null
+    }
+  });
+
+  const data: ComboboxData = [
+    { value: "string", label: "String" },
+    { value: "number", label: "Number" },
+    { value: "boolean", label: "Boolean" },
+    { value: "array_string", label: "String Array" },
+    { value: "array_number", label: "Number Array" },
+    { value: "array_array_string", label: "2D String Array" },
+    { value: "array_array_number", label: "2D Number Array" },
+  ];
+
+  const iconProps = {
+    stroke: 1.5,
+    color: "currentColor",
+    opacity: 0.8,
+    size: 20
+  };
+  const icons: Record<ParameterPrimitiveType, React.ReactNode> = {
+    string: <IconTextSize {...iconProps} />,
+    number: <IconHash {...iconProps} />,
+    boolean: <IconToggleRight {...iconProps} />,
+    array_string: <IconList {...iconProps} />,
+    array_number: <IconListNumbers {...iconProps} />,
+    array_array_string: <IconTable {...iconProps} />,
+    array_array_number: <IconMatrix {...iconProps} />
+  };
+
+  const renderSelectOption: SelectProps["renderOption"] = ({ option, checked }) => (
+    <Group flex={1} gap="xs">
+      {icons[option.value as ParameterPrimitiveType]}
+      {option.label}
+      {checked && <IconCheck style={{ marginInlineStart: 'auto' }} {...iconProps} />}
+    </Group>
+  );
+
+  const [opened, { close, toggle }] = useDisclosure();
+
+  const handleSubmit = (values: FormValues) => {
+    console.log(values);
+    form.reset();
+    close();
+
+    const parameter: ParameterType = {
+      name: values.name,
+      type: values.type!,
+      value: "",
+      isOutputParameter: false
+    };
+    props.onNewParameter(parameter);
+  };
+
+  return (
+    <Popover opened={opened} onClose={close}>
+      <Popover.Target>
+        <Button
+          rightSection={<IconCode />}
+          onClick={toggle}
+          size="compact-sm"
+        >
+          New Parameter
+        </Button>
+      </Popover.Target>
+
+      <Popover.Dropdown>
+        <form onSubmit={form.onSubmit(handleSubmit)}>
+          <Flex direction={"column"} gap="xs">
+            <TextInput
+              required
+              label="Parameter Name"
+              {...form.getInputProps("name")}
+            />
+            <Select
+              required
+              label="Type"
+              data={data}
+              renderOption={renderSelectOption}
+              comboboxProps={{ withinPortal: false }}
+              {...form.getInputProps("type")}
+            />
+
+            <Group gap="xs" flex={1} mt="sm">
+              <Button
+                size="sm"
+                onClick={close}
+                variant="outline"
+                flex={1}
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                type="submit"
+                flex={1}
+              >
+                Done
+              </Button>
+            </Group>
+          </Flex>
+        </form>
+      </Popover.Dropdown>
+    </Popover>
+  );
+}

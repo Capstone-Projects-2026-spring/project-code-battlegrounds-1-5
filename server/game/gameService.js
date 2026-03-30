@@ -10,7 +10,7 @@ function createGameService(stateRedis) {
     GAME_DURATION_MS,
 
     async registerSocketToUser(userId, socketId) {
-      await stateRedis.set(`socket:${userId}`, socketId) // link userId
+      await stateRedis.set(`socket:${userId}`, socketId); // link userId
     },
 
     async startGameIfNeeded(gameId) {
@@ -79,7 +79,7 @@ function createGameService(stateRedis) {
     },
 
     async getGameTime(gameId) {
-      const ttl = await stateRedis.pttl(`game:${gameId}:expires`)
+      const ttl = await stateRedis.pttl(`game:${gameId}:expires`);
       return { ttl };
     },
 
@@ -90,7 +90,7 @@ function createGameService(stateRedis) {
 
     async cleanupGame(gameId, userId) {
       await stateRedis.srem('activeGames', gameId);
-      await stateRedis.del(`socket:${userId}`)
+      await stateRedis.del(`socket:${userId}`);
       // TODO: remove expiration key if not expired yet.
       // potential future cleanup: code, submissions, etc.
     },

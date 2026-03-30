@@ -29,6 +29,8 @@ export default function TeamSelect({ userId, teams, gameType, gameRoomId, onJoin
                 body: JSON.stringify({ userId, teamId, gameRoomId })
             }).then(r => r.json()).then(data => {
                 onJoined(teamId, data.role, data.playerCount);
+            }).catch(() => {
+                onJoined(null, Role.SPECTATOR, null);
             });
             return;
         }

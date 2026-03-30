@@ -15,7 +15,8 @@ const eslintConfig = defineConfig([
   ]),
   { 
     rules: {
-      "@typescript-eslint/no-require-imports": "off"
+      "@typescript-eslint/no-require-imports": "off",
+      "semi": "warn",
     }
   }
 ]);

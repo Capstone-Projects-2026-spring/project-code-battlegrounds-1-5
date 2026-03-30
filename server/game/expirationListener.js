@@ -66,7 +66,7 @@ function startExpirationListener(io, pubClient) {
         });
         io.to(teamIds[0]).emit('roleSwap');
         io.to(teamIds[1]).emit('roleSwap');
-      }, 2500) // too fast it happens almost instantaneously on the frontend (so while work it out later)
+      }, 2500); // too fast it happens almost instantaneously on the frontend (so while work it out later)
     }
 
     if (expiredKey.endsWith(':expires')) {
