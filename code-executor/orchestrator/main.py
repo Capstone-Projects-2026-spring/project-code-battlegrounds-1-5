@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, UTC
 from typing import Optional, List
+import os
 
 from fastapi import FastAPI, status
 from fastapi.responses import JSONResponse, PlainTextResponse
@@ -20,17 +21,18 @@ class Status(Enum):
 
 PROJECT_ID = "code-battlegrounds"
 MACHINE_IMAGE = "projects/code-battlegrounds/global/machineImages/executor-vm"
-ZONES = ["us-central-a", "us-central-b", "us-central-c", "us-central-d"]
+# Valid default zones for us-central1; can be overridden by ORCH_GCP_ZONES env var (comma-separated)
+DEFAULT_ZONES = ["us-central1-a", "us-central1-b", "us-central1-c", "us-central1-d"]
 
 class VMProvisioner:
-    def __init__(self, project_id: str = PROJECT_ID, machine_image: str = MACHINE_IMAGE, zones: List[str] = ZONES):
+    def __init__(self, project_id: str = PROJECT_ID, machine_image: str = MACHINE_IMAGE):
         self.project_id = project_id
         self.machine_image = machine_image
-        self.zones = zones
+        self.zones = DEFAULT_ZONES
         self.client = compute_v1.InstancesClient()
 
     def create_instance(self, name: str) -> bool:
-        # Tries all zones and returns True on first accepted creation, False if none accepted
+        # tries all zones and returns True on first accepted creation, False if none accepted
         for zone in self.zones:
             try:
                 instance = compute_v1.Instance()
@@ -106,9 +108,9 @@ def request_warm_vm(request: PrewarmRequest):
         return Response(status_code=status.HTTP_200_OK)
     chk = g.p.scale(request.gameId)
     if chk is not None:
-        return Response(status_code=status.HTTP_201_CREATED)
+        return Response(status_code=status.HTTP_201_CREATED) # created but not ready
     else:
-        return Response(status_code=status.HTTP_503_SERVICE_UNAVAILABLE)
+        return Response(status_code=status.HTTP_503_SERVICE_UNAVAILABLE) # cant create in instances
 
 class TestCase(BaseModel):
     input: str
