@@ -152,7 +152,7 @@ function PlayGameRoom() {
     setSocket(socketRef.current);
     gameStateCtx.setSocket(socketRef.current);
 
-    socketInstance.emit("register", session.user.id);
+    socketInstance.emit("register", { userId: session.user.id });
 
     socketInstance.on("gameStarting", () => {
       setGameState(GameStatus.STARTING);

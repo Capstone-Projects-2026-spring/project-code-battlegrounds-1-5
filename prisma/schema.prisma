@@ -84,15 +84,15 @@ model InfraTestKv {
 }
 
 model Party {
-  id      String        @id @default(cuid())
+  id      String        @id @default(uuid())
   members PartyMember[]
 }
 
 model PartyMember {
-  id      String @id @default(cuid())
+  id      String @id @default(uuid())
   userId  String
   partyId String
-  lobby   Lobby  @relation(fields: [partyId], references: [id])
+  lobby   Party  @relation(fields: [partyId], references: [id])
 }
 
 enum GameStatus {
