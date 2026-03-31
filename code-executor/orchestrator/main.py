@@ -24,10 +24,10 @@ MACHINE_IMAGE = "projects/code-battlegrounds/global/machineImages/executor-vm"
 DEFAULT_ZONES = ["us-central1-a", "us-central1-b", "us-central1-c", "us-central1-d"]
 
 class VMProvisioner:
-    def __init__(self, project_id: str = PROJECT_ID, machine_image: str = MACHINE_IMAGE):
+    def __init__(self, project_id: str = PROJECT_ID, machine_image: str = MACHINE_IMAGE, zones: List[str] = DEFAULT_ZONES):
         self.project_id = project_id
         self.machine_image = machine_image
-        self.zones = DEFAULT_ZONES
+        self.zones = zones
         self.client = compute_v1.InstancesClient()
 
     def create_instance(self, name: str) -> bool:
