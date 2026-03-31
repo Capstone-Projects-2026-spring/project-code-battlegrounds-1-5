@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import { io, Socket } from 'socket.io-client';
-import { Box, Button, Center, Group, Loader, Select, SegmentedControl, Text, Card } from '@mantine/core';
+import { Button, Center, Group, Loader, Select, SegmentedControl, Text, Card } from '@mantine/core';
 import { GameType, ProblemDifficulty } from '@prisma/client';
 import { authClient } from '@/lib/auth-client';
 
@@ -21,7 +21,7 @@ export default function QueuePage() {
     // Tracks what the user actually queued for so leaveQueue cancels the right one
     const queuedSelectionRef = useRef<{ gameType: GameType; difficulty: ProblemDifficulty } | null>(null);
 
-    const lobbyId = (router.query.lobbyId as string) ?? null; // TODO: this is a bit hacky, we should have a proper lobby component ideally throughout the app instead of just a query param
+    const partyId = (router.query.partyId as string) ?? null; // TODO: this is a bit hacky, we should have a proper lobby component ideally throughout the app instead of just a query param
 
     useEffect(() => {
         if (!isPending && !session) {
@@ -71,7 +71,7 @@ export default function QueuePage() {
             userId: session.user.id,
             gameType,
             difficulty,
-            lobbyId,
+            partyId,
         });
     };
 
@@ -126,7 +126,7 @@ export default function QueuePage() {
                     }))}
                 />
 
-                {lobbyId && (
+                {partyId && (
                     <Text size="sm" c="dimmed" mb="md" ta="center">
                         Queueing with lobby
                     </Text>
@@ -152,7 +152,7 @@ export default function QueuePage() {
 
                 {status === 'idle' || status === 'error' ? (
                     <Button fullWidth onClick={handleJoinQueue}>
-                        {lobbyId ? 'Queue with Lobby' : 'Find Match'}
+                        {partyId ? 'Queue with Lobby' : 'Find Match'}
                     </Button>
                 ) : (
                     <Button

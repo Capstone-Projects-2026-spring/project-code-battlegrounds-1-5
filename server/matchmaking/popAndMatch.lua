@@ -10,7 +10,7 @@ local totalPlayers = 0
 local entryCount = 0
 
 for _, entry in ipairs(entries) do
-  if string.find(entry, '"lobbyId"') then
+  if string.find(entry, '"partyId"') then
     totalPlayers = totalPlayers + 2
   else
     totalPlayers = totalPlayers + 1
@@ -31,7 +31,7 @@ for i = 1, entryCount do
   local entry = redis.call('LPOP', key)
   if not entry then break end
   table.insert(popped, entry)
-  if string.find(entry, '"lobbyId"') then
+  if string.find(entry, '"partyId"') then
     collected = collected + 2
   else
     collected = collected + 1

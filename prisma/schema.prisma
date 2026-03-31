@@ -83,16 +83,16 @@ model InfraTestKv {
   @@map("infra_test_kv")
 }
 
-model Lobby {
+model Party {
   id      String        @id @default(cuid())
-  members LobbyMember[]
+  members PartyMember[]
 }
 
-model LobbyMember {
+model PartyMember {
   id      String @id @default(cuid())
   userId  String
-  lobbyId String
-  lobby   Lobby  @relation(fields: [lobbyId], references: [id])
+  partyId String
+  lobby   Lobby  @relation(fields: [partyId], references: [id])
 }
 
 enum GameStatus {
