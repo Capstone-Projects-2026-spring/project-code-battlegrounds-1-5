@@ -22,51 +22,57 @@ PROJECT_ID = "code-battlegrounds"
 MACHINE_IMAGE = "projects/code-battlegrounds/global/machineImages/executor-vm"
 ZONES = ["us-central-a", "us-central-b", "us-central-c", "us-central-d"]
 
-class VM:
-    def _create(self):
-        client = compute_v1.InstancesClient()
+class VMProvisioner:
+    def __init__(self, project_id: str = PROJECT_ID, machine_image: str = MACHINE_IMAGE, zones: List[str] = ZONES):
+        self.project_id = project_id
+        self.machine_image = machine_image
+        self.zones = zones
+        self.client = compute_v1.InstancesClient()
 
-        for zone in ZONES:
+    def create_instance(self, name: str) -> bool:
+        # Tries all zones and returns True on first accepted creation, False if none accepted
+        for zone in self.zones:
             try:
                 instance = compute_v1.Instance()
-                instance.name = self.game_id
-                instance.source_machine_image = MACHINE_IMAGE
-
-                op = client.insert(
-                    project=PROJECT_ID,
+                instance.name = name
+                instance.source_machine_image = self.machine_image
+                op = self.client.insert(
+                    project=self.project_id,
                     zone=zone,
                     instance_resource=instance,
                 )
-                print("instance created in zone {}".format(zone))
-                return op
+                print(f"Instance creation requested for {name} in zone {zone}. Operation: {op.name if hasattr(op, 'name') else 'N/A'}")
+                return True
             except Exception as e:
-                print("Unable to create instance in zone {}".format(zone))
+                print(f"Unable to create instance {name} in zone {zone}: {e}")
+                continue
+        print("No zones accepted the instance creation request.")
+        return False
 
-        print("No instances available!") # TODO: getting this every time. why?
-        return None
-
+class VM:
     def __init__(self, game_id):
         self.game_id = "game-{game_id}".format(game_id=game_id)
         self.ip = None
         self.status = Status.STARTING
-        self._create()
 
 class Pool: # we're gonna make a VM per game. based on my math, if a VM is 50$ a month, it will cost us a whopping .8 cents to keep a vm up per game
-    def __init__(self):
+    def __init__(self, provisioner: VMProvisioner):
         self.games = {}
+        self.provisioner = provisioner
 
-    def scale(self, game_id: str): # TODO: not yet implemented
-        t = VM(game_id)
-        if t is not None:
-            self.games[game_id] = VM(game_id)
-            return t.game_id
+    def scale(self, game_id: str): # create VM for this game if possible
+        vm = VM(game_id)
+        ok = self.provisioner.create_instance(vm.game_id)
+        if ok:
+            self.games[game_id] = vm
+            return vm.game_id
         else:
             return None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI): # ignore the warning here. mess with this line and everything breaks. you have been warned!
-    g.p = Pool()
+    g.p = Pool(VMProvisioner())
     yield
 
 app = FastAPI(lifespan=lifespan)
@@ -92,13 +98,12 @@ def request_warm_vm(request: PrewarmRequest):
     print("Requested warm VM for gameId " + request.gameId)
     # sometimes the lifecycle shit is weird so check manually too
     if not hasattr(g, 'p') or g.p is None:
-        g.p = Pool()
+        g.p = Pool(VMProvisioner())
     # if vm is not made for this gameid yet, make it. otherwise, ping the vm on it's /health endpoint and see if it's ready.
     if request.gameId in g.p.games:
         print("VM for game " + request.gameId + " already made. Client pinging for status")
         # TODO: if ip != none, ping /health on port 8000 and update status with findings and return
-        return Response(status_code=status.HTTP_201_CREATED)
-        # return Response(status_code=status.HTTP_200_OK)
+        return Response(status_code=status.HTTP_200_OK)
     chk = g.p.scale(request.gameId)
     if chk is not None:
         return Response(status_code=status.HTTP_201_CREATED)
