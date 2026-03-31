@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect } from "react";
 import { Center, Stack, Button, Text, Group, Badge, Title } from "@mantine/core";
 import { GameType, Role } from "@prisma/client";
 
@@ -40,7 +40,7 @@ export default function TeamSelect({ userId, teams, gameType, gameRoomId, onJoin
             if (data.teamId) {
                 onJoined(data.teamId, data.role, null); // skip TeamSelect entirely on reconnect
             }
-        }
+        };
         checkExisting();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [gameRoomId, userId, gameType, teams]);
@@ -86,7 +86,7 @@ export default function TeamSelect({ userId, teams, gameType, gameRoomId, onJoin
                     })}
                     <Button
                         data-testid="spectator-button"
-                        onClick={() => { onJoined(null, Role.SPECTATOR, null) }}
+                        onClick={() => { onJoined(null, Role.SPECTATOR, null); }}
                     >
                         Spectator Mode
                     </Button>

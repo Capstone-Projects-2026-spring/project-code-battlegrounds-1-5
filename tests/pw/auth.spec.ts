@@ -87,4 +87,4 @@ test.describe('Auth flow', () => {
       data: { email: testEmail },
     });
   });
-})
+});
