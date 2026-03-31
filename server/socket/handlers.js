@@ -270,9 +270,62 @@ function registerSocketHandlers(io, socket, services) {
     const { roomId, code } = payload;
 
     if (!roomId) return;
-    //TODO Store submission and evaluate results on the backend
+    
+    // TODO: Store submission
     //Broadcast to both players to redirect to results
-    io.to(roomId).emit('gameEnded');
+
+    try {
+      // Post results to the code executor
+      fetch("http://fake-backend.lol:6969/execute", {
+        method: "POST",
+        body: {
+          roomId,
+          code
+        }
+      });
+    } catch (error) {
+      console.error("Error POSTing to code executor:", error);
+    } finally {
+      io.to(roomId).emit('gameEnded');
+    }
+
+  });
+
+  /**
+   * data: object
+   * data.gameId: string,
+   * data.teamId: string,
+   * data.code: string,
+   * data.testCases: Array<TestableCase>
+   * data.runIDs: Array<number> test case IDs to run
+   * 
+   * @see GameTestCasesContext#TestableCase
+   */
+  socket.on("submitTestCases", async (data) => {
+    const {
+      gameId,
+      teamId,
+      code,
+      testCases,
+      runIDs
+    } = data;
+
+    const res = await fetch("http://fake-backend.lol:6969/execute-tests", {
+      method: "POST",
+      body: {
+        gameId,
+        teamId,
+        code,
+        testCases: JSON.stringify(testCases),
+        runIDs: JSON.stringify(runIDs)
+      },
+    });
+    const json = await res.json();
+
+    // json.testCases should realistically only modify a single property
+    // on the existing testCases object: `computedOutput`. Syncing this
+    // back to the frontend is handled over there :)
+    socket.emit("receiveTestCaseSync", json.testCases);
   });
 
   socket.on('requestTeamUpdate', async (data) => {
