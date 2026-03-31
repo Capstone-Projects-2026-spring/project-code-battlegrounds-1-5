@@ -56,7 +56,12 @@ class Pool: # we're gonna make a VM per game. based on my math, if a VM is 50$ a
         self.games = {}
 
     def scale(self, game_id: str): # TODO: not yet implemented
-        self.games[game_id] = VM(game_id)
+        t = VM(game_id)
+        if t is not None:
+            self.games[game_id] = VM(game_id)
+            return t.game_id
+        else:
+            return None
 
 
 @asynccontextmanager
@@ -81,6 +86,7 @@ class PrewarmRequest(BaseModel):
 @app.post("/request-warm-vm", response_class=Response, responses={
     200: {"description": "Warm VM has been requested and is ready"},
     201: {"description": "Warm VM creation requested"},
+    503: {"description": "VM not available in any region! Try again later."}
 })
 def request_warm_vm(request: PrewarmRequest):
     print("Requested warm VM for gameId " + request.gameId)
@@ -93,8 +99,11 @@ def request_warm_vm(request: PrewarmRequest):
         # TODO: if ip != none, ping /health on port 8000 and update status with findings and return
         return Response(status_code=status.HTTP_201_CREATED)
         # return Response(status_code=status.HTTP_200_OK)
-    g.p.scale(request.gameId)
-    return Response(status_code=status.HTTP_201_CREATED)
+    chk = g.p.scale(request.gameId)
+    if chk is not None:
+        return Response(status_code=status.HTTP_201_CREATED)
+    else:
+        return Response(status_code=status.HTTP_503_SERVICE_UNAVAILABLE)
 
 class TestCase(BaseModel):
     input: str
