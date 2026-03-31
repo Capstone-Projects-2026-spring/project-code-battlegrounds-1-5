@@ -1,6 +1,4 @@
-from datetime import datetime, timedelta, UTC
 from typing import Optional, List
-import os
 
 from fastapi import FastAPI, status
 from fastapi.responses import JSONResponse, PlainTextResponse
@@ -11,6 +9,7 @@ from contextlib import asynccontextmanager
 from fastapi_globals import g, GlobalsMiddleware
 from starlette.responses import Response
 
+# TODO: this can now create vms. still need to have the request-warm-vm endpoint ping on subsequent requests until ready, as well as deleting vms
 
 class Status(Enum):
     STARTING = 1
