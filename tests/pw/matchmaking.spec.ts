@@ -1,5 +1,5 @@
 import { test, expect, chromium, Browser, Page } from '@playwright/test';
-import { loginAs } from './helpers';
+import { loginAs } from '../../src/util/playwrightHelpers';
 
 test.describe('Matchmaking', () => {
 
