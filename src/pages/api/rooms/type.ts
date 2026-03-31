@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { prisma } from '@/lib/prisma';
-import { auth } from '@/lib/auth'
+import { auth } from '@/lib/auth';
 
 /**
  * Gets game type for a given game room ID

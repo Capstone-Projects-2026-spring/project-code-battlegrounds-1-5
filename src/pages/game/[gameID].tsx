@@ -188,6 +188,10 @@ function PlayGameRoom() {
       );
     });
 
+    socketInstance.on("error", (data) => {
+      console.error("Socket error:", data);
+    });
+
     // 6. Cleanup: disconnect the socket if the user leaves the page
     return () => {
       socketInstance.disconnect();
