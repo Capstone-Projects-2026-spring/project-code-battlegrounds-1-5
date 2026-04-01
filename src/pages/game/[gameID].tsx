@@ -214,7 +214,7 @@ function PlayGameRoom() {
     //TODO Store submission and evaluate results on the backend, then fetch and display here
     //server broadcasts the event to both player
     if (!socket) return; //make sure the socket is connected before emitting
-    socket.emit("submitCode", { roomId: teamSelected, code: liveCode });
+    socket.emit("submitCode", { roomId: teamSelected, code: liveCode, type: gameType });
   };
 
   const addNewTest = () => {

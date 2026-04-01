@@ -119,10 +119,19 @@ function registerSocketHandlers(io, socket, services) {
   });
 
   socket.on('submitCode', async (data) => {
-    const { roomId, code } = data || {};
+    const { roomId, code, type } = data || {};
     if (!roomId) return;
     //TODO Store submission and evaluate results on the backend
-    //Broadcast to both players to redirect to results
+    //Check gametype if Coop, store live code of team 1
+    if (data.type === GameType.COOP) {
+      // Store live code for team 1
+      await prisma.GameResult.update({
+        data: {
+          team1Code: code
+        },
+      });
+    }
+
     io.to(roomId).emit('gameEnded');
   });
 

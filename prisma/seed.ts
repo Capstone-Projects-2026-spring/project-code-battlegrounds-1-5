@@ -181,7 +181,7 @@ async function main() {
     map[nums[i]] = i;
   }
 }`,
-      timeToPassMs: 287,
+      team1TimeToPassMs: 287,
     },
   });
 
