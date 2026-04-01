@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Head from "next/head";
 import { Stack, Box, Title, Flex } from "@mantine/core";
 import Navbar from "@/components/Navbar";
@@ -40,6 +40,7 @@ export function Results() {
   const { data: session } = authClient.useSession();
   const [socket, setSocket] = useState<Socket | null>(null);
 
+  const socketRef = useRef<Socket | null>(null);
   const [loading, setLoading] = useState(false);
   const [problem, setProblem] = useState<ActiveProblem | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -61,7 +62,20 @@ export function Results() {
     loadProblem();
   }, [gameId, session?.user.id]);
 
-  if (!session) return null;
+  useEffect(() => {
+    if (!session?.user.id || !gameId || socketRef.current) return;
+
+    const fetchGameType = async () => {
+      const res = await fetch(`/api/rooms/type?gameId=${gameId}`);
+      const data = await res.json();
+      if (data.gameType) {
+        setGameType(data.gameType);
+      }
+    };
+    fetchGameType();
+  }, [gameId, session?.user.id]);
+
+
 
   return (
     <>
@@ -85,7 +99,7 @@ export function Results() {
           <Flex gap="md" align="stretch" style={{ flex: 1 }}>
 
             <Box style={{ flex: 1 }}>
-              <ProblemBox />
+              <ProblemBox problem={problem} />
             </Box>
 
             <Stack style={{ flex: 2 }} gap="md">
