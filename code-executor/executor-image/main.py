@@ -156,8 +156,9 @@ def execute(req: ExecutionRequest):
         if req.language == "javascript":
             # test.input is expected to be the raw argument list, e.g. "1, 2" or "[1,2], 3"
             # TODO: something like solution({test.input} for test inputs
-            code_with_invocation = f"{b64decode(req.code)}\nconsole.log(solution());\n"
-            # print(code_with_invocation)
+            params = test.input if test.input else ""
+            code_with_invocation = f"{b64decode(req.code)}\nconsole.log(solution({params}));\n"
+            print(code_with_invocation)
             result = run_in_sandbox(code_with_invocation, "", req.language)
         else:
             # Fallback: previous behavior using stdin for non-JS languages (future work to extend)
