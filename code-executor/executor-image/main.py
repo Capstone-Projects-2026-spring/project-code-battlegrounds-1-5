@@ -1,3 +1,4 @@
+import base64
 import os
 import string
 import subprocess
@@ -43,7 +44,6 @@ class ExecutionRequest(BaseModel):
 # write to file with its extension, catching error if langauge is not implemented.
 # returns None if langauge is not implemented or the filename written to
 def write_code_to_file(content: str, language: str):
-    # TODO: we should check if code compiles before running it and returning garbage.
     try:
         lang_ext = Languages.map[language]
     except KeyError:
@@ -126,10 +126,12 @@ def run_in_sandbox(code: str, stdin: str, language: str):
         try:
             if host_code_path and os.path.exists(host_code_path):
                 os.remove(host_code_path)
-                # os.remove(os.path.join("./rootfs", host_code_path)) # TODO: this line doesnt remove the file copied into the tmp rootfs. why? not touching it rn, got too much chit to do
+                # os.remove(os.path.join("./rootfs", host_code_path))
         except Exception:
             pass
 
+def b64decode(code):
+    return base64.b64decode(code).decode("utf-8")
 
 @app.post("/execute")
 def execute(req: ExecutionRequest):
@@ -153,7 +155,9 @@ def execute(req: ExecutionRequest):
         # For JavaScript, append a console.log(solution(...)) call per test case
         if req.language == "javascript":
             # test.input is expected to be the raw argument list, e.g. "1, 2" or "[1,2], 3"
-            code_with_invocation = f"{req.code}\nconsole.log(solution({test.input}));\n"
+            # TODO: something like solution({test.input} for test inputs
+            code_with_invocation = f"{b64decode(req.code)}\nconsole.log(solution());\n"
+            # print(code_with_invocation)
             result = run_in_sandbox(code_with_invocation, "", req.language)
         else:
             # Fallback: previous behavior using stdin for non-JS languages (future work to extend)
