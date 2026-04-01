@@ -9,11 +9,12 @@ sidebar_position: 4
 
 1. Game Process
     - The application will follow a structured flow
-    - Users will be paired.
+     - Users will be able to select the difficulty of the problem.
+    - Users will be paired—either with a friend via invite code, or randomly with a stranger.
     - Users will be assigned a random problem from the problem list.
-    - The coder will develop code to solve the problem.
-    - The QA participant will write and run unit tests for functions the coder writes (without seeing implementation details).
-    - QA Participant's test case results are sent to the coder for further code refinement.
+    - The coder will develop code to solve the problem, and send requests to the tester to run tests.
+    - The tester will write and run unit tests for functions the coder writes (without seeing implementation details).
+    - Tester's test case results are sent to the coder for further code refinement.
     - After a designated interval, the roles switch.
     - Process repeats until a team finishes.
 
@@ -26,12 +27,12 @@ sidebar_position: 4
         - Math Questions
         - Data Structures & Algorithms
 
-3. User must be able to interact with matchmaking
+3. Matchmaking
     - Start the search for matchmaking
     - Exit matchmaking
 
 
-4. User must have an account to play on CodeBattlegrounds
+4. Account Creation
     - They will be prompted to sign-in with Google
     - User will be authenticated through google Oauth
 
