@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import Head from "next/head";
-import { Stack, Box, Title, Flex } from "@mantine/core";
+import { Stack, Box, Title, Flex, ActionIcon, Tooltip } from "@mantine/core";
 import Navbar from "@/components/Navbar";
 import { useRouter } from "next/router";
 import { authClient } from "@/lib/auth-client";
@@ -46,6 +46,8 @@ export function Results() {
   const [error, setError] = useState<string | null>(null);
 
   const [gameType, setGameType] = useState<GameType | null>(null);
+  const [isProblemVisible, setIsProblemVisible] = useState(true);
+  const toggleProblemVisibility = () => setIsProblemVisible((prev) => !prev);
   
   useEffect(() => {
     const loadProblem = async () => {
@@ -98,8 +100,33 @@ export function Results() {
 
           <Flex gap="md" align="stretch" style={{ flex: 1 }}>
 
-            <Box style={{ flex: 1 }}>
-              <ProblemBox problem={problem} />
+            <Box
+              style={{
+                width: isProblemVisible ? "25%" : "50px",
+                minWidth: isProblemVisible ? "250px" : "50px",
+                color: "white",
+                padding: "0",
+                overflowY: "auto",
+                display: "flex",
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: isProblemVisible ? 'flex-start' : 'center',
+                flexShrink: 0,
+                transition: 'width 0.2s ease, min-width 0.2s ease',
+                borderRadius: '8px',
+              }}
+            >
+              {isProblemVisible ? (
+                <Box style={{ width: '100%', flex: 1, minHeight: 0, padding: '1rem' }}>
+                  <ProblemBox problem={problem} onToggleVisibility={toggleProblemVisibility} />
+                </Box>
+              ) : (
+                <Tooltip label="Show Problem">
+                  <ActionIcon variant="transparent" color="gray" size="xl" onClick={toggleProblemVisibility} title="Show Problem">
+                    <IconEye size={24} />
+                  </ActionIcon>
+                </Tooltip>
+              )}
             </Box>
 
             <Stack style={{ flex: 2 }} gap="md">
