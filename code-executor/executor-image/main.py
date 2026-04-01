@@ -150,7 +150,14 @@ def execute(req: ExecutionRequest):
     all_passed = True
 
     for test in req.testCases:
-        result = run_in_sandbox(req.code, test.input, req.language)
+        # For JavaScript, append a console.log(solution(...)) call per test case
+        if req.language == "javascript":
+            # test.input is expected to be the raw argument list, e.g. "1, 2" or "[1,2], 3"
+            code_with_invocation = f"{req.code}\nconsole.log(solution({test.input}));\n"
+            result = run_in_sandbox(code_with_invocation, "", req.language)
+        else:
+            # Fallback: previous behavior using stdin for non-JS languages (future work to extend)
+            result = run_in_sandbox(req.code, test.input, req.language)
 
         # check if we passed
         passed = None
