@@ -1,4 +1,5 @@
 const { GameType } = require("@prisma/client");
+const { getPrisma } = require("../prisma/index");
 
 // Socket event handlers isolated here
 // Expects io (Server), socket (Socket), and services to manage game state
@@ -123,11 +124,12 @@ function registerSocketHandlers(io, socket, services) {
     if (!roomId) return;
     //TODO Store submission and evaluate results on the backend
     //Check gametype if Coop, store live code of team 1
-    if (data.type === GameType.COOP) {
+    if (type === GameType.TWOPLAYER) {
       // Store live code for team 1
-      await prisma.GameResult.update({
+      await getPrisma().gameResult.update({
+        where: { gameRoomId: roomId },
         data: {
-          team1Code: code
+          team1Code: code,
         },
       });
     }

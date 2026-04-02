@@ -55,37 +55,38 @@ if (!difficulty || !Object.values(ProblemDifficulty).includes(difficulty)) {
         // Need to make a database call to Problem table but there are no Problems in the table right now
         if (gameType === GameType.TWOPLAYER) {
             const gameRoom = await prisma.gameRoom.create({
-                data: {
-                    id: roomID,
-                    problemId: problem.id,
-                    gameType: GameType.TWOPLAYER,
-                    teams: {
-                        create: [{}]
-                    }
-                }
+              data: {
+                id: roomID,
+                problemId: problem.id,
+                gameType: GameType.TWOPLAYER,
+                gameResult: {
+                  create: {},
+                },
+                teams: {
+                  create: [{}],
+                },
+              },
             });
             // return generated code
             return res.status(201).json({ gameId: gameRoom.id });
         } else if (gameType === GameType.FOURPLAYER) {
             const gameRoom = await prisma.gameRoom.create({
-                data: {
-                    id: roomID,
-                    problemId: problem.id,
-                    gameType: GameType.FOURPLAYER,
-                    teams: {
-                        create: [{}, {}]
-                    }
-                }
+              data: {
+                id: roomID,
+                problemId: problem.id,
+                gameType: GameType.FOURPLAYER,
+                gameResult: {
+                  create: {},
+                },
+                teams: {
+                  create: [{}, {}],
+                },
+              },
             });
             // return generated code
             return res.status(201).json({ gameId: gameRoom.id });
         }
         
-        await prisma.gameResult.create({
-            data: {
-                gameRoomId: roomID
-            }
-        });
 
         return res.status(500).json({message: "Didn't select gametype somehow"});
 
