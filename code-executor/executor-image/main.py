@@ -3,7 +3,7 @@ import string
 import subprocess
 import time
 import random
-from typing import List, Optional
+from typing import List, Literal, Optional
 import base64
 import json
 import os
@@ -43,7 +43,15 @@ class Languages:
 # Mirrors ProblemInputOutput#Parameter
 class Parameter(BaseModel):
     name: str
-    type: str  # how can we make this a list of literals
+    type: Literal[
+        "string",
+        "number",
+        "boolean",
+        "array_string",
+        "array_number",
+        "array_array_string",
+        "array_array_number"
+    ]
     value: str = None
     # isOutputParameter = Optional[bool]
 
