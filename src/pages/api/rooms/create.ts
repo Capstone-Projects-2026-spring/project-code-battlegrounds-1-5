@@ -80,6 +80,12 @@ if (!difficulty || !Object.values(ProblemDifficulty).includes(difficulty)) {
             // return generated code
             return res.status(201).json({ gameId: gameRoom.id });
         }
+        
+        await prisma.gameResult.create({
+            data: {
+                gameRoomId: roomID
+            }
+        });
 
         return res.status(500).json({message: "Didn't select gametype somehow"});
 
