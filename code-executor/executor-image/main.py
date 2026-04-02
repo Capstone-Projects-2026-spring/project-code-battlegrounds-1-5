@@ -94,20 +94,21 @@ def run_in_sandbox(
 
         # build nsjail command
         cmd = [
-            # "nsjail",
-            # "-Mo",
-            # "--quiet",
-            # "--disable_proc",
-            # "--disable_clone_newnet",
-            # "--time_limit", "5",
-            # "--rlimit_as", "2048",  # 2GB to avoid oom
-            # "--rlimit_cpu", "2",
-            # "--chroot", rootfs_path,
-            # "--bindmount_ro", f"{host_code_path}:/{host_code_path}",
-            # "--user", "99999",
-            # "--group", "99999",
-            # "--",
-            "/Users/samir/.nvm/versions/node/v24.11.1/bin/node",
+            "nsjail",
+            "-Mo",
+            "--quiet",
+            "--disable_proc",
+            "--disable_clone_newnet",
+            "--time_limit", "5",
+            "--rlimit_as", "2048",  # 2GB to avoid oom
+            "--rlimit_cpu", "2",
+            "--chroot", rootfs_path,
+            "--bindmount_ro", f"{host_code_path}:/{host_code_path}",
+            "--user", "99999",
+            "--group", "99999",
+            "--",
+            "/usr/bin/node",
+            # "/Users/samir/.nvm/versions/node/v24.11.1/bin/node",
             # TODO: a quick mapping in languages to map language strings to executables and args
             "--max-old-space-size=64",
             f"/{host_code_path}",
@@ -206,7 +207,7 @@ def execute(req: ExecutionRequest):
         testCaseInputs = [test.value for test in test.functionInput]
 
         result = run_in_sandbox(
-            code=req.code,
+            code=code,
             stdin="",
             language=req.language,
             testCases=testCaseInputs
@@ -214,16 +215,16 @@ def execute(req: ExecutionRequest):
 
         # check if we passed
         passed = None
-        if test.expected is not None:
+        if test.expectedOutput.value is not None:
             passed = (result.get("stdout", "").strip()
-                      == (test.expected or "").strip())
+                      == (test.expectedOutput.value or "").strip())
             if not passed:
                 all_passed = False
 
         # append how we did to results
         results.append({
-            "input": test.input,
-            "expected": test.expected,
+            "input": testCaseInputs,
+            "expected": test.expectedOutput.value,
             "actual": result.get("stdout", ""),
             "passed": passed,
             "stderr": result.get("stderr", ""),
