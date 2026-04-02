@@ -184,12 +184,13 @@ model ProblemTest {
 model GameResult {
   id            String @id @default(uuid())
   gameRoomId    String @unique
-  winningTeamId String @unique
-  team1Code     String
-  team2Code     String? //nullable if gamemode is cooperative
-  timeToPassMs  Int
+  winningTeamId String? @unique
+  team1Code     String?
+  team2Code     String?
+  team1TimeToPassMs  Int?
+  team2TimeToPassMs  Int?
 
-  winningTeam Team     @relation("WinningTeamRelation", fields: [winningTeamId], references: [id])
+  winningTeam Team?     @relation("WinningTeamRelation", fields: [winningTeamId], references: [id])
   gameRoom    GameRoom @relation(fields: [gameRoomId], references: [id], onDelete: Cascade)
 
   @@index([winningTeamId])
