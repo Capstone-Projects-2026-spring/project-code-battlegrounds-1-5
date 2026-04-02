@@ -29,16 +29,25 @@ class Languages:
     def is_supported(cls, language: str) -> bool:
         return language in cls.map
 
-class TestCase(BaseModel):
-    input: str
-    expected: Optional[str] = None
+# Mirrors ProblemInputOutput#Parameter
+class Parameter(BaseModel):
+    name: str
+    type: str # how can we make this a list of literals
+    value: str = None
+    isOutputParameter = Optional[bool] = False
 
+# Mirrors GameTestCasesContext.tsx#TestableCase
+class TestableCase(BaseModel):
+    id: int
+    functionInput: List[Parameter]
+    expectedOutput: Parameter
+    computedOutput: Optional[str] = None
 
 class ExecutionRequest(BaseModel):
     language: str
     code: str
     stdin: Optional[str] = ""
-    testCases: Optional[List[TestCase]] = None
+    testCases: Optional[List[TestableCase]] = None
 
 # write to file with its extension, catching error if langauge is not implemented.
 # returns None if langauge is not implemented or the filename written to
