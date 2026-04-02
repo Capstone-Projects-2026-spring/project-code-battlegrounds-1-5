@@ -214,7 +214,7 @@ function PlayGameRoom() {
     //TODO Store submission and evaluate results on the backend, then fetch and display here
     //server broadcasts the event to both player
     if (!socket) return; //make sure the socket is connected before emitting
-    socket.emit("submitCode", { roomId: gameId, code: liveCode, type: gameType });
+    socket.emit("submitCode", { roomId: teamSelected, code: liveCode, type: gameType });
   };
 
   const addNewTest = () => {
@@ -421,7 +421,7 @@ function PlayGameRoom() {
               {(gameState === GameStatus.ACTIVE || gameState === GameStatus.FLIPPING) && (
                 <Box mb="md" p="1rem" pb={isProblemVisible ? "md" : "1rem"}>
                   <GameTimer endTime={endTime}
-                  onExpire={()=> {if (role === Role.CODER) socket.emit("submitCode", { roomId: gameId, code: liveCode, type: gameType });}} />
+                  onExpire={()=> {if (role === Role.CODER) socket.emit("submitCode", { roomId: gameId, code: liveCode });}} />
                 </Box>
               )}
               {/* Conditionally render either the ProblemBox or the "Show" icon */}
