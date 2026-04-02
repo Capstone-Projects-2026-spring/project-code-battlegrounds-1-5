@@ -6,10 +6,16 @@ import random
 from typing import List, Optional
 import base64
 import json
+import os
 
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse, PlainTextResponse
 from pydantic import BaseModel, ValidationError
+
+# This seems backwards but we want nsjail to be on by default.
+# So if the env key isn't set, it's still on
+use_nsjail = False if os.getenv("USE_NSJAIL") == "false" else True
+node_path = os.getenv("NODE_PATH", "/usr/bin/node")
 
 app = FastAPI()
 
@@ -93,23 +99,28 @@ def run_in_sandbox(
         start_time = time.time()
 
         # build nsjail command
-        cmd = [
-            "nsjail",
-            "-Mo",
-            "--quiet",
-            "--disable_proc",
-            "--disable_clone_newnet",
-            "--time_limit", "5",
-            "--rlimit_as", "2048",  # 2GB to avoid oom
-            "--rlimit_cpu", "2",
-            "--chroot", rootfs_path,
-            "--bindmount_ro", f"{host_code_path}:/{host_code_path}",
-            "--user", "99999",
-            "--group", "99999",
-            "--",
-            "/usr/bin/node",
-            # "/Users/samir/.nvm/versions/node/v24.11.1/bin/node",
-            # TODO: a quick mapping in languages to map language strings to executables and args
+        cmd: list[str] = []
+
+        if use_nsjail:
+            cmd += [
+                "nsjail",
+                "-Mo",
+                "--quiet",
+                "--disable_proc",
+                "--disable_clone_newnet",
+                "--time_limit", "5",
+                "--rlimit_as", "2048",  # 2GB to avoid oom
+                "--rlimit_cpu", "2",
+                "--chroot", rootfs_path,
+                "--bindmount_ro", f"{host_code_path}:/{host_code_path}",
+                "--user", "99999",
+                "--group", "99999",
+                "--",
+            ]
+
+        # holy cursed
+        cmd += [
+            node_path,
             "--max-old-space-size=64",
             f"/{host_code_path}",
         ]
