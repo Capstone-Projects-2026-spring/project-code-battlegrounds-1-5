@@ -1,5 +1,6 @@
 const { GameType } = require("@prisma/client");
 const { z } = require("zod");
+const { getPrisma } = require("../prisma");
 
 const ParameterPrimitive = z.union([
   z.literal("string"),
@@ -69,6 +70,7 @@ const submitCodeSchema = z.object({
 // Expects io (Server), socket (Socket), and services to manage game state
 function registerSocketHandlers(io, socket, services) {
   const { gameService } = services;
+  const prisma = getPrisma();
 
   console.log(`New connection: ${socket.id}`);
 
@@ -267,13 +269,21 @@ function registerSocketHandlers(io, socket, services) {
       socket.emit('error', { message: 'Invalid payload for submitCode.' });
       return;
     }
-    const { roomId, code } = payload;
+    const { roomId, code, type } = payload;
 
     if (!roomId) return;
     
     // TODO: Store submission
     //Broadcast to both players to redirect to results
-
+    if( type === GameType.TWOPLAYER) {
+      
+    await prisma.gameResult.create({
+      data: {
+        gameRoomId: roomId,
+        team1Code: code
+      }
+    });
+  }
     try {
       // Post results to the code executor
       fetch("http://fake-backend.lol:6969/execute", {
