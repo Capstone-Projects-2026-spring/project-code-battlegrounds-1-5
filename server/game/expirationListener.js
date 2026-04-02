@@ -18,6 +18,12 @@ function startExpirationListener(io, pubClient) {
     const gameId = expiredKey.split(':')[1];
 
 
+    if (expiredKey.endsWith(':roleswap:warning')) {
+      console.log(`Game ${gameId} roleswap warning`);
+      io.to(gameId).emit('roleSwapWarning');
+      return;
+    }
+
     if (expiredKey.endsWith(':roleswap')) {
       console.log(`Game ${gameId} roleswap`);
       io.to(gameId).emit('roleSwapping');

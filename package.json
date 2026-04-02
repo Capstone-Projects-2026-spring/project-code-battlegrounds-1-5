@@ -22,7 +22,9 @@
     "moduleNameMapper": {
       "^@/(.*)$": "<rootDir>/src/$1"
     },
-    "testMatch": ["**/tests/**/*.spec.ts"]
+    "testMatch": [
+      "**/tests/**/*.spec.ts"
+    ]
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
@@ -30,6 +32,7 @@
     "@mantine/form": "^8.3.16",
     "@mantine/hooks": "^8.3.14",
     "@mantine/next": "^6.0.22",
+    "@mantine/notifications": "^8.3.18",
     "@monaco-editor/react": "^4.7.0",
     "@prisma/adapter-pg": "^7.3.0",
     "@prisma/client": "^7.4.2",

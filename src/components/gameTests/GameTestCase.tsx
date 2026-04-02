@@ -1,10 +1,11 @@
 import { ActionIcon, Button, Group, Stack, Table, Text, Tooltip } from "@mantine/core";
 import { IconPlayerPlay, IconTrash } from "@tabler/icons-react";
-import { type Socket } from "socket.io-client";
 
 import { ParameterType } from "@/lib/ProblemInputOutput";
-import { TestableCase } from "./GameTestCasesContext";
+import { TestableCase } from "../contexts/GameTestCasesContext";
 import ParameterInput from "./ParameterInput";
+import { useGameState } from "../contexts/GameStateContext";
+import { useEffect, useState } from "react";
 
 export interface GameTestCaseProps {
   testableCase: TestableCase,
@@ -19,14 +20,39 @@ export interface GameTestCaseProps {
   // because we might want to show these test cases
   // on the results screen
   disabled?: boolean,
-
-  // so we can send test case updates over the wire
-  // (optional because of results screen)
-  socket?: Socket
 }
 
 export default function GameTestCase(props: GameTestCaseProps) {
+  const gameStateCtx = useGameState();
   const { testableCase } = props;
+
+  const [running, setRunning] = useState<boolean>(false);
+
+  const runTest = () => {
+    if (!gameStateCtx.socket) throw new Error("Missing socket!");
+    setRunning(true);
+
+    gameStateCtx.socket.emit("submitTestCases", {
+      gameId: gameStateCtx.gameId,
+      teamId: gameStateCtx.teamId,
+      code: gameStateCtx.code,
+      testCases: testableCase,
+      runIDs: [testableCase.id]
+    });
+  };
+
+  useEffect(() => {
+    if(!running) return;
+
+    // From here on, this effect will only run when `running` is
+    // true, and when testableCase changes. While `running`,
+    // the only reason why `testableCase` would change is if we
+    // receive an update from the socket, which *should* contain
+    // `computedOutput`.
+    
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setRunning(false);
+  }, [running, testableCase]);
 
   return (
     <Stack gap="md" style={{ overflow: "auto", minHeight: 0, flex: 1 }}>
@@ -105,12 +131,16 @@ export default function GameTestCase(props: GameTestCaseProps) {
           color="red"
           rightSection={<IconTrash />}
           onClick={() => props.onTestCaseDelete(testableCase.id)}
+          disabled={running || props.disabled}
         >
           Delete
         </Button>}
         <Button
           color="green"
           rightSection={<IconPlayerPlay />}
+          onClick={runTest}
+          disabled={running || props.disabled}
+          loading={running}
         >
           Run
         </Button>

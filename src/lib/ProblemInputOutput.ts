@@ -29,6 +29,7 @@ export const TestCase = z.object({
   problemId: z.string(),
   functionInput: z.array(Parameter),
   expectedOutput: z.array(Parameter),
+  computedOutput: z.optional(ParameterPrimitive.nullable()),
   language: Language,
   optimalTimeMs: z.number(),
   hidden: z.optional(z.boolean().default(false))

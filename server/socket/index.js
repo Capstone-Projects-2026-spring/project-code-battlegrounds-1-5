@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-require-imports */
 const { Server } = require('socket.io');
 const { registerSocketHandlers } = require('./handlers');
 const { createGameService } = require('../game/gameService');
