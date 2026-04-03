@@ -2,24 +2,24 @@ import React, { useState } from "react";
 import { Stack, Text, Button, TextInput, Group, Divider } from "@mantine/core";
 import { useRouter } from "next/router";
 import { IconArrowRight } from "@tabler/icons-react";
+import { usePostHog } from "posthog-js/react";
+import Link from "next/link";
 
 export default function PartnerSearch() {
   const [query, setQuery] = useState("");
   const router = useRouter();
+  const posthog = usePostHog();
 
-  const handleRandom = () => {
-    // replace with real random partner logic
-    console.log("Pick a random partner");
-    router.push("/matchmaking");
-  };
-
-  const handleSearch = (e: React.FormEvent) => {
+  const handleSearch = (e: React.SubmitEvent) => {
     e.preventDefault();
     // Using the input query, implement logic to search for a partner by room ID.
     console.log("Search room ID:", query);
     const roomId = query.trim();
     if (!roomId) return;
 
+    posthog.capture("room_joined_by_id", {
+      roomId: roomId
+    });
     router.push(`/game/${roomId}`);
   };
 
@@ -68,10 +68,11 @@ export default function PartnerSearch() {
           <Divider orientation="vertical" />
 
           <Button
+            component={Link}
+            href="/matchmaking"
             data-testid="matchmaking-link"
             size="lg"
             color="black"
-            onClick={handleRandom}
             radius="xs"
             px={40}
           >

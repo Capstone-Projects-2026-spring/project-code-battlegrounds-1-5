@@ -6,13 +6,13 @@ import { TestableCase } from "../contexts/GameTestCasesContext";
 import ParameterInput from "./ParameterInput";
 import { useGameState } from "../contexts/GameStateContext";
 import { useEffect, useState } from "react";
+import { usePostHog } from "posthog-js/react";
 
 export interface GameTestCaseProps {
   testableCase: TestableCase,
   onTestCaseChange: (test: TestableCase) => void;
   onTestCaseDelete: (testId: TestableCase["id"]) => void;
 
-  onNewParameter: (parameter: ParameterType) => void;
   onParameterDelete: (parameter: ParameterType) => void;
 
   showDelete: boolean
@@ -24,6 +24,7 @@ export interface GameTestCaseProps {
 
 export default function GameTestCase(props: GameTestCaseProps) {
   const gameStateCtx = useGameState();
+  const posthog = usePostHog();
   const { testableCase } = props;
 
   const [running, setRunning] = useState<boolean>(false);
@@ -39,17 +40,23 @@ export default function GameTestCase(props: GameTestCaseProps) {
       testCases: testableCase,
       runIDs: [testableCase.id]
     });
+
+    posthog.capture("test_case_run", {
+      gameId: gameStateCtx.gameId,
+      code: gameStateCtx.code,
+      testableCase
+    });
   };
 
   useEffect(() => {
-    if(!running) return;
+    if (!running) return;
 
     // From here on, this effect will only run when `running` is
     // true, and when testableCase changes. While `running`,
     // the only reason why `testableCase` would change is if we
     // receive an update from the socket, which *should* contain
     // `computedOutput`.
-    
+
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setRunning(false);
   }, [running, testableCase]);
@@ -87,7 +94,13 @@ export default function GameTestCase(props: GameTestCaseProps) {
                       color="red"
                       variant="light"
                       size="sm"
-                      onClick={() => props.onParameterDelete(param)}
+                      onClick={() => {
+                        props.onParameterDelete(param);
+                        posthog.capture("parameter_deleted", {
+                          gameId: gameStateCtx.gameId,
+                          parameter: param
+                        });
+                      }}
                     >
                       <IconTrash />
                     </ActionIcon>
@@ -130,7 +143,13 @@ export default function GameTestCase(props: GameTestCaseProps) {
         {props.showDelete && <Button
           color="red"
           rightSection={<IconTrash />}
-          onClick={() => props.onTestCaseDelete(testableCase.id)}
+          onClick={() => {
+            props.onTestCaseDelete(testableCase.id);
+            posthog.capture("test_case_deleted", {
+              gameId: gameStateCtx.gameId,
+              testableCase
+            });
+          }}
           disabled={running || props.disabled}
         >
           Delete

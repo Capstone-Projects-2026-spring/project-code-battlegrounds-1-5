@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Text } from "@mantine/core";
+import { usePostHog } from "posthog-js/react";
 
 interface GameTimerProps {
   endTime: number;
@@ -7,6 +8,7 @@ interface GameTimerProps {
 }
 
 export default function GameTimer({ endTime, onExpire }: GameTimerProps) {
+  const posthog = usePostHog();
   const [timeRemaining, setTimeRemaining] = useState<number>(() =>
     Math.max(0, endTime - Date.now())
   );
@@ -22,6 +24,7 @@ export default function GameTimer({ endTime, onExpire }: GameTimerProps) {
         if (intervalRef.current) clearInterval(intervalRef.current);
         intervalRef.current = null;
         onExpire?.();
+        posthog.capture("timer_expired");
       }
     };
 
@@ -34,6 +37,8 @@ export default function GameTimer({ endTime, onExpire }: GameTimerProps) {
         intervalRef.current = null;
       }
     };
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [endTime]);
 
   const minutes = Math.floor(timeRemaining / 60000);

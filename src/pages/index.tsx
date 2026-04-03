@@ -3,7 +3,6 @@ import Head from "next/head";
 import styles from "@/styles/Home.module.css";
 import { Stack, Box, Button, Center } from "@mantine/core"; //
 import Navbar from "@/components/Navbar";
-import Broadstats from "@/components/Broadstats";
 import DifficultyGrid from "@/components/DifficultyGrid";
 import { useRouter } from "next/router";
 import { authClient } from "@/lib/auth-client";
@@ -33,10 +32,6 @@ export default function Home() {
           title="Code BattleGrounds"
         />
 
-        {/* Wrapping the grid in a Box with flex: 1 
-            forces this section to grow and fill all empty space,
-            naturally pushing Broadstats to the bottom.
-        */}
         <Box style={{ flex: 1 }}>
           <DifficultyGrid />
         </Box>

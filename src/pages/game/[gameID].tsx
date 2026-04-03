@@ -4,6 +4,7 @@ import { useRouter } from 'next/router';
 import { useEffect, useState, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { IconEye, IconPlayerPlay, IconPlayerTrackNextFilled, IconPlus } from '@tabler/icons-react';
+import { usePostHog } from 'posthog-js/react';
 
 import ChatBox from '@/components/ChatBox';
 import GameTimer from '@/components/GameTimer';
@@ -66,6 +67,7 @@ function PlayGameRoom() {
   const router = useRouter();
   const gameId = router.query.gameID as string;
   const { data: session } = authClient.useSession();
+  const posthog = usePostHog();
 
   // 2. Set up our state for the socket connection and the user's role
   const [role, setRole] = useState<Role | null>(null);
@@ -147,11 +149,13 @@ function PlayGameRoom() {
     socketInstance.emit("register", { userId: session.user.id });
 
     socketInstance.on("gameStarting", () => {
+      posthog.capture("game_spectated", { gameId });
       setGameState(GameStatus.STARTING);
     });
 
     socketInstance.on("gameStarted", ({ start }) => {
       if (isNaN(start)) return;
+      posthog.capture("game_started", { gameId });
       if (!endTimeRef.current) {
         endTimeRef.current = Date.now() + Number(start);
         setEndTime(endTimeRef.current);
@@ -160,6 +164,7 @@ function PlayGameRoom() {
     });
 
     socketInstance.on("gameEnded", () => {
+      posthog.capture("game_ended", { gameId });
       setGameState(GameStatus.FINISHED);
       router.push(`/results/${gameId}`);
     });
@@ -304,6 +309,11 @@ function PlayGameRoom() {
     testCaseCtx.setParameters(prev => [...prev, parameter]);
     testCaseCtx.setCases(newCases);
     socket?.emit("updateTestCases", { teamId: teamSelected, testCases: newCases });
+
+    posthog.capture("parameter_created", {
+      gameId: gameStateCtx.gameId,
+      parameter
+    });
   };
 
   const handleParameterDelete = (parameter: ParameterType) => {
@@ -510,7 +520,7 @@ function PlayGameRoom() {
                     <Button
                       size="xs"
                       color="cyan"
-                      disabled={isSpectator}
+                      disabled={isSpectator} onClick={() => posthog.capture("code_run_triggered", { gameId })}
                       rightSection={<IconPlayerPlay size={"var(--mantine-font-size-md)"} />}
                     >
                       RUN
@@ -551,6 +561,7 @@ function PlayGameRoom() {
                     roomId={teamSelected as string}
                     userName={session?.user.name as string}
                     isSpectator={isSpectator}
+                    role={role}
                   />
                 </Box>
               </Box>
@@ -630,7 +641,6 @@ function PlayGameRoom() {
                           <GameTestCase
                             testableCase={currentTestCase}
                             onTestCaseChange={handleTestBoxChange}
-                            onNewParameter={handleNewParameter}
                             onParameterDelete={handleParameterDelete}
 
                             onTestCaseDelete={removeTest}

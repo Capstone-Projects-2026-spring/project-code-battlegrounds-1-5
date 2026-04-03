@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Center, Stack, Button, Text, Group, Badge, Title } from "@mantine/core";
 import { Role } from "@prisma/client";
+import { usePostHog } from "posthog-js/react";
 
 export interface TeamCount {
     teamId: string;
@@ -15,6 +16,7 @@ interface TeamSelectProps {
 }
 
 export default function TeamSelect({ userId, teams, gameRoomId, onJoined }: TeamSelectProps) {
+    const posthog = usePostHog();
     const [loading, setLoading] = useState<string | null>(null);
 
     const handleJoin = async (teamId: string) => {
@@ -58,7 +60,12 @@ export default function TeamSelect({ userId, teams, gameRoomId, onJoined }: Team
                     })}
                     <Button
                         data-testid="spectator-button"
-                        onClick={() => { onJoined(null, Role.SPECTATOR, null); }}
+                        onClick={() => { 
+                            posthog.capture("spectator_joined", {
+                                gameId: gameRoomId
+                            });
+                            onJoined(null, Role.SPECTATOR, null);
+                         }}
                     >
                         Spectator Mode
                     </Button>

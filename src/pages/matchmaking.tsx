@@ -4,10 +4,13 @@ import { io, Socket } from 'socket.io-client';
 import { Button, Center, Group, Loader, Select, SegmentedControl, Text, Card } from '@mantine/core';
 import { GameType, ProblemDifficulty } from '@prisma/client';
 import { authClient } from '@/lib/auth-client';
+import { usePostHog } from 'posthog-js/react';
 
 type QueueStatus = 'idle' | 'queued' | 'matched' | 'error';
 
 export default function QueuePage() {
+    const posthog = usePostHog();
+
     const router = useRouter();
     const { data: session, isPending } = authClient.useSession();
 
@@ -41,6 +44,11 @@ export default function QueuePage() {
 
         socketInstance.on('matchFound', ({ gameId }) => {
             setStatus('matched');
+            posthog.capture("match_found", {
+                gameId,
+                gameType,
+                difficulty
+            });
             router.push({
                 pathname: `/game/${gameId}`,
             });
@@ -67,6 +75,10 @@ export default function QueuePage() {
         if (!socket || !session?.user.id) return;
         queuedSelectionRef.current = { gameType, difficulty };
         setStatus('queued');
+        posthog.capture("user_joined_queue", {
+            gameType,
+            difficulty
+        });
         socket.emit('joinQueue', {
             userId: session.user.id,
             gameType,
@@ -77,6 +89,10 @@ export default function QueuePage() {
 
     const handleLeaveQueue = () => {
         if (!socket || !queuedSelectionRef.current) return;
+        posthog.capture("user_left_queue", {
+            gameType,
+            difficulty
+        });
         socket.emit('leaveQueue', {
             gameType: queuedSelectionRef.current.gameType,
             difficulty: queuedSelectionRef.current.difficulty,
