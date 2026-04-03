@@ -1,38 +1,95 @@
-```mermaidjs
+```plantuml-diagram
+@startuml
+' Code BattleGrounds - Server Sequence Diagram
+' Shows flow when the server receives socket signals and timer interactions
 
+skinparam linetype polyline
+hide footbox
 
-sequenceDiagram
-    autonumber
-    actor Coder as Browser A (First User)
-    participant Server as Custom Server (Node.js + Socket.IO)
-    actor Tester as Browser B (Second User)
+actor Client
+participant "HTTP Server\n(Node.js)" as Http
+participant "Next.js App" as Next
+participant "Socket.IO Server" as IO
+participant "Socket (per client)" as Sock
+participant "Handlers" as H
+participant "GameService" as GS
+database "Redis (state + adapter)" as R
+participant "ExpirationListener" as EL
 
-    Note over Coder, Server: User navigates to /playGame/624
-    
-    Coder->>Server: Connect & Join Room (socket.emit('joinGame', '624'))
-    activate Server
-    Note right of Server: Logic Check: Server looks at room '624'. It's empty.
-    Server-->>Coder: Assign 'Coder' Role (socket.emit('roleAssigned', 'coder'))
-    deactivate Server
-    Note left of Coder: page.tsx sets state to 'coder' and renders <CoderPOV />
+== Startup ==
+Client -> Http : HTTP request / WebSocket upgrade
+Http -> Next : delegate request handling
+activate Next
+Next --> Http : handle (pages/api)
+deactivate Next
 
-    Note over Tester, Server: A second user navigates to the exact same URL.
+Http -> IO : upgrade to WebSocket (Socket.IO)
+create Sock
+IO -> Sock : connection established
+IO -> H : registerSocketHandlers(io, socket, { gameService })
+H --> IO : handlers bound
 
-    Tester->>Server: Connect & Join Room (socket.emit('joinGame', '624'))
-    activate Server
-    Note right of Server: Logic Check: Server looks at room '624'. It has 1 person.
-    Server-->>Tester: Assign 'Tester' Role (socket.emit('roleAssigned', 'tester'))
-    deactivate Server
-    Note right of Tester: page.tsx sets state to 'tester' and renders <TesterPOV />
+== Player joins a game ==
+Client -> Sock : emit("joinGame", gameId)
+activate H
+Sock -> H : on("joinGame") callback
+H -> Sock : socket.join(gameId)
+H -> IO : io.in(gameId).allSockets()
+IO --> H : Set of socket ids (size = N)
+alt first player
+  H -> Sock : emit("waitingForTester")
+  H -> Sock : emit("roleAssigned", "coder")
+else second player
+  H -> GS : startGameIfNeeded(gameId)
+  activate GS
+  GS -> R : SET game:{id}:expires '1' PX GAME_DURATION_MS NX
+  R --> GS : OK | null (already set)
+  GS -> R : PTTL game:{id}:expires
+  R --> GS : remaining ms
+  GS --> H : { duration: GAME_DURATION_MS, remaining }
+  deactivate GS
+  H -> IO : to(gameId).emit("gameStarted", { start: remaining, _duration: GAME_DURATION_MS })
+  H -> Sock : emit("roleAssigned", "tester")
+end
 
-    == Phase 2: The Real-time Code Relay ==
+H -> GS : getLatestCode(gameId)
+GS -> R : GET game:{id}:code
+R --> GS : code | null
+GS --> H : latestCode | null
+opt has latest code
+  H -> Sock : emit("receiveCodeUpdate", code)
+end
 
-    Note left of Coder: Coder types: "function start() { ... }"
+== Live code relay ==
+Client -> Sock : emit("codeChange", { roomId, code })
+Sock -> H : on("codeChange")
+H -> GS : saveLatestCode(roomId, code)
+GS -> R : SET game:{id}:code code
+R --> GS : OK
+H -> IO : socket.to(roomId).emit("receiveCodeUpdate", code)
 
-    Coder->>Server: Send Keypress Data (socket.emit('codeChange', ...))
-    activate Server
-    Note right of Server: Megaphone Logic: Broadcast to everyone EXCEPT the sender.
-    Server-->>Tester: Relay Code to Room (socket.to('624').emit(...))
-    deactivate Server
-    Note right of Tester: useEffect hook hears this, updates state, and Monaco re-renders.
+== Chat messages ==
+Client -> Sock : emit("sendChat", { roomId, message })
+Sock -> H : on("sendChat")
+H -> IO : socket.to(roomId).emit("receiveChat", message)
+
+== Redis key expiration ==
+Http -> R : CONFIG SET notify-keyspace-events Ex
+activate EL
+EL -> R : SUBSCRIBE __keyevent@0__:expired
+R --> EL : expired key events
+EL -> EL : filter keys game:{id}:expires
+EL -> R : SET lock:game:{id}:end '1' NX PX 5000
+alt acquired
+  EL -> IO : to(gameId).emit("gameEnded")
+else not acquired
+  EL -> EL : skip (another instance handled)
+end
+
+== Disconnect ==
+Client -> Sock : disconnect
+Sock -> H : on("disconnect")
+H -> H : log("Disconnected")
+
+@enduml
 ```
