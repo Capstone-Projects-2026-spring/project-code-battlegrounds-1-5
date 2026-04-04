@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Burger, Container, Group, Text, Anchor } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import classes from '../styles/comps/Header.module.css';
-import Link from 'next/link';
 import Brand from './Brand';
 
 interface HeaderProps {
@@ -17,13 +16,11 @@ export default function HeaderSimple(props: HeaderProps) {
 
   // split the title
   const titleParts = props.title.split('|');
-  // get the brand name
-  const brandName = titleParts[0]; // "CODE BATTLEGROUNDS "
   // put the remaining info back together.
   const gameInfo = titleParts.slice(1).join('|'); // " GAMEMODE: ... | YOUR ROLE: ..."
 
   const items = props.links.map((link) => (
-    <a
+    <Anchor
       key={link}
       className={classes.link}
       onClick={(event) => {
@@ -32,7 +29,7 @@ export default function HeaderSimple(props: HeaderProps) {
       }}
     >
       {link}
-    </a>
+    </Anchor>
   ));
 
   return (
@@ -41,16 +38,6 @@ export default function HeaderSimple(props: HeaderProps) {
 
         <Brand />
         <Text fw={600} mr="auto">
-          {/* mantine anchor tag instead a <a or whatever else we'd use  */}
-          {/* <Anchor
-            component={Link}
-            href="/"
-            underline="hover"
-            fw={800}
-            style={{ letterSpacing: '1px' }}
-          >
-            {brandName}
-          </Anchor> */}
 
           {/* Remaining status text */}
           {gameInfo && <span style={{ opacity: 0.8, fontWeight: 400 }}> | {gameInfo}</span>}

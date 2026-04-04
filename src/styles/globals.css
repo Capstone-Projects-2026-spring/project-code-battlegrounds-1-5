@@ -41,3 +41,16 @@ a {
     color-scheme: dark;
   }
 }
+
+.blinky {
+  animation: blinky 1s steps(1, end) infinite;
+}
+
+@keyframes blinky {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
