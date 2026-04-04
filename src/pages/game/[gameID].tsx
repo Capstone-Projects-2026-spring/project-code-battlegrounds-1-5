@@ -5,6 +5,7 @@ import { useEffect, useState, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { IconEye, IconPlayerPlay, IconPlayerTrackNextFilled, IconPlus } from '@tabler/icons-react';
 import { usePostHog } from 'posthog-js/react';
+import { Panel, Group as PanelGroup, Separator as PanelResizeHandle } from 'react-resizable-panels';
 
 import ChatBox from '@/components/ChatBox';
 import GameTimer from '@/components/GameTimer';
@@ -470,60 +471,71 @@ function PlayGameRoom() {
           />
 
           <Box style={{ flex: 1, display: "flex", overflow: "hidden" }}>
-            {/* Left Sidebar */}
-            <Box
-              style={{
-                // Dynamic width based on visibility state
-                width: isProblemVisible ? "20%" : "50px",
-                minWidth: isProblemVisible ? "250px" : "50px",
-                backgroundColor: "#333",
-                color: "white",
-                padding: "0",
-                overflowY: "auto",
-                display: "flex",
-                flexDirection: 'column',
-                alignItems: 'center',
-                // Justify content to center the icon when collapsed
-                justifyContent: isProblemVisible ? 'flex-start' : 'center',
-                flexShrink: 0,
-                // Smooth transition for width change
-                transition: 'width 0.2s ease, min-width 0.2s ease',
-              }}
-            >
-              {(gameState === GameStatus.ACTIVE || gameState === GameStatus.FLIPPING) && (
-                <Box mb="md" p="1rem" pb={isProblemVisible ? "md" : "1rem"}>
-                  <GameTimer endTime={endTime}
-                    onExpire={() => { if (role === Role.CODER) socket.emit("submitCode", { roomId: gameId, code: liveCode }); }} />
+            <PanelGroup orientation="horizontal">
+              {/* Left Sidebar - Problem Box */}
+              <Panel 
+                defaultSize={isProblemVisible ? 300 : 5} 
+                minSize={isProblemVisible ? 15 : 5}
+                collapsible={false}
+              >
+                <Box
+                  style={{
+                    height: '100%',
+                    backgroundColor: "#333",
+                    color: "white",
+                    padding: "0",
+                    overflowY: "auto",
+                    display: "flex",
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: isProblemVisible ? 'flex-start' : 'center',
+                  }}
+                >
+                  {(gameState === GameStatus.ACTIVE || gameState === GameStatus.FLIPPING) && (
+                    <Box mb="md" p="1rem" pb={isProblemVisible ? "md" : "1rem"}>
+                      <GameTimer endTime={endTime}
+                        onExpire={() => { if (role === Role.CODER) socket.emit("submitCode", { roomId: gameId, code: liveCode }); }} />
+                    </Box>
+                  )}
+                  {isProblemVisible ? (
+                    <Box style={{ width: '100%', flex: 1, minHeight: 0, padding: '0 1rem 1rem 1rem' }}>
+                      <ProblemBox problem={problem} onToggleVisibility={toggleProblemVisibility} />
+                    </Box>
+                  ) : (
+                    <Tooltip label="Show Problem">
+                      <ActionIcon variant="transparent" color="gray" size="xl" onClick={toggleProblemVisibility} title="Show Problem">
+                        <IconEye size={24} />
+                      </ActionIcon>
+                    </Tooltip>
+                  )}
                 </Box>
-              )}
-              {/* Conditionally render either the ProblemBox or the "Show" icon */}
-              {isProblemVisible ? (
-                <Box style={{ width: '100%', flex: 1, minHeight: 0, padding: '0 1rem 1rem 1rem' }}>
-                  <ProblemBox problem={problem} onToggleVisibility={toggleProblemVisibility} />
-                </Box>
-              ) : (
-                <Tooltip label="Show Problem">
-                  <ActionIcon variant="transparent" color="gray" size="xl" onClick={toggleProblemVisibility} title="Show Problem">
-                    <IconEye size={24} />
-                  </ActionIcon>
-                </Tooltip>
+              </Panel>
 
+              {isProblemVisible && (
+                <PanelResizeHandle style={{
+                  width: '4px',
+                  backgroundColor: '#ddd',
+                  cursor: 'col-resize',
+                  transition: 'background-color 0.2s',
+                }} 
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#999'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ddd'}
+                />
               )}
-            </Box>
 
-            {/* Main Workspace */}
-            <Box
-              style={{
-                flex: 1,
-                display: "flex",
-                flexDirection: "column",
-                minWidth: 0,
-              }}
-            >
+              {/* Main Workspace */}
+              <Panel minSize={30}>
+                <Box
+                  style={{
+                    height: '100%',
+                    display: "flex",
+                    flexDirection: "column",
+                    minWidth: 0,
+                  }}
+                >
               {/* Toolbar */}
               <Group
                 p="xs"
-                // bg="#f8f9fa"
                 style={{ borderBottom: "1px solid #ddd", flexShrink: 0 }}
               >
                 <Select
@@ -537,7 +549,8 @@ function PlayGameRoom() {
                     <Button
                       size="xs"
                       color="cyan"
-                      disabled={isSpectator} onClick={() => posthog.capture("code_run_triggered", { gameId })}
+                      disabled={isSpectator} 
+                      onClick={() => posthog.capture("code_run_triggered", { gameId })}
                       rightSection={<IconPlayerPlay size={"var(--mantine-font-size-md)"} />}
                     >
                       RUN
@@ -549,145 +562,174 @@ function PlayGameRoom() {
                 )}
               </Group>
 
-              {/* Middle Row: Editor & Chat */}
-              <Box
-                style={{
-                  display: "flex",
-                  flex: "1 1 45%",
-                  borderBottom: "2px solid #333",
-                  minHeight: 0,
-                }}
-              >
-                <Box style={{ flex: 1, borderRight: "1px solid #ddd", minWidth: 0 }}>
-                  <Editor
-                    height="100%"
-                    theme="vs-dark"
-                    defaultLanguage="javascript"
-                    value={liveCode}
-                    onChange={!isSpectator ? handleEditorChange : undefined}
-                    options={{
-                      readOnly: isSpectator || role !== Role.CODER,
-                      domReadOnly: isSpectator || role !== Role.CODER,
-                      minimap: { enabled: false }
-                    }}
-                  />
-                </Box>
-                <Box style={{ width: "30%", minWidth: "200px" }}>
-                  <ChatBox
-                    socket={socket as Socket}
-                    roomId={teamSelected as string}
-                    userName={session?.user.name as string}
-                    isSpectator={isSpectator}
-                    role={role}
-                  />
-                </Box>
-              </Box>
-
-              {/* Bottom Row: Console / Test Cases */}
-              <Box
-                style={{
-                  flex: "1 1 35%",
-                  display: "flex",
-                  flexDirection: "column",
-                  minHeight: 0,
-                }}
-              >
-                {effectiveRole === Role.TESTER && (
-                  <Box p="xs" style={{ display: "flex", flexDirection: "column", minHeight: 0, flex: 1 }}>
-                    <Stack style={{ minHeight: 0, flex: 1 }}>
-                      <Group justify="space-between">
-                        <Tabs
-                          value={String(activeTestId)}
-                          onChange={val => {
-                            setActiveTestId(+(val ?? 0));
-                          }}
-                          variant="outline"
-                        >
-                          <Tabs.List>
-                            {testCaseCtx.cases.map((test, idx) => (
-                              <Tabs.Tab
-                                key={idx}
-                                value={String(test.id)}
-                              >
-                                Test {idx + 1}
-                              </Tabs.Tab>
-                            ))}
-
-                            {testCaseCtx.cases.length < 5 && !isSpectator && (
-                              <Tooltip label="New Test">
-                                <ActionIcon
-                                  variant="subtle"
-                                  color="gray"
-                                  onClick={addNewTest}
-                                  size="sm"
-                                  style={{ alignSelf: "center" }}
-                                  ml="xs"
-                                >
-                                  <IconPlus />
-                                </ActionIcon>
-                              </Tooltip>
-                            )}
-                          </Tabs.List>
-                        </Tabs>
-
-                        <Group gap="xs">
-                          <NewParameterButton
-                            onNewParameter={handleNewParameter}
+              {/* Vertical split: (Editor + Chat) and (Test Cases) */}
+              <Box style={{ flex: 1, minHeight: 0 }}>
+                <PanelGroup orientation="vertical">
+                  {/* Top Section: Editor & Chat */}
+                  <Panel defaultSize={55} minSize={25}>
+                    <PanelGroup orientation="horizontal">
+                      {/* Code Editor */}
+                      <Panel defaultSize={70} minSize={40}>
+                        <Box style={{ height: '100%', borderRight: "1px solid #ddd" }}>
+                          <Editor
+                            height="100%"
+                            theme="vs-dark"
+                            defaultLanguage="javascript"
+                            value={liveCode}
+                            onChange={!isSpectator ? handleEditorChange : undefined}
+                            options={{
+                              readOnly: isSpectator || role !== Role.CODER,
+                              domReadOnly: isSpectator || role !== Role.CODER,
+                              minimap: { enabled: false }
+                            }}
                           />
-                          <Button
-                            size="compact-sm"
-                            variant="filled"
-                            disabled={isSpectator || runningAllTests}
-                            loading={runningAllTests}
-                            onClick={handleRunAllTests}
-                            rightSection={
-                              <IconPlayerTrackNextFilled
-                                size="var(--mantine-font-size-lg)"
-                              />
-                            }
-                          >
-                            Run All
-                          </Button>
-                        </Group>
-                      </Group>
+                        </Box>
+                      </Panel>
 
-                      {(() => {
-                        const currentTestCase = testCaseCtx.cases.find(t => t.id === activeTestId);
-                        return currentTestCase ? (
-                          <GameTestCase
-                            testableCase={currentTestCase}
-                            onTestCaseChange={handleTestBoxChange}
-                            onParameterDelete={handleParameterDelete}
-
-                            onTestCaseDelete={removeTest}
-                            showDelete={testCaseCtx.cases.length !== 1}
-
-                            disabled={runningAllTests}
-                          />
-                        ) : null;
-                      })()}
-                    </Stack>
-                  </Box>
-                )}
-
-                {effectiveRole === Role.CODER && (
-                  <Box style={{ flex: 1 }}>
-                    <Editor
-                      height="100%"
-                      theme="vs-dark"
-                      defaultLanguage="javascript"
-                      // value={""}
-                      // onChange={handleTestBoxChange}
-                      options={{
-                        readOnly: role !== Role.TESTER,
-                        minimap: { enabled: false }
+                      <PanelResizeHandle style={{
+                        width: '4px',
+                        backgroundColor: '#ddd',
+                        cursor: 'col-resize',
+                        transition: 'background-color 0.2s',
                       }}
-                    />
-                  </Box>
-                )}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#999'}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ddd'}
+                      />
+
+                      {/* Chat Box */}
+                      <Panel defaultSize={30} minSize={15}>
+                        <Box style={{ height: '100%' }}>
+                          <ChatBox
+                            socket={socket as Socket}
+                            roomId={teamSelected as string}
+                            userName={session?.user.name as string}
+                            isSpectator={isSpectator}
+                            role={role}
+                          />
+                        </Box>
+                      </Panel>
+                    </PanelGroup>
+                  </Panel>
+
+                  <PanelResizeHandle style={{
+                    height: '4px',
+                    backgroundColor: '#333',
+                    cursor: 'row-resize',
+                    transition: 'background-color 0.2s',
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#666'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#333'}
+                  />
+
+                  {/* Bottom Section: Test Cases / Console */}
+                  <Panel defaultSize={25} minSize={20}>
+                    <Box
+                      style={{
+                        height: '100%',
+                        display: "flex",
+                        flexDirection: "column",
+                        minHeight: 0,
+                      }}
+                    >
+                      {effectiveRole === Role.TESTER && (
+                        <Box p="xs" style={{ display: "flex", flexDirection: "column", minHeight: 0, flex: 1 }}>
+                          <Stack style={{ minHeight: 0, flex: 1 }}>
+                            <Group justify="space-between">
+                              <Tabs
+                                value={String(activeTestId)}
+                                onChange={val => {
+                                  setActiveTestId(+(val ?? 0));
+                                }}
+                                variant="outline"
+                              >
+                                <Tabs.List>
+                                  {testCaseCtx.cases.map((test, idx) => (
+                                    <Tabs.Tab
+                                      key={idx}
+                                      value={String(test.id)}
+                                    >
+                                      Test {idx + 1}
+                                    </Tabs.Tab>
+                                  ))}
+
+                                  {testCaseCtx.cases.length < 5 && !isSpectator && (
+                                    <Tooltip label="New Test">
+                                      <ActionIcon
+                                        variant="subtle"
+                                        color="gray"
+                                        onClick={addNewTest}
+                                        size="sm"
+                                        style={{ alignSelf: "center" }}
+                                        ml="xs"
+                                      >
+                                        <IconPlus />
+                                      </ActionIcon>
+                                    </Tooltip>
+                                  )}
+                                </Tabs.List>
+                              </Tabs>
+
+                              <Group gap="xs">
+                                <NewParameterButton
+                                  onNewParameter={handleNewParameter}
+                                />
+                                <Button
+                                  size="compact-sm"
+                                  variant="filled"
+                                  disabled={isSpectator || runningAllTests}
+                                  loading={runningAllTests}
+                                  onClick={handleRunAllTests}
+                                  rightSection={
+                                    <IconPlayerTrackNextFilled
+                                      size="var(--mantine-font-size-lg)"
+                                    />
+                                  }
+                                >
+                                  Run All
+                                </Button>
+                              </Group>
+                            </Group>
+
+                            {(() => {
+                              const currentTestCase = testCaseCtx.cases.find(t => t.id === activeTestId);
+                              return currentTestCase ? (
+                                <GameTestCase
+                                  testableCase={currentTestCase}
+                                  onTestCaseChange={handleTestBoxChange}
+                                  onParameterDelete={handleParameterDelete}
+
+                                  onTestCaseDelete={removeTest}
+                                  showDelete={testCaseCtx.cases.length !== 1}
+
+                                  disabled={runningAllTests}
+                                />
+                              ) : null;
+                            })()}
+                          </Stack>
+                        </Box>
+                      )}
+
+                      {effectiveRole === Role.CODER && (
+                        <Box style={{ flex: 1 }}>
+                          <Editor
+                            height="100%"
+                            theme="vs-dark"
+                            defaultLanguage="javascript"
+                            options={{
+                              readOnly: role !== Role.TESTER,
+                              minimap: { enabled: false }
+                            }}
+                          />
+                        </Box>
+                      )}
+                    </Box>
+                  </Panel>
+                </PanelGroup>
               </Box>
             </Box>
-          </Box>
+          </Panel>
+        </PanelGroup>
+      </Box>
         </Box>
       )}
     </Box>
