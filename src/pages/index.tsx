@@ -1,7 +1,7 @@
 import DifficultyGrid from "@/components/DifficultyGrid";
 import Navbar from "@/components/Navbar";
 import PartnerSearch from "@/components/PartnerSearch";
-import { Box, Center, Stack } from "@mantine/core"; //
+import { Box, Stack } from "@mantine/core"; //
 import Head from "next/head";
 
 export default function Home() {
@@ -17,23 +17,25 @@ export default function Home() {
           h="100vh" ensures the page is at least the height of the screen.
           gap={0} prevents unwanted spacing between the header and the grid.
       */}
-      <Stack h="100vh" gap={0}>
-        <Navbar
-          links={["Time", "Players", "Tournament"]}
-          title="Code BattleGrounds"
-        />
 
-        <Box style={{ flex: 1 }}>
-          <DifficultyGrid />
-        </Box>
+      <Box h="100vh">
+        <Stack gap={0}>
+          <Navbar
+            links={["Time", "Players", "Tournament"]}
+            title="Code BattleGrounds"
+          />
 
-        {/* Center the button to create the game room */}
-        <Center mb="lg" style={{ flexDirection: "column", gap: 8 }}>
+          <Box style={{ flex: 1 }} mt="xl">
+            <DifficultyGrid />
+          </Box>
+
+          {/* Center the button to create the game room */}
+
           <Box style={{ flex: 1 }}>
             <PartnerSearch />
           </Box>
-        </Center>
-      </Stack>
+        </Stack>
+      </Box>
     </>
   );
 }

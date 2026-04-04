@@ -1,9 +1,9 @@
-import React, { useState } from "react";
-import { Stack, Text, Button, TextInput, Group, Divider } from "@mantine/core";
-import { useRouter } from "next/router";
+import { Button, Container, Divider, Group, Stack, TextInput, Title } from "@mantine/core";
 import { IconArrowRight } from "@tabler/icons-react";
-import { usePostHog } from "posthog-js/react";
 import Link from "next/link";
+import { useRouter } from "next/router";
+import { usePostHog } from "posthog-js/react";
+import { useState } from "react";
 
 export default function PartnerSearch() {
   const [query, setQuery] = useState("");
@@ -24,62 +24,57 @@ export default function PartnerSearch() {
   };
 
   return (
-    <Stack h="40vh" justify="center" px="xl">
-      <Group
-        justify="space-between"
-        align="center"
-        maw={1100}
-        mx="auto"
-        w="100%"
-      >
-        {/* Left Side: Text */}
-        <Stack gap={0} style={{ flex: 1 }}>
-          <Text size="2.5rem" fw={700} style={{ lineHeight: 1.1 }}>
-            Select your battleground...
-          </Text>
-          <Text size="xl" c="dimmed">
-            Or gamble if you are bold...
-          </Text>
-        </Stack>
+    <Container py="lg">
+      <Stack h="40vh">
+        <Title order={3}>
+          Have a Game ID?
+        </Title>
+        <Group
+          justify="space-between"
+          // align="center"
+          maw={1100}
+          mx="auto"
+          w="100%"
+        >
+          {/* Right Side: Controls */}
+          <Group gap="md">
+            <form onSubmit={handleSearch}>
+              <Group gap="md" align="center">
+                <TextInput
+                  placeholder="Enter Game ID..."
+                  size="lg"
+                  radius="xs"
+                  value={query}
+                  onChange={(e) => setQuery(e.currentTarget.value)}
+                  styles={{ input: { width: 300 } }}
+                />
+                <Button
+                  rightSection={<IconArrowRight />}
+                  size="lg"
+                  type="submit"
+                  radius="xs"
+                >
+                  Find
+                </Button>
+              </Group>
+            </form>
 
-        {/* Right Side: Controls */}
-        <Group gap="md" align="center">
-          <form onSubmit={handleSearch}>
-            <Group gap="md" align="center">
-              <TextInput
-                placeholder="Enter Room ID"
-                size="lg"
-                radius="xs"
-                value={query}
-                onChange={(e) => setQuery(e.currentTarget.value)}
-                styles={{ input: { width: 300 } }}
-              />
-              <Button
-                rightSection={<IconArrowRight />}
-                size="lg"
-                type="submit"
-                radius="xs"
-              >
-                Find
-              </Button>
-            </Group>
-          </form>
+            <Divider orientation="vertical" />
 
-          <Divider orientation="vertical" />
-
-          <Button
-            component={Link}
-            href="/matchmaking"
-            data-testid="matchmaking-link"
-            size="lg"
-            color="black"
-            radius="xs"
-            px={40}
-          >
-            Random
-          </Button>
+            <Button
+              component={Link}
+              href="/matchmaking"
+              data-testid="matchmaking-link"
+              size="lg"
+              color="black"
+              radius="xs"
+              px={40}
+            >
+              Matchmaking
+            </Button>
+          </Group>
         </Group>
-      </Group>
-    </Stack>
+      </Stack>
+    </Container>
   );
 }
