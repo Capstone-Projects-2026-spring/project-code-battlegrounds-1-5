@@ -36,7 +36,7 @@ export default function HeaderSimple(props: HeaderProps) {
     <header className={classes.header}>
       <Container size="md" className={classes.inner}>
 
-        <Brand />
+        <Brand blink />
         <Text fw={600} mr="auto">
 
           {/* Remaining status text */}
