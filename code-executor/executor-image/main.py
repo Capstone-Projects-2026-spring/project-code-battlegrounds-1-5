@@ -1,62 +1,41 @@
 import os
-import string
 import subprocess
 import time
-import random
-from typing import List, Optional
+import base64
 
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse, PlainTextResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
+
+from utils import *
+from models import *
 
 app = FastAPI()
+
+# This seems backwards but we want nsjail to be on by default.
+# So if the env key isn't set, it's still on # TODO: havent implemented this yet
+use_nsjail = False if os.getenv("USE_NSJAIL") == "false" else True
+node_path = os.getenv("NODE_PATH", "/usr/bin/node")
 
 @app.get("/", response_class=PlainTextResponse)
 def root():
     return "Runner is up. Use POST /execute with JSON { language, code, stdin?, testCases? }"
 
+
 @app.get("/health")
 def health():
     return {"status": "ok"}
 
-class Languages:
-    map = {
-        "javascript": "js",
-        # "python": ".py",
-    }
-
-    @classmethod
-    def is_supported(cls, language: str) -> bool:
-        return language in cls.map
-
-class TestCase(BaseModel):
-    input: str
-    expected: Optional[str] = None
-
-
-class ExecutionRequest(BaseModel):
-    language: str
-    code: str
-    stdin: Optional[str] = ""
-    testCases: Optional[List[TestCase]] = None
-
-# write to file with its extension, catching error if langauge is not implemented.
-# returns None if langauge is not implemented or the filename written to
-def write_code_to_file(content: str, language: str):
-    # TODO: we should check if code compiles before running it and returning garbage.
-    try:
-        lang_ext = Languages.map[language]
-    except KeyError:
-        return None
-    name = ''.join(random.choices(string.ascii_letters + string.digits, k=16))
-    with open(f"/tmp/{name}.{lang_ext}", "w+") as f:
-        f.write(content)
-    return f"/tmp/{name}.{lang_ext}"
-
-def run_in_sandbox(code: str, stdin: str, language: str):
+def run_in_sandbox(
+    code: str,
+    stdin: str,
+    language: str,
+    testCase: TestableCase = None
+):
     # write code to a random temp file with the correct extension
-    host_code_path = write_code_to_file(code, language)
-    if host_code_path is None: # we verify on /execute but nice to be sure
+
+    host_code_path = write_code_to_file(code, language, testCase)
+    if host_code_path is None:  # we verify on /execute but nice to be sure
         return {
             "stdout": "",
             "stderr": f"Language '{language}' is not supported",
@@ -86,7 +65,9 @@ def run_in_sandbox(code: str, stdin: str, language: str):
             "--user", "99999",
             "--group", "99999",
             "--",
-            "/usr/bin/node", # TODO: a quick mapping in languages to map language strings to executables and args
+            "/usr/bin/node",
+            # "/Users/samir/.nvm/versions/node/v24.11.1/bin/node",
+            # TODO: a quick mapping in languages to map language strings to executables and args
             "--max-old-space-size=64",
             f"/{host_code_path}",
         ]
@@ -137,32 +118,74 @@ def execute(req: ExecutionRequest):
     if not Languages.is_supported(req.language):
         return JSONResponse(
             status_code=400,
-            content={"error": f"Language '{req.language}' is not supported", "supported": list(Languages.map.keys())},
+            content={"error": f"Language '{req.language}' is not supported",
+                     "supported": list(Languages.map.keys())},
         )
+
+    # The code is coming in as base 64. Decode it!
+    code = base64.b64decode(req.code).decode("utf-8")
+    print(code)
 
     # if there arent test cases we can just run it
     if req.testCases is None:
-        result = run_in_sandbox(req.code, req.stdin or "", req.language)
+        print("No test cases. Running code")
+        result = run_in_sandbox(code, req.stdin or "", req.language)
         return result
 
     # now we need to parse and run against each case
     results = []
     all_passed = True
 
-    for test in req.testCases:
-        result = run_in_sandbox(req.code, test.input, req.language)
+    # the test cases are coming in as a json string.
+    # decode to python!
+    testCases = json.loads(req.testCases)
+    # normalize input: allow a single object or a list of objects as frontend usually send json object not list
+    if isinstance(testCases, dict):
+        testCases = [testCases]
+    elif not isinstance(testCases, list):
+        return JSONResponse(
+            status_code=400,
+            content={
+                "error": "testCases not type of list"
+            }
+        )
+
+    for test in testCases:
+        # print(test)
+        try:
+            test = TestableCase.model_validate(test)
+        except ValidationError as e:
+            print(e)
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "error": e.title
+                }
+            )
+
+        # unnngggghhhhh list comprehension 🤤
+        testCaseInputs = [test.value for test in test.functionInput]
+        # print(testCaseInputs)
+
+        result = run_in_sandbox(
+            code=code,
+            stdin="",
+            language=req.language,
+            testCase=test
+        )
 
         # check if we passed
         passed = None
-        if test.expected is not None:
-            passed = (result.get("stdout", "").strip() == (test.expected or "").strip())
+        if test.expectedOutput.value is not None:
+            passed = (result.get("stdout", "").strip()
+                      == (test.expectedOutput.value or "").strip())
             if not passed:
                 all_passed = False
 
         # append how we did to results
         results.append({
-            "input": test.input,
-            "expected": test.expected,
+            "input": testCaseInputs,
+            "expected": test.expectedOutput.value,
             "actual": result.get("stdout", ""),
             "passed": passed,
             "stderr": result.get("stderr", ""),
