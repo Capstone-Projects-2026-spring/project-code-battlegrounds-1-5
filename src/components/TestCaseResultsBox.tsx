@@ -9,9 +9,11 @@ interface TestCase {
 
 interface TestCaseResultsBoxProps {
   gameId?: string;
+  team1Results?: unknown[];
+  team2Results?: unknown[];
 }
 
-export default function TestCaseResultsBox({ gameId }: TestCaseResultsBoxProps) {
+export default function TestCaseResultsBox({ gameId, team1Results, team2Results }: TestCaseResultsBoxProps) {
   const [testCases, setTestCases] = useState<TestCase[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -60,13 +62,16 @@ export default function TestCaseResultsBox({ gameId }: TestCaseResultsBoxProps) 
     return String(value);
   };
 
-  const rows = testCases.map((element) => (
+  const rows = testCases.map((element, index) => (
     <Table.Tr key={element.id}>
       <Table.Td>
         <Text size="sm" fw={500} ff="monospace">{formatValue(element.input)}</Text>
       </Table.Td>
       <Table.Td>
-        <Text size="sm" fw={500} c="gray.5" ff="monospace">-</Text>
+        <Text size="sm" fw={500} ff="monospace">{team1Results && team1Results[index] !== undefined ? formatValue(team1Results[index]) : '-'}</Text>
+      </Table.Td>
+      <Table.Td>
+        <Text size="sm" fw={500} ff="monospace">{team2Results && team2Results[index] !== undefined ? formatValue(team2Results[index]) : '-'}</Text>
       </Table.Td>
       <Table.Td>
         <Text size="sm" fw={500} ff="monospace">{formatValue(element.expected)}</Text>
@@ -83,7 +88,8 @@ export default function TestCaseResultsBox({ gameId }: TestCaseResultsBoxProps) 
           <Table.Thead>
             <Table.Tr>
               <Table.Th>Input</Table.Th>
-              <Table.Th>Actual Result</Table.Th>
+              <Table.Th>Your Result</Table.Th>
+              <Table.Th>Other Team</Table.Th>
               <Table.Th>Expected Result</Table.Th>
             </Table.Tr>
           </Table.Thead>
