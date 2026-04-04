@@ -42,7 +42,7 @@ const messageSchema = z.object({
 
 const chatMessageSchema = z.object({
   teamId: z.string(),
-  message: messageSchema // Adjust max length as needed
+  message: messageSchema 
 });
 
 const testableCaseSchema = z.object({
