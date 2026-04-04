@@ -1,18 +1,10 @@
-import { useState } from "react";
-import Head from "next/head";
-import styles from "@/styles/Home.module.css";
-import { Stack, Box, Button, Center } from "@mantine/core"; //
-import Navbar from "@/components/Navbar";
 import DifficultyGrid from "@/components/DifficultyGrid";
-import { useRouter } from "next/router";
-import { authClient } from "@/lib/auth-client";
+import Navbar from "@/components/Navbar";
 import PartnerSearch from "@/components/PartnerSearch";
+import { Box, Stack } from "@mantine/core"; //
+import Head from "next/head";
 
 export default function Home() {
-  const router = useRouter(); // Next router used for navigation AKA redirecting page
-  const [loading, setLoading] = useState(false); // State to manage loading state of the button
-  const [error, setError] = useState<string | null>(null);
-  const { data: session } = authClient.useSession();
 
   return (
     <>
@@ -26,26 +18,25 @@ export default function Home() {
           h="100vh" ensures the page is at least the height of the screen.
           gap={0} prevents unwanted spacing between the header and the grid.
       */}
-      <Stack h="100vh" gap={0}>
-        <Navbar
-          links={["Time", "Players", "Tournament"]}
-          title="Code BattleGrounds"
-        />
 
-        <Box style={{ flex: 1 }}>
-          <DifficultyGrid />
-        </Box>
+      <Box h="100vh">
+        <Stack gap={0}>
+          <Navbar
+            links={["Time", "Players", "Tournament"]}
+            title="Code BattleGrounds"
+          />
 
-        {/* Center the button to create the game room */}
-        <Center mb="lg" style={{ flexDirection: "column", gap: 8 }}>
-          {error && (
-            <div style={{ color: "red", marginBottom: 8 }}>{error}</div>
-          )}
+          <Box style={{ flex: 1 }} mt="xl">
+            <DifficultyGrid />
+          </Box>
+
+          {/* Center the button to create the game room */}
+
           <Box style={{ flex: 1 }}>
             <PartnerSearch />
           </Box>
-        </Center>
-      </Stack>
+        </Stack>
+      </Box>
     </>
   );
 }

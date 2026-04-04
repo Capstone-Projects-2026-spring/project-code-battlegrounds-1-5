@@ -5,6 +5,7 @@ import { useForm } from "@mantine/form";
 import { Button, Card, Flex, PasswordInput, TextInput } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { usePostHog } from "posthog-js/react";
+import Brand from "@/components/Brand";
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -52,14 +53,17 @@ export default function SignUpPage() {
 
   return (
     <Flex justify={"center"} align={"center"} mih="100vh">
-      <Card miw="30%">
+      <Card miw="30%" shadow="xl" withBorder>
         <form onSubmit={form.onSubmit(
           (values) => {
             handleSignUp(values.name, values.email, values.password);
           }
         )}>
           <Flex direction={"column"} gap="sm">
-            <TextInput
+            <Brand />
+            
+            <TextInput 
+              mt="md"
               data-testid="name-signup"
               withAsterisk
               label="Name"

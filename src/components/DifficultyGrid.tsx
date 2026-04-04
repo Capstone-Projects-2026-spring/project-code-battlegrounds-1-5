@@ -1,33 +1,60 @@
-import {
-  Container,
-  Grid,
-  Skeleton,
-  Text,
-  Card,
-  Box,
-  Flex,
-  Button,
-  SegmentedControl
-} from "@mantine/core";
-import { useState } from "react";
-import { useRouter } from "next/router";
 import { authClient } from "@/lib/auth-client";
-import { useToggle } from "@mantine/hooks";
+import {
+  Button,
+  Card,
+  Container,
+  Flex,
+  Stack,
+  Text,
+  Title
+} from "@mantine/core";
 import { GameType } from "@prisma/client";
+import { useRouter } from "next/router";
 import { usePostHog } from "posthog-js/react";
+import { useState } from "react";
 
-type Difficulty = "EASY" | "MEDIUM" | "HARD";
+type DifficultyType = "EASY" | "MEDIUM" | "HARD";
+
+interface Difficulty {
+  title: string,
+  subtitle: string;
+  topics: string[],
+  color: string,
+  difficulty: DifficultyType
+}
+const difficulties: Difficulty[] = [
+  {
+    title: "Easy Difficulty",
+    subtitle: "For Beginners",
+    topics: ["You're just starting to learn how to code, you're gaining knowledge"],
+    color: "#40c057",
+    difficulty: "EASY"
+  },
+  {
+    title: "Medium Difficulty",
+    subtitle: "For Intermediate Programmers",
+    topics: ["You have more experience, you're ready for a bit of a challenge"],
+    color: "#fbb800",
+    difficulty: "MEDIUM"
+  },
+  {
+    title: "Hard Difficulty",
+    subtitle: "For Advanced Programmers",
+    topics: ["You're a pro, ready to take on the hardest problems we have"],
+    color: "#fa5252",
+    difficulty: "HARD"
+  }
+];
 
 export default function Subgrid() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [gameType, toggleGameType] = useToggle<GameType>([GameType.TWOPLAYER, GameType.FOURPLAYER]);
-  
+
   const router = useRouter();
   const { data: session } = authClient.useSession();
   const posthog = usePostHog();
-  const handleCreateRoom = async (difficulty: Difficulty) => {
-    
+
+  const handleCreateRoom = async (difficulty: DifficultyType, gameType: GameType) => {
     if (!session) {
       setError("Error: You must be signed in to create a match!");
       return;
@@ -60,143 +87,85 @@ export default function Subgrid() {
 
   return (
     <Container my="md">
-      <Grid>
-        <Grid.Col span={4}>
-          {loading ? (
-            <Skeleton height={360} radius="md" />
-          ) : (
-            <Card radius="md" h={360} withBorder>
-              <Flex
-                direction="column"
-                align={"center"}
-                justify={"center"}
-                style={{ height: "100%" }}
+      <Stack gap="md">
+        <Title ta="center">Select your battleground...</Title>
+        {difficulties.map((diff) => {
+          return (
+            <div key={diff.difficulty}>
+              <Card
+                p={"xl"}
+                withBorder
+                bg={`linear-gradient(to right,
+                    ${diff.color} 31%, 
+                    rgba(0, 0, 0, 0) 31%
+                    )`}
               >
-                <Box
-                  w={48}
-                  h={48}
-                  bg="green.6"
-                  style={{
-                    borderRadius: "50%",
-                    marginBottom: 12,
-                  }}
-                />
-                <Text fw={500}>Easy Difficulty</Text>
-                <Text size="sm" c="dimmed">
-                  For Beginners
-                </Text>
-                <Text size="sm" c="dimmed">
-                  Arrays
-                </Text>
-                <Text size="sm" c="dimmed">
-                  Strings
-                </Text>
+                <Flex
+                  direction="row"
+                  align={"center"}
+                  gap="md"
+                  style={{ height: "100%" }}
+                >
+                  <Flex direction={"column"} style={{ flex: '0 0 300px' }}>
+                    <Title
+                      order={2}
+                      fw={500}
+                      c="white"
+                    >
+                      {diff.title}
+                    </Title>
 
-                <Button data-testid="create-room-button-easy" onClick={() => handleCreateRoom("EASY")} mt={"auto"}>
-                  Create Room
-                </Button>
-              </Flex>
-            </Card>
-          )}
-        </Grid.Col>
+                    <Text c="white" size="md">
+                      {diff.subtitle}
+                    </Text>
+                  </Flex>
 
-        <Grid.Col span={4}>
-          {loading ? (
-            <Skeleton height={360} radius="md" />
-          ) : (
-            <Card radius="md" h={360} withBorder>
-              <Flex
-                direction="column"
-                align={"center"}
-                justify={"center"}
-                style={{ height: "100%" }}
-              >
-                <Box
-                  w={48}
-                  h={48}
-                  bg="orange.6"
-                  style={{
-                    borderRadius: "50%",
-                    marginBottom: 12,
-                  }}
-                />
-                <Text fw={500}>Medium Difficulty</Text>
-                <Text size="sm" c="dimmed">
-                  For Intermediate Programmers
-                </Text>
-                <Text size="sm" c="dimmed">
-                  Math Questions
-                </Text>
-                <Text size="sm" c="dimmed">
-                  Hash Maps
-                </Text>
-                <Text size="sm" c="dimmed">
-                  Sorts
-                </Text>
+                  <Flex
+                    direction="column"
+                    style={{ flex: '0 0 200px' }}
+                  >
+                    {diff.topics.map((topic, index) => (
+                      <Text key={index}>
+                        {topic}
+                      </Text>
+                    ))}
+                  </Flex>
 
-                <Button data-testid="create-room-button-medium" onClick={() => handleCreateRoom("MEDIUM")} mt={"auto"}>
-                  Create Room
-                </Button>
-              </Flex>
-            </Card>
-          )}
-        </Grid.Col>
+                  <Flex
+                    ml="auto"
+                    direction={"row"}
+                    align="center"
+                    gap={5}
+                  >
+                    <Button
+                      disabled={loading}
+                      loading={loading}
+                      size="md"
+                      data-testid={`co-op-create-room-button-${diff.difficulty.toLowerCase()}`}
+                      onClick={() => handleCreateRoom(diff.difficulty, GameType.TWOPLAYER)}
+                      color={diff.color}
+                    >
+                      Start Co-Op
+                    </Button>
 
-        <Grid.Col span={4}>
-          {loading ? (
-            <Skeleton height={360} radius="md" />
-          ) : (
-            <Card radius="md" h={360} withBorder>
-              <Flex
-                direction="column"
-                align={"center"}
-                justify={"center"}
-                style={{ height: "100%" }}
-              >
-                <Box
-                  w={48}
-                  h={48}
-                  bg="red.6"
-                  style={{
-                    borderRadius: "50%",
-                    marginBottom: 12,
-                  }}
-                />
-                <Text fw={500}>Hard Difficulty</Text>
-                <Text size="sm" c="dimmed">
-                  For Advanced Programmers
-                </Text>
-                <Text size="sm" c="dimmed">
-                  Data Structures And Algorithms
-                </Text>
-                <Text size="sm" c="dimmed">
-                  Trees
-                </Text>
-                <Text size="sm" c="dimmed">
-                  Graphs
-                </Text>
-                <Text size="sm" c="dimmed">
-                  Dynamic Programming
-                </Text>
-                <Button data-testid="create-room-button-hard" onClick={() => handleCreateRoom("HARD")} mt={"auto"}>
-                  Create Room
-                </Button>
-              </Flex>
-            </Card>
-          )}
-        </Grid.Col>
-      </Grid>
-      <SegmentedControl
-        data-testid="gameType-toggle"
-        value={gameType}
-        onChange={() => toggleGameType()}
-        data={[
-          { label: "2 Player", value: GameType.TWOPLAYER },
-          { label: "4 Player", value: GameType.FOURPLAYER },
-        ]}
-        mt="md"
-      />
+                    <Button
+                      disabled={loading}
+                      loading={loading}
+                      size="md"
+                      data-testid={`2v2-create-room-button-${diff.difficulty.toLowerCase()}`}
+                      onClick={() => handleCreateRoom(diff.difficulty, GameType.FOURPLAYER)}
+                      color={diff.color}
+                      variant="outline"
+                    >
+                      Start 2v2
+                    </Button>
+                  </Flex>
+                </Flex>
+              </Card>
+            </div>
+          );
+        })}
+      </Stack>
     </Container>
   );
 }
-
