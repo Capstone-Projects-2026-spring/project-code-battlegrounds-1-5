@@ -5,6 +5,7 @@ import { useForm } from "@mantine/form";
 import { Button, Card, Flex, PasswordInput, TextInput } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { usePostHog } from "posthog-js/react";
+import Brand from "@/components/Brand";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -44,18 +45,21 @@ export default function LoginPage() {
     posthog.identify(data.user.id);
     setLoading(false);
     router.push("/");
-  }
+  };
 
   return (
     <Flex justify={"center"} align={"center"} mih="100vh">
-      <Card miw="30%">
+      <Card miw="30%" shadow="xl" withBorder>
         <form onSubmit={form.onSubmit(
           (values) => {
             handleLogin(values.email, values.password);
           }
         )}>
           <Flex direction={"column"} gap="sm">
+            <Brand />
+
             <TextInput
+              mt="md"
               data-testid="email-login"
               withAsterisk
               label="Email"
