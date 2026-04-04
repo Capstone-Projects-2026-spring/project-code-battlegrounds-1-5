@@ -1,15 +1,18 @@
-import { Group, Title, useMantineTheme } from "@mantine/core";
+import { Group, Title, useComputedColorScheme, useMantineTheme } from "@mantine/core";
 import { IconPrompt } from "@tabler/icons-react";
 import Link from "next/link";
 
 export default function Brand() {
+  const colorScheme = useComputedColorScheme();
   const theme = useMantineTheme();
-  const primary = theme.colors.console[4];
+  const primary = colorScheme === "light"
+    ? theme.colors.console[4]
+    : theme.colors.console[3];
   const iconSize = theme.headings.sizes.h1.fontSize;
 
   return (
     <Group
-      gap="xs" 
+      gap="xs"
       align="center"
       component={Link}
       // @ts-expect-error // incorrect typing
