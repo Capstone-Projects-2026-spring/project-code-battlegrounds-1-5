@@ -1,13 +1,15 @@
 import {
   Container,
-  Grid,
   Skeleton,
   Text,
   Card,
   Box,
   Flex,
   Button,
-  SegmentedControl
+  SegmentedControl,
+  Stack,
+  Title,
+  useComputedColorScheme
 } from "@mantine/core";
 import { useState } from "react";
 import { useRouter } from "next/router";
@@ -20,27 +22,31 @@ type DifficultyType = "EASY" | "MEDIUM" | "HARD";
 
 interface Difficulty {
   title: string,
-  description: string,
+  subtitle: string;
+  topics: string[],
   color: string,
   difficulty: DifficultyType
 }
 const difficulties: Difficulty[] = [
   {
     title: "Easy Difficulty",
-    description: `For beginners\nArrays\nStrings`,
-    color: "green.6",
+    subtitle: "For Beginners",
+    topics: ["Arrays", "Strings"],
+    color: "#40c057",
     difficulty: "EASY"
   },
   {
     title: "Medium Difficulty",
-    description: `For intermediate programmers\nMath questions\nHash maps\nSorting`,
-    color: "orange.6",
+    subtitle: "For Intermediate Programmers",
+    topics: ["Math questions", "Hash maps", "Sorting"],
+    color: "#fd7e14",
     difficulty: "MEDIUM"
   },
   {
     title: "Hard Difficulty",
-    description: `For advanced programmers\nData Structures & Algorithms\nTrees\nGraphs\nDynamic Programming`,
-    color: "red.6",
+    subtitle: "For Advanced Programmers",
+    topics: [`Data Structures & Algorithms`, `Trees`, `Graphs`, `Dynamic Programming`],
+    color: "#fa5252",
     difficulty: "HARD"
   }
 ];
@@ -49,6 +55,8 @@ export default function Subgrid() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [gameType, toggleGameType] = useToggle<GameType>([GameType.TWOPLAYER, GameType.FOURPLAYER]);
+
+  const colorScheme = useComputedColorScheme();
 
   const router = useRouter();
   const { data: session } = authClient.useSession();
@@ -86,51 +94,73 @@ export default function Subgrid() {
 
   return (
     <Container my="md">
-      <Grid>
-        {difficulties.map((difficulty) => {
-          const descriptionLines = difficulty.description.split('\n');
+      <Stack gap="md">
+        {difficulties.map((diff) => {
           return (
-            <Grid.Col key={difficulty.difficulty} span={4}>
+            <div key={diff.difficulty}>
               {loading ? (
                 <Skeleton height={360} radius="md" />
               ) : (
-                <Card radius="md" h={360} withBorder>
+                <Card
+                  radius="md"
+                  p={"xl"}
+                  withBorder
+                  style={{
+                    background: `linear-gradient(to right,
+                    ${diff.color} 33%, 
+                    rgba(0, 0, 0, 0) 33%
+                    )`
+                  }}
+                >
                   <Flex
-                    direction="column"
+                    direction="row"
                     align={"center"}
-                    justify={"center"}
+                    gap="md"
                     style={{ height: "100%" }}
                   >
-                    <Box
-                      w={48}
-                      h={48}
-                      bg={difficulty.color}
-                      style={{
-                        borderRadius: "50%",
-                        marginBottom: 12,
-                      }}
-                    />
-                    <Text fw={500}>{difficulty.title}</Text>
-                    {descriptionLines.map((line, index) => (
-                      <Text key={index} size="sm" c="dimmed">
-                        {line}
+
+                    <Flex direction={"column"} style={{ flex: '0 0 300px' }}>
+                      <Title
+                        order={2}
+                        fw={500}
+                        c="white"
+                      >
+                        {diff.title}
+                      </Title>
+
+                      <Text c="white" size="md">
+                        {diff.subtitle}
                       </Text>
-                    ))}
+                    </Flex>
+
+                    <Flex
+                      direction="column"
+                      style={{ flex: '0 0 300px' }}
+                      // c="white"
+                    >
+                      <Title order={5}>Topics:</Title>
+                      {diff.topics.map((topic, index) => (
+                        <Text key={index} size="sm">
+                          {topic}
+                        </Text>
+                      ))}
+                    </Flex>
 
                     <Button
-                      data-testid={`create-room-button-${difficulty.difficulty.toLowerCase()}`}
-                      onClick={() => handleCreateRoom(difficulty.difficulty)}
-                      mt={"auto"}
+                      size="md"
+                      data-testid={`create-room-button-${diff.difficulty.toLowerCase()}`}
+                      onClick={() => handleCreateRoom(diff.difficulty)}
+                      ml="auto"
                     >
                       Create Room
                     </Button>
                   </Flex>
                 </Card>
               )}
-            </Grid.Col>
+            </div>
           );
         })}
-      </Grid>
+      </Stack>
 
       <SegmentedControl
         data-testid="gameType-toggle"
@@ -146,3 +176,20 @@ export default function Subgrid() {
   );
 }
 
+interface ColorDotProps {
+  color: string,
+  size?: number
+}
+function ColorDot({ color, size = 48 }: ColorDotProps) {
+  return (
+    <Box
+      w={size}
+      h={size}
+      bg={color}
+      style={{
+        borderRadius: "50%",
+        marginBottom: 12,
+      }}
+    />
+  )
+}
