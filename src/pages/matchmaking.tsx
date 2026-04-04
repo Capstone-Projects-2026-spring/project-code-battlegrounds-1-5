@@ -1,10 +1,29 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
+import Head from 'next/head';
 import { io, Socket } from 'socket.io-client';
-import { Button, Center, Group, Loader, Select, SegmentedControl, Text, Card, Title } from '@mantine/core';
+import {
+    Button,
+    Center,
+    Group,
+    Loader,
+    Select,
+    SegmentedControl,
+    Text,
+    Card,
+    Title,
+    Container,
+    Box,
+    Stack,
+    Badge,
+    ThemeIcon,
+    Progress
+} from '@mantine/core';
+import { IconUsers, IconUser, IconTrophy } from '@tabler/icons-react';
 import { GameType, ProblemDifficulty } from '@prisma/client';
 import { authClient } from '@/lib/auth-client';
 import { usePostHog } from 'posthog-js/react';
+import classes from '@/styles/Matchmaking.module.css';
 
 type QueueStatus = 'idle' | 'queued' | 'matched' | 'error';
 
@@ -68,7 +87,7 @@ export default function QueuePage() {
             socketInstance.disconnect();
             socketRef.current = null;
         };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [session?.user.id]);
 
     const handleJoinQueue = () => {
@@ -103,85 +122,208 @@ export default function QueuePage() {
 
     if (isPending) {
         return (
-            <Center h="100vh">
-                <Loader color="blue" type="bars" />
-            </Center>
+            <>
+                <Head>
+                    <title>Matchmaking - Code Battlegrounds</title>
+                </Head>
+                <Center h="100vh">
+                    <Stack gap="md" align="center">
+                        <Loader color="blue" size="lg" type="dots" />
+                        <Text c="dimmed">Loading matchmaking...</Text>
+                    </Stack>
+                </Center>
+            </>
         );
     }
 
+    const difficultyLabels = {
+        [ProblemDifficulty.EASY]: 'Beginner',
+        [ProblemDifficulty.MEDIUM]: 'Intermediate',
+        [ProblemDifficulty.HARD]: 'Advanced',
+    };
+
     return (
-        <Center h="100vh">
-            <Card w={400} withBorder shadow="md">
-                <Title size="xl" fw={700} mb="xl" ta="center">
-                    Matchmaking
-                </Title>
+        <>
+            <Head>
+                <title>Find a Match - Code Battlegrounds</title>
+                <meta name="description" content="Find your perfect pair programming partner and start competing" />
+            </Head>
 
-                <Text size="sm" fw={500} mb="xs">Mode</Text>
-                <SegmentedControl
-                    data-testid="mode-control"
-                    fullWidth
-                    mb="md"
-                    value={gameType}
-                    onChange={(val) => setGameType(val as GameType)}
-                    disabled={status === 'queued' || status === 'matched'}
-                    data={[
-                        { label: 'Co-Op', value: GameType.TWOPLAYER },
-                        { label: '2v2', value: GameType.FOURPLAYER },
-                    ]}
-                />
+            <Box className={classes.matchmakingPage}>
+                <Container size="sm" py={60}>
+                    {/* Header Section */}
+                    <Stack gap="xl" mb={60} className={classes.header}>
+                        <Box ta="center">
+                            <Title
+                                order={1}
+                                size="h1"
+                                mb="md"
+                                className={classes.title}
+                            >
+                                Find Your Match
+                            </Title>
+                        </Box>
+                    </Stack>
 
-                <Text size="sm" fw={500} mb="xs">Difficulty</Text>
-                <Select
-                    mb="xl"
-                    value={difficulty}
-                    onChange={(val) => setDifficulty(val as ProblemDifficulty)}
-                    disabled={status === 'queued' || status === 'matched'}
-                    data={Object.values(ProblemDifficulty).map(d => ({
-                        label: d.charAt(0) + d.slice(1).toLowerCase(),
-                        value: d,
-                    }))}
-                />
-
-                {partyId && (
-                    <Text size="sm" c="dimmed" mb="md" ta="center">
-                        Queueing with lobby
-                    </Text>
-                )}
-
-                {status === 'queued' && (
-                    <Group justify="center" mb="md">
-                        <Loader size="sm" />
-                        <Text c="dimmed">Searching for a match...</Text>
-                    </Group>
-                )}
-                {status === 'matched' && (
-                    <Group justify="center" mb="md">
-                        <Loader size="sm" color="green" />
-                        <Text c="green">Match found! Redirecting...</Text>
-                    </Group>
-                )}
-                {status === 'error' && (
-                    <Text c="red" ta="center" mb="md">
-                        Something went wrong. Please try again.
-                    </Text>
-                )}
-
-                {status === 'idle' || status === 'error' ? (
-                    <Button fullWidth onClick={handleJoinQueue}>
-                        {partyId ? 'Queue with Lobby' : 'Find Match'}
-                    </Button>
-                ) : (
-                    <Button
-                        fullWidth
-                        color="red"
-                        variant="outline"
-                        onClick={handleLeaveQueue}
-                        disabled={status === 'matched'}
+                    {/* Main Card */}
+                    <Card
+                        withBorder
+                        shadow="md"
+                        radius="lg"
+                        padding="xl"
+                        className={classes.mainCard}
                     >
-                        Cancel
-                    </Button>
-                )}
-            </Card>
-        </Center>
+                        <Stack gap="xl">
+                            {/* Game Mode Selection */}
+                            <Box>
+                                <Group justify="space-between" mb="xs">
+                                    <Text size="sm" fw={600}>Game Mode</Text>
+                                </Group>
+                                <SegmentedControl
+                                    data-testid="mode-control"
+                                    fullWidth
+                                    size="md"
+                                    value={gameType}
+                                    onChange={(val) => setGameType(val as GameType)}
+                                    disabled={status === 'queued' || status === 'matched'}
+                                    data={[
+                                        {
+                                            label: (
+                                                <Center style={{ gap: 8 }}>
+                                                    <IconUser size={16} />
+                                                    <span>Co-Op</span>
+                                                </Center>
+                                            ),
+                                            value: GameType.TWOPLAYER
+                                        },
+                                        {
+                                            label: (
+                                                <Center style={{ gap: 8 }}>
+                                                    <IconUsers size={16} />
+                                                    <span>2v2</span>
+                                                </Center>
+                                            ),
+                                            value: GameType.FOURPLAYER
+                                        },
+                                    ]}
+                                    className={classes.segmentedControl}
+                                />
+                            </Box>
+
+                            {/* Difficulty Selection */}
+                            <Box>
+                                <Group justify="space-between" mb="xs">
+                                    <Text size="sm" fw={600}>Difficulty</Text>
+                                </Group>
+                                <Select
+                                    size="md"
+                                    value={difficulty}
+                                    onChange={(val) => setDifficulty(val as ProblemDifficulty)}
+                                    disabled={status === 'queued' || status === 'matched'}
+                                    data={Object.values(ProblemDifficulty).map(d => ({
+                                        label: difficultyLabels[d],
+                                        value: d,
+                                    }))}
+                                    styles={{
+                                        input: {
+                                            fontWeight: 500,
+                                        }
+                                    }}
+                                />
+                            </Box>
+
+                            {/* Party ID Badge */}
+                            {partyId && (
+                                <Badge
+                                    size="lg"
+                                    variant="light"
+                                    color="blue"
+                                    leftSection={<IconUsers size={14} />}
+                                >
+                                    Queueing with lobby
+                                </Badge>
+                            )}
+
+                            {/* Status Display */}
+                            {status === 'queued' && (
+                                <Card withBorder padding="md" className={classes.statusCard}>
+                                    <Stack gap="md">
+                                        <Group justify="space-between">
+                                            <Group gap="sm">
+                                                <Loader size="sm" />
+                                                <Text fw={500}>Searching for opponents...</Text>
+                                            </Group>
+                                        </Group>
+                                    </Stack>
+                                </Card>
+                            )}
+
+                            {status === 'matched' && (
+                                <Card withBorder padding="md" className={classes.successCard}>
+                                    <Stack gap="sm" align="center">
+                                        <ThemeIcon size={48} radius="xl" color="green" variant="light">
+                                            <IconTrophy size={24} />
+                                        </ThemeIcon>
+                                        <Text fw={600} size="lg" c="green">Match Found!</Text>
+                                        <Text size="sm" c="dimmed">Preparing your battle arena...</Text>
+                                        <Loader size="sm" color="green" />
+                                    </Stack>
+                                </Card>
+                            )}
+
+                            {status === 'error' && (
+                                <Card withBorder padding="md" className={classes.errorCard}>
+                                    <Text c="red" ta="center" fw={500}>
+                                        ⚠️ Something went wrong. Please try again.
+                                    </Text>
+                                </Card>
+                            )}
+
+                            {/* Action Button */}
+                            {status === 'idle' || status === 'error' ? (
+                                <Button
+                                    fullWidth
+                                    size="lg"
+                                    radius="md"
+                                    onClick={handleJoinQueue}
+                                    className={classes.primaryButton}
+                                >
+                                    {partyId ? 'Queue with Lobby' : 'Find Match'}
+                                </Button>
+                            ) : (
+                                <Button
+                                    fullWidth
+                                    size="lg"
+                                    radius="md"
+                                    color="red"
+                                    variant="outline"
+                                    onClick={handleLeaveQueue}
+                                    disabled={status === 'matched'}
+                                    className={classes.cancelButton}
+                                >
+                                    Cancel Search
+                                </Button>
+                            )}
+                        </Stack>
+                    </Card>
+
+                    {/* Help Text */}
+                    <Text size="sm" c="dimmed" ta="center" mt="xl">
+                        New to Code Battlegrounds?{' '}
+                        <Text
+                            component="a"
+                            href="/"
+                            c="blue"
+                            style={{ textDecoration: 'underline', cursor: 'pointer' }}
+                        >
+                            Learn how it works
+                        </Text>
+                    </Text>
+                </Container>
+
+                {/* Animated background gradient */}
+                <div className={classes.gradient} aria-hidden="true" />
+            </Box>
+        </>
     );
 }

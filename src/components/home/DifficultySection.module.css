@@ -1,0 +1,54 @@
+.section {
+  background: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.02) 100%);
+}
+
+.sectionTitle {
+  font-size: clamp(2rem, 4vw, 2.5rem);
+  font-weight: 800;
+}
+
+.difficultyCard {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  cursor: default;
+}
+
+.difficultyCard:hover {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.actionButton {
+  min-width: 100px;
+  transition: transform 0.15s ease;
+}
+
+.actionButton:hover {
+  transform: scale(1.05);
+}
+
+.actionButton:active {
+  transform: scale(0.98);
+}
+
+@media (max-width: 768px) {
+  .difficultyCard {
+    padding: 1rem;
+  }
+  
+  .actionButton {
+    min-width: 80px;
+    font-size: 0.875rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .difficultyCard,
+  .actionButton {
+    transition: none;
+  }
+  
+  .difficultyCard:hover,
+  .actionButton:hover,
+  .actionButton:active {
+    transform: none;
+  }
+}
