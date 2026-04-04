@@ -62,7 +62,8 @@ const requestTeamUpdateSchema = z.object({
 
 const submitCodeSchema = z.object({
   roomId: z.string(),
-  code: z.string().max(10000) // Adjust max length as needed
+  code: z.string().max(10000), // Adjust max length as needed
+  type: z.enum([GameType.TWOPLAYER, GameType.FOURPLAYER])
 });
 
 
@@ -275,14 +276,16 @@ function registerSocketHandlers(io, socket, services) {
     
     // TODO: Store submission
     //Broadcast to both players to redirect to results
+    console.log('submitCode received for roomId:', roomId, 'with code length:', code.length, 'and type:', type);
     if( type === GameType.TWOPLAYER) {
-      
+    console.log('verify its a twoplayer game');
     await prisma.gameResult.create({
       data: {
         gameRoomId: roomId,
         team1Code: code
       }
     });
+    console.log('code submitted for two-player game');
   }
     try {
       // Post results to the code executor
