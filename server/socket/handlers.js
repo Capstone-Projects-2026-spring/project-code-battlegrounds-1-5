@@ -157,11 +157,13 @@ function registerSocketHandlers(io, socket, services) {
     const {
       code,
       testCases,
+      runIDs
     } = data;
     payload = {
       language: "javascript",
       code: btoa(code),
       testCases: JSON.stringify(testCases),
+      runIDs: JSON.stringify(runIDs)
     };
     console.log(JSON.stringify(payload));
     const res = await fetch("http://127.0.0.1:6969/execute", {
@@ -173,6 +175,7 @@ function registerSocketHandlers(io, socket, services) {
     // json.testCases should realistically only modify a single property
     // on the existing testCases object: `computedOutput`. Syncing this
     // back to the frontend is handled over there :)
+    console.log(JSON.stringify(json));
     socket.emit("receiveTestCaseSync", json.testCases);
   });
 

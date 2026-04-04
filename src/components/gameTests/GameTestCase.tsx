@@ -34,10 +34,8 @@ export default function GameTestCase(props: GameTestCaseProps) {
     setRunning(true);
 
     gameStateCtx.socket.emit("submitTestCases", {
-      gameId: gameStateCtx.gameId,
-      teamId: gameStateCtx.teamId,
       code: gameStateCtx.code,
-      testCases: testCaseCtx.cases,
+      testCases: testCaseCtx.cases ?? [],
       runIDs: [testableCase.id]
     });
   };

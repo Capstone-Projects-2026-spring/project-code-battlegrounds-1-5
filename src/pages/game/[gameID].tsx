@@ -209,14 +209,22 @@ function PlayGameRoom() {
     socket.emit('requestCodeSync', { teamId: teamSelected });
     socket.emit('requestTestCaseSync', { teamId: teamSelected });
 
-    const testHandler = (cases: TestableCase[]) => {
+    const testHandler = (cases: TestableCase[] | null) => {
       console.log("Receiving test case sync!", cases);
-      testCaseCtx.setCases(cases);
+      if (Array.isArray(cases)) {
+        testCaseCtx.setCases(cases);
+      } else {
+        console.warn("Ignoring invalid test case payload from server:", cases);
+      }
       setRunningAllTests(false);
     };
     socket.on('receiveTestCaseSync', testHandler);
 
-    const handler = (newCode: string) => setLiveCode(newCode);
+    const handler = (newCode: string) => {
+      setLiveCode(newCode);
+      // must also set code in game state otherwise coder cant run their test cases
+      gameStateCtx.setCode(newCode);
+    };
     socket.on("receiveCodeUpdate", handler);
 
     return () => {
@@ -326,8 +334,6 @@ function PlayGameRoom() {
 
     setRunningAllTests(true);
     socket.emit("submitTestCases", {
-      gameId,
-      teamId: teamSelected,
       code: liveCode,
       testCases: testCaseCtx.cases,
       runIDs: testCaseCtx.cases.map(t => t.id) // all of em!
@@ -573,7 +579,7 @@ function PlayGameRoom() {
                           variant="outline"
                         >
                           <Tabs.List>
-                            {testCaseCtx.cases.map((test, idx) => (
+                            {(testCaseCtx.cases ?? []).map((test, idx) => (
                               <Tabs.Tab
                                 key={idx}
                                 value={String(test.id)}
