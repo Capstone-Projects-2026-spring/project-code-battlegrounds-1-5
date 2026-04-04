@@ -141,7 +141,7 @@ export default function Subgrid() {
                       disabled={loading}
                       loading={loading}
                       size="md"
-                      data-testid={`create-room-button-${diff.difficulty.toLowerCase()}`}
+                      data-testid={`co-op-create-room-button-${diff.difficulty.toLowerCase()}`}
                       onClick={() => handleCreateRoom(diff.difficulty, GameType.TWOPLAYER)}
                       color={diff.color}
                     >
@@ -152,7 +152,7 @@ export default function Subgrid() {
                       disabled={loading}
                       loading={loading}
                       size="md"
-                      data-testid={`create-room-button-${diff.difficulty.toLowerCase()}`}
+                      data-testid={`2v2-create-room-button-${diff.difficulty.toLowerCase()}`}
                       onClick={() => handleCreateRoom(diff.difficulty, GameType.FOURPLAYER)}
                       color={diff.color}
                       variant="outline"
