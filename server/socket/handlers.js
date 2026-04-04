@@ -63,7 +63,8 @@ const requestTeamUpdateSchema = z.object({
 const submitCodeSchema = z.object({
   roomId: z.string(),
   code: z.string().max(10000), // Adjust max length as needed
-  type: z.enum([GameType.TWOPLAYER, GameType.FOURPLAYER])
+  type: z.enum([GameType.TWOPLAYER, GameType.FOURPLAYER]),
+  team: z.enum(["team1", "team2"]).nullable().optional(),
 });
 
 
@@ -270,49 +271,96 @@ function registerSocketHandlers(io, socket, services) {
       socket.emit('error', { message: 'Invalid payload for submitCode.' });
       return;
     }
-    const { roomId, code, type } = payload;
+    const { roomId, code, type, team } = payload;
 
     if (!roomId) return;
-    
-    // TODO: Store submission
-    //Broadcast to both players to redirect to results
+
     console.log('submitCode received for roomId:', roomId, 'with code length:', code.length, 'and type:', type);
-    if( type === GameType.TWOPLAYER) {
-    console.log('verify its a twoplayer game');
-    await prisma.gameResult.update({
-      where: { gameRoomId: roomId },
-      data: {
-        gameRoomId: roomId,
-        team1Code: code
-      }
-    });
-    console.log('code submitted for two-player game');
-  }
-    else if (type === GameType.FOURPLAYER) {
-      console.log('verify its a fourplayer game');
+
+    if(type === GameType.TWOPLAYER) {
+      console.log('verify its a twoplayer game');
       await prisma.gameResult.update({
         where: { gameRoomId: roomId },
         data: {
           gameRoomId: roomId,
-          team1Code: code,
-          team2Code: code
+          team1Code: code
         }
       });
-      console.log('code submitted for four-player game');
-  }
-    try {
-      // Post results to the code executor
-      fetch("http://fake-backend.lol:6969/execute", {
-        method: "POST",
-        body: {
-          roomId,
-          code
+      console.log('code submitted for two-player game');
+
+      try {
+        // Post results to the code executor
+        fetch("http://fake-backend.lol:6969/execute", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            roomId,
+            code
+          })
+        });
+      } catch (error) {
+        console.error("Error POSTing to code executor:", error);
+      } finally {
+        io.to(roomId).emit('gameEnded');
+      }
+    }
+    else if (type === GameType.FOURPLAYER) {
+      console.log('verify its a fourplayer game');
+      if (!team) {
+        socket.emit('error', { message: 'Missing team for four-player submitCode.' });
+        return;
+      }
+
+      // Track submissions in Redis
+      const submissionKey = `game:${roomId}:submissions`;
+      const existingSubmissions = await gameService.getGameData(submissionKey);
+
+      if (existingSubmissions && existingSubmissions[team]) {
+        console.log(`Team ${team} already submitted, ignoring duplicate submission`);
+        return;
+      }
+
+      // Store this team's code
+      await prisma.gameResult.update({
+        where: { gameRoomId: roomId },
+        data: {
+          gameRoomId: roomId,
+          ...(team === "team1" ? { team1Code: code } : { team2Code: code })
         }
       });
-    } catch (error) {
-      console.error("Error POSTing to code executor:", error);
-    } finally {
-      io.to(roomId).emit('gameEnded');
+      console.log(`code submitted for four-player game by ${team}`);
+
+      // Track submission
+      const updatedSubmissions = {
+        ...(existingSubmissions || {}),
+        [team]: true
+      };
+      await gameService.saveGameData(submissionKey, JSON.stringify(updatedSubmissions));
+
+      // Check if both teams have submitted
+      if (Object.keys(updatedSubmissions).length === 2) {
+        // Both teams submitted - end game
+        console.log('Both teams submitted, ending game');
+        try {
+          fetch("http://fake-backend.lol:6969/execute", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              roomId,
+              code
+            })
+          });
+        } catch (error) {
+          console.error("Error POSTing to code executor:", error);
+        } finally {
+          io.to(roomId).emit('gameEnded');
+          await gameService.deleteGameData(submissionKey);
+        }
+      } else {
+        // First team submitted - notify waiting
+        console.log('First team submitted, waiting for other team');
+        io.to(roomId).emit('waitingForOtherTeam');
+      }
     }
 
   });

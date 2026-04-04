@@ -238,13 +238,22 @@ function PlayGameRoom() {
     }
   };
 
+  const getTeamLabel = () => {
+    if (!teamSelected) return null;
+    const teamIndex = teams.findIndex((team) => team.teamId === teamSelected);
+    if (teamIndex === 0) return "team1";
+    if (teamIndex === 1) return "team2";
+    return null;
+  };
+
 
   const submitFinalCode = () => {
     //Send bother Coder and Tester to the results page
-    //TODO Store submission and evaluate results on the backend, then fetch and display here
+    //Store submission and evaluate results on the backend
     //server broadcasts the event to both player
-    if (!socket) return; //make sure the socket is connected before emitting
-    socket.emit("submitCode", { roomId: gameId, code: gameStateCtx.code, type: gameType });
+    if (!socket || !gameType) return; //make sure the socket is connected before emitting
+    const team = getTeamLabel();
+    socket.emit("submitCode", { roomId: gameId, code: gameStateCtx.code, type: gameType, team });
   };
 
   const addNewTest = () => {
@@ -468,7 +477,8 @@ function PlayGameRoom() {
                 <Box mb="md" p="1rem" pb={isProblemVisible ? "md" : "1rem"}>
                   <GameTimer endTime={endTime}
                     onExpire={() => { if (role === Role.CODER) {
-                    socket.emit("submitCode", { roomId: gameId, code: liveCode });
+                    const team = getTeamLabel();
+                    socket.emit("submitCode", { roomId: gameId, code: gameStateCtx.code, type: gameType, team });
                } 
                }} />
                 </Box>
