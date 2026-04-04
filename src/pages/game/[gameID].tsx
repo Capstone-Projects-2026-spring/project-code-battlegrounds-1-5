@@ -799,7 +799,6 @@ function PlayGameRoom() {
                           <Button
                             size="compact-sm"
                             variant="filled"
-                            color="green"
                             disabled={isSpectator || runningAllTests}
                             loading={runningAllTests}
                             onClick={handleRunAllTests}
