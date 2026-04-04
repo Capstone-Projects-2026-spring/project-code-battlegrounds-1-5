@@ -77,6 +77,7 @@ export default function NewParameterButton(props: NewParameterButtonProps) {
           rightSection={<IconCode />}
           onClick={toggle}
           size="compact-sm"
+          color="blue"
         >
           New Parameter
         </Button>
