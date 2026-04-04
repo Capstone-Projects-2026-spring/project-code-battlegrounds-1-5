@@ -16,18 +16,44 @@ import { useToggle } from "@mantine/hooks";
 import { GameType } from "@prisma/client";
 import { usePostHog } from "posthog-js/react";
 
-type Difficulty = "EASY" | "MEDIUM" | "HARD";
+type DifficultyType = "EASY" | "MEDIUM" | "HARD";
+
+interface Difficulty {
+  title: string,
+  description: string,
+  color: string,
+  difficulty: DifficultyType
+}
+const difficulties: Difficulty[] = [
+  {
+    title: "Easy Difficulty",
+    description: `For beginners\nArrays\nStrings`,
+    color: "green.6",
+    difficulty: "EASY"
+  },
+  {
+    title: "Medium Difficulty",
+    description: `For intermediate programmers\nMath questions\nHash maps\nSorting`,
+    color: "orange.6",
+    difficulty: "MEDIUM"
+  },
+  {
+    title: "Hard Difficulty",
+    description: `For advanced programmers\nData Structures & Algorithms\nTrees\nGraphs\nDynamic Programming`,
+    color: "red.6",
+    difficulty: "HARD"
+  }
+];
 
 export default function Subgrid() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [gameType, toggleGameType] = useToggle<GameType>([GameType.TWOPLAYER, GameType.FOURPLAYER]);
-  
+
   const router = useRouter();
   const { data: session } = authClient.useSession();
   const posthog = usePostHog();
-  const handleCreateRoom = async (difficulty: Difficulty) => {
-    
+  const handleCreateRoom = async (difficulty: DifficultyType) => {
     if (!session) {
       setError("Error: You must be signed in to create a match!");
       return;
@@ -61,131 +87,51 @@ export default function Subgrid() {
   return (
     <Container my="md">
       <Grid>
-        <Grid.Col span={4}>
-          {loading ? (
-            <Skeleton height={360} radius="md" />
-          ) : (
-            <Card radius="md" h={360} withBorder>
-              <Flex
-                direction="column"
-                align={"center"}
-                justify={"center"}
-                style={{ height: "100%" }}
-              >
-                <Box
-                  w={48}
-                  h={48}
-                  bg="green.6"
-                  style={{
-                    borderRadius: "50%",
-                    marginBottom: 12,
-                  }}
-                />
-                <Text fw={500}>Easy Difficulty</Text>
-                <Text size="sm" c="dimmed">
-                  For Beginners
-                </Text>
-                <Text size="sm" c="dimmed">
-                  Arrays
-                </Text>
-                <Text size="sm" c="dimmed">
-                  Strings
-                </Text>
+        {difficulties.map((difficulty) => {
+          const descriptionLines = difficulty.description.split('\n');
+          return (
+            <Grid.Col key={difficulty.difficulty} span={4}>
+              {loading ? (
+                <Skeleton height={360} radius="md" />
+              ) : (
+                <Card radius="md" h={360} withBorder>
+                  <Flex
+                    direction="column"
+                    align={"center"}
+                    justify={"center"}
+                    style={{ height: "100%" }}
+                  >
+                    <Box
+                      w={48}
+                      h={48}
+                      bg={difficulty.color}
+                      style={{
+                        borderRadius: "50%",
+                        marginBottom: 12,
+                      }}
+                    />
+                    <Text fw={500}>{difficulty.title}</Text>
+                    {descriptionLines.map((line, index) => (
+                      <Text key={index} size="sm" c="dimmed">
+                        {line}
+                      </Text>
+                    ))}
 
-                <Button data-testid="create-room-button-easy" onClick={() => handleCreateRoom("EASY")} mt={"auto"}>
-                  Create Room
-                </Button>
-              </Flex>
-            </Card>
-          )}
-        </Grid.Col>
-
-        <Grid.Col span={4}>
-          {loading ? (
-            <Skeleton height={360} radius="md" />
-          ) : (
-            <Card radius="md" h={360} withBorder>
-              <Flex
-                direction="column"
-                align={"center"}
-                justify={"center"}
-                style={{ height: "100%" }}
-              >
-                <Box
-                  w={48}
-                  h={48}
-                  bg="orange.6"
-                  style={{
-                    borderRadius: "50%",
-                    marginBottom: 12,
-                  }}
-                />
-                <Text fw={500}>Medium Difficulty</Text>
-                <Text size="sm" c="dimmed">
-                  For Intermediate Programmers
-                </Text>
-                <Text size="sm" c="dimmed">
-                  Math Questions
-                </Text>
-                <Text size="sm" c="dimmed">
-                  Hash Maps
-                </Text>
-                <Text size="sm" c="dimmed">
-                  Sorts
-                </Text>
-
-                <Button data-testid="create-room-button-medium" onClick={() => handleCreateRoom("MEDIUM")} mt={"auto"}>
-                  Create Room
-                </Button>
-              </Flex>
-            </Card>
-          )}
-        </Grid.Col>
-
-        <Grid.Col span={4}>
-          {loading ? (
-            <Skeleton height={360} radius="md" />
-          ) : (
-            <Card radius="md" h={360} withBorder>
-              <Flex
-                direction="column"
-                align={"center"}
-                justify={"center"}
-                style={{ height: "100%" }}
-              >
-                <Box
-                  w={48}
-                  h={48}
-                  bg="red.6"
-                  style={{
-                    borderRadius: "50%",
-                    marginBottom: 12,
-                  }}
-                />
-                <Text fw={500}>Hard Difficulty</Text>
-                <Text size="sm" c="dimmed">
-                  For Advanced Programmers
-                </Text>
-                <Text size="sm" c="dimmed">
-                  Data Structures And Algorithms
-                </Text>
-                <Text size="sm" c="dimmed">
-                  Trees
-                </Text>
-                <Text size="sm" c="dimmed">
-                  Graphs
-                </Text>
-                <Text size="sm" c="dimmed">
-                  Dynamic Programming
-                </Text>
-                <Button data-testid="create-room-button-hard" onClick={() => handleCreateRoom("HARD")} mt={"auto"}>
-                  Create Room
-                </Button>
-              </Flex>
-            </Card>
-          )}
-        </Grid.Col>
+                    <Button
+                      data-testid={`create-room-button-${difficulty.difficulty.toLowerCase()}`}
+                      onClick={() => handleCreateRoom(difficulty.difficulty)}
+                      mt={"auto"}
+                    >
+                      Create Room
+                    </Button>
+                  </Flex>
+                </Card>
+              )}
+            </Grid.Col>
+          );
+        })}
       </Grid>
+
       <SegmentedControl
         data-testid="gameType-toggle"
         value={gameType}
