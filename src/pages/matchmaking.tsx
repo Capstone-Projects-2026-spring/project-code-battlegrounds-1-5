@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import { io, Socket } from 'socket.io-client';
-import { Button, Center, Group, Loader, Select, SegmentedControl, Text, Card } from '@mantine/core';
+import { Button, Center, Group, Loader, Select, SegmentedControl, Text, Card, Title } from '@mantine/core';
 import { GameType, ProblemDifficulty } from '@prisma/client';
 import { authClient } from '@/lib/auth-client';
 import { usePostHog } from 'posthog-js/react';
@@ -110,9 +110,9 @@ export default function QueuePage() {
     return (
         <Center h="100vh">
             <Card w={400} withBorder shadow="md">
-                <Text size="xl" fw={700} mb="xl" ta="center">
-                    Find a Match
-                </Text>
+                <Title size="xl" fw={700} mb="xl" ta="center">
+                    Matchmaking
+                </Title>
 
                 <Text size="sm" fw={500} mb="xs">Mode</Text>
                 <SegmentedControl
@@ -148,7 +148,7 @@ export default function QueuePage() {
 
                 {status === 'queued' && (
                     <Group justify="center" mb="md">
-                        <Loader size="sm" color="blue" />
+                        <Loader size="sm" />
                         <Text c="dimmed">Searching for a match...</Text>
                     </Group>
                 )}
