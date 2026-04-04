@@ -93,15 +93,12 @@ export default function Subgrid() {
           return (
             <div key={diff.difficulty}>
               <Card
-                radius="md"
                 p={"xl"}
                 withBorder
-                style={{
-                  background: `linear-gradient(to right,
+                bg={`linear-gradient(to right,
                     ${diff.color} 31%, 
                     rgba(0, 0, 0, 0) 31%
-                    )`
-                }}
+                    )`}
               >
                 <Flex
                   direction="row"
