@@ -35,7 +35,7 @@ export default function GameTestCase(props: GameTestCaseProps) {
 
     gameStateCtx.socket.emit("submitTestCases", {
       code: gameStateCtx.code,
-      testCases: testCaseCtx.cases ?? [],
+      testCases: testCaseCtx.cases,
       runIDs: [testableCase.id]
     });
   };
