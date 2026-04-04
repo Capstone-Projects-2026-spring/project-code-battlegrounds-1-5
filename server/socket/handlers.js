@@ -158,15 +158,13 @@ function registerSocketHandlers(io, socket, services) {
       code,
       testCases,
     } = data;
-
-
     payload = {
       language: "javascript",
       code: btoa(code),
       testCases: JSON.stringify(testCases),
     };
     console.log(JSON.stringify(payload));
-    const res = await fetch("executor:6969/execute", {
+    const res = await fetch("http://127.0.0.1:6969/execute", {
       method: "POST",
       body: JSON.stringify(payload),
     });
