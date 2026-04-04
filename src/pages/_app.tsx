@@ -10,6 +10,17 @@ import { useEffect } from "react";
 import posthog from "posthog-js";
 import { PostHogProvider } from "posthog-js/react";
 
+import { Space_Grotesk, Source_Sans_3 } from "next/font/google";
+
+const spaceGrotesk = Space_Grotesk({
+  subsets: ["latin"],
+  display: "swap"
+});
+const sourceSans3 = Source_Sans_3({
+  subsets: ["latin"],
+  display: "swap"
+});
+
 const theme = createTheme({
   /** Put your mantine theme override here */
   primaryColor: "console",
@@ -30,7 +41,12 @@ const theme = createTheme({
       "#002800",
       "#001200"
     ]
-  }
+  },
+
+  headings: {
+    fontFamily: spaceGrotesk.style.fontFamily
+  },
+  fontFamily: sourceSans3.style.fontFamily
 });
 
 export default function App({ Component, pageProps }: AppProps) {
