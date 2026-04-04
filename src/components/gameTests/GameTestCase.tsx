@@ -141,7 +141,7 @@ export default function GameTestCase(props: GameTestCaseProps) {
 
       <Group align="flex-start" gap="sm">
         {props.showDelete && <Button
-          color="red"
+          color="red.5"
           rightSection={<IconTrash />}
           onClick={() => {
             props.onTestCaseDelete(testableCase.id);
@@ -155,7 +155,6 @@ export default function GameTestCase(props: GameTestCaseProps) {
           Delete
         </Button>}
         <Button
-          color="green"
           rightSection={<IconPlayerPlay />}
           onClick={runTest}
           disabled={running || props.disabled}
