@@ -54,14 +54,14 @@ const difficulties: Difficulty[] = [
 export default function Subgrid() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [gameType, toggleGameType] = useToggle<GameType>([GameType.TWOPLAYER, GameType.FOURPLAYER]);
 
   const colorScheme = useComputedColorScheme();
 
   const router = useRouter();
   const { data: session } = authClient.useSession();
   const posthog = usePostHog();
-  const handleCreateRoom = async (difficulty: DifficultyType) => {
+
+  const handleCreateRoom = async (difficulty: DifficultyType, gameType: GameType) => {
     if (!session) {
       setError("Error: You must be signed in to create a match!");
       return;
@@ -107,8 +107,8 @@ export default function Subgrid() {
                   withBorder
                   style={{
                     background: `linear-gradient(to right,
-                    ${diff.color} 33%, 
-                    rgba(0, 0, 0, 0) 33%
+                    ${diff.color} 31%, 
+                    rgba(0, 0, 0, 0) 31%
                     )`
                   }}
                 >
@@ -118,7 +118,6 @@ export default function Subgrid() {
                     gap="md"
                     style={{ height: "100%" }}
                   >
-
                     <Flex direction={"column"} style={{ flex: '0 0 300px' }}>
                       <Title
                         order={2}
@@ -135,25 +134,37 @@ export default function Subgrid() {
 
                     <Flex
                       direction="column"
-                      style={{ flex: '0 0 300px' }}
-                      // c="white"
+                      style={{ flex: '0 0 200px' }}
                     >
-                      <Title order={5}>Topics:</Title>
                       {diff.topics.map((topic, index) => (
-                        <Text key={index} size="sm">
+                        <Text key={index}>
                           {topic}
                         </Text>
                       ))}
                     </Flex>
 
-                    <Button
-                      size="md"
-                      data-testid={`create-room-button-${diff.difficulty.toLowerCase()}`}
-                      onClick={() => handleCreateRoom(diff.difficulty)}
+                    <Flex
                       ml="auto"
+                      direction={"row"}
+                      align="center"
+                      gap={3}
                     >
-                      Create Room
-                    </Button>
+                      <Button
+                        size="md"
+                        data-testid={`create-room-button-${diff.difficulty.toLowerCase()}`}
+                        onClick={() => handleCreateRoom(diff.difficulty, GameType.TWOPLAYER)}
+                      >
+                        Start Co-Op
+                      </Button>
+
+                      <Button
+                        size="md"
+                        data-testid={`create-room-button-${diff.difficulty.toLowerCase()}`}
+                        onClick={() => handleCreateRoom(diff.difficulty, GameType.FOURPLAYER)}
+                      >
+                        Start 2v2
+                      </Button>
+                    </Flex>
                   </Flex>
                 </Card>
               )}
@@ -161,35 +172,6 @@ export default function Subgrid() {
           );
         })}
       </Stack>
-
-      <SegmentedControl
-        data-testid="gameType-toggle"
-        value={gameType}
-        onChange={() => toggleGameType()}
-        data={[
-          { label: "2 Player", value: GameType.TWOPLAYER },
-          { label: "4 Player", value: GameType.FOURPLAYER },
-        ]}
-        mt="md"
-      />
     </Container>
   );
-}
-
-interface ColorDotProps {
-  color: string,
-  size?: number
-}
-function ColorDot({ color, size = 48 }: ColorDotProps) {
-  return (
-    <Box
-      w={size}
-      h={size}
-      bg={color}
-      style={{
-        borderRadius: "50%",
-        marginBottom: 12,
-      }}
-    />
-  )
 }
