@@ -23,6 +23,7 @@ import { GameTestCasesProvider, TestableCase, useTestCases } from "@/components/
 import { ParameterType } from '@/lib/ProblemInputOutput';
 import NewParameterButton from '@/components/gameTests/NewParameterButton';
 import { GameStateProvider, useGameState } from '@/components/contexts/GameStateContext';
+import styles from '@/styles/GameRoom.module.css';
 
 interface RoomDetailsResponse {
   problem: ActiveProblem;
@@ -91,8 +92,9 @@ function PlayGameRoom() {
 
   const endTimeRef = useRef<number | null>(null);
   const [endTime, setEndTime] = useState(0);
-  const [isProblemVisible, setIsProblemVisible] = useState(true); // State to manage problem box visibility
-  const toggleProblemVisibility = () => setIsProblemVisible((prev) => !prev); // Function to toggle visibility
+  const [isProblemVisible, setIsProblemVisible] = useState(true);
+  const toggleProblemVisibility = () => setIsProblemVisible((prev) => !prev);
+  const [editorFocused, setEditorFocused] = useState(false);
 
   const socketRef = useRef<Socket | null>(null);
 
@@ -416,21 +418,21 @@ function PlayGameRoom() {
   const showGameUI = !isSpectator || spectatorView !== Role.SPECTATOR;
 
   return (
-    <Box style={{ position: 'relative', height: '100vh' }}>
+    <Box className={styles.gameRoomContainer}>
       {/* Spectator view switcher buttons */}
       {/* spectator view bug for 4PLAYER (Teams ordered wrong?) */}
       {isSpectator && (
-        <Box data-testid="spectating-box" style={{ position: 'absolute', top: 12, left: 12, zIndex: 20 }}>
+        <Box data-testid="spectating-box" className={styles.spectatorControls}>
           {teams.map((team, i) => (
             <Group key={team.teamId} gap="xs">
-              <Button data-testid={`team-${i + 1}-coder`} size="sm" onClick={() => {
+              <Button className={styles.spectatorButton} data-testid={`team-${i + 1}-coder`} size="sm" onClick={() => {
                 setTeamSelected(team.teamId);
                 setSpectatorView(Role.CODER);
                 console.log("Effective role: ", effectiveRole);
               }}>
                 Team {i + 1} Coder
               </Button>
-              <Button data-testid={`team-${i + 1}-tester`} size="sm" onClick={() => {
+              <Button className={styles.spectatorButton} data-testid={`team-${i + 1}-tester`} size="sm" onClick={() => {
                 setTeamSelected(team.teamId);
                 setSpectatorView(Role.TESTER);
                 console.log("Effective role: ", effectiveRole);
@@ -440,6 +442,7 @@ function PlayGameRoom() {
             </Group>
           ))}
           <Button
+            className={styles.spectatorButton}
             data-testid="exit-spectator"
             size="sm"
             onClick={() => {
@@ -472,23 +475,7 @@ function PlayGameRoom() {
           <Box style={{ flex: 1, display: "flex", overflow: "hidden" }}>
             {/* Left Sidebar */}
             <Box
-              style={{
-                // Dynamic width based on visibility state
-                width: isProblemVisible ? "20%" : "50px",
-                minWidth: isProblemVisible ? "250px" : "50px",
-                backgroundColor: "#333",
-                color: "white",
-                padding: "0",
-                overflowY: "auto",
-                display: "flex",
-                flexDirection: 'column',
-                alignItems: 'center',
-                // Justify content to center the icon when collapsed
-                justifyContent: isProblemVisible ? 'flex-start' : 'center',
-                flexShrink: 0,
-                // Smooth transition for width change
-                transition: 'width 0.2s ease, min-width 0.2s ease',
-              }}
+              className={`${styles.leftSidebar} ${!isProblemVisible ? styles.leftSidebarCollapsed : ''}`}
             >
               {(gameState === GameStatus.ACTIVE || gameState === GameStatus.FLIPPING) && (
                 <Box mb="md" p="1rem" pb={isProblemVisible ? "md" : "1rem"}>
@@ -522,9 +509,7 @@ function PlayGameRoom() {
             >
               {/* Toolbar */}
               <Group
-                p="xs"
-                // bg="#f8f9fa"
-                style={{ borderBottom: "1px solid #ddd", flexShrink: 0 }}
+                className={styles.toolbarContainer}
               >
                 <Select
                   size="xs"
@@ -535,6 +520,7 @@ function PlayGameRoom() {
                 {(effectiveRole === Role.CODER) && (
                   <>
                     <Button
+                      className={styles.runButton}
                       size="xs"
                       color="cyan"
                       disabled={isSpectator} onClick={() => posthog.capture("code_run_triggered", { gameId })}
@@ -542,7 +528,7 @@ function PlayGameRoom() {
                     >
                       RUN
                     </Button>
-                    <Button size="xs" color="green" onClick={submitFinalCode} disabled={isSpectator}>
+                    <Button className={styles.submitButton} size="xs" color="green" onClick={submitFinalCode} disabled={isSpectator}>
                       Submit Final Code
                     </Button>
                   </>
@@ -558,7 +544,11 @@ function PlayGameRoom() {
                   minHeight: 0,
                 }}
               >
-                <Box style={{ flex: 1, borderRight: "1px solid #ddd", minWidth: 0 }}>
+                <Box 
+                  className={`${styles.editorContainer} ${editorFocused ? styles.editorContainerActive : ''}`}
+                  onFocus={() => setEditorFocused(true)}
+                  onBlur={() => setEditorFocused(false)}
+                >
                   <Editor
                     height="100%"
                     theme="vs-dark"
@@ -593,19 +583,21 @@ function PlayGameRoom() {
                 }}
               >
                 {effectiveRole === Role.TESTER && (
-                  <Box p="xs" style={{ display: "flex", flexDirection: "column", minHeight: 0, flex: 1 }}>
+                  <Box p="xs" className={styles.testConsoleContainer}>
                     <Stack style={{ minHeight: 0, flex: 1 }}>
                       <Group justify="space-between">
                         <Tabs
+                          className={styles.testTabs}
                           value={String(activeTestId)}
                           onChange={val => {
                             setActiveTestId(+(val ?? 0));
                           }}
                           variant="outline"
                         >
-                          <Tabs.List>
+                          <Tabs.List className={styles.testTabsList}>
                             {testCaseCtx.cases.map((test, idx) => (
                               <Tabs.Tab
+                                className={styles.testTab}
                                 key={idx}
                                 value={String(test.id)}
                               >

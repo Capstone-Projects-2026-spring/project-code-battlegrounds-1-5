@@ -4,6 +4,7 @@ import { useRouter } from "next/router";
 import { authClient } from "@/lib/auth-client";
 import { usePostHog } from "posthog-js/react";
 import classes from "./HeroSection.module.css";
+import Brand from "../Brand";
 
 export default function HeroSection() {
   const router = useRouter();
@@ -33,6 +34,7 @@ export default function HeroSection() {
       <Container size="lg" className={classes.heroInner}>
         <Stack gap="xl" align="center" ta="center">
           {/* Main Headline */}
+          <Brand blink />
           <Title 
             className={classes.title}
             component="h1"
@@ -42,7 +44,7 @@ export default function HeroSection() {
             <Text 
               component="span" 
               variant="gradient"
-              gradient={{ from: "blue", to: "cyan", deg: 45 }}
+              gradient={{ from: "console.4", to: "console.2", deg: 45 }}
               inherit
             >
               Through Competition

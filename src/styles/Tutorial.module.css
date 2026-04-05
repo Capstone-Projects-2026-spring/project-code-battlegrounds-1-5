@@ -1,0 +1,723 @@
+/* 
+ * Tutorial Page - Matrix/Hacker Theme
+ * Animated, engaging learning experience with green console aesthetic
+ */
+
+/* ========================================
+   Page Layout
+   ======================================== */
+
+.tutorialPage {
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+  padding: 2rem 0;
+}
+
+.tutorialPage::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: 
+    linear-gradient(light-dark(rgba(49, 176, 0, 0.015), rgba(113, 211, 73, 0.02)) 1px, transparent 1px),
+    linear-gradient(90deg, light-dark(rgba(49, 176, 0, 0.015), rgba(113, 211, 73, 0.02)) 1px, transparent 1px);
+  background-size: 50px 50px;
+  opacity: 0.25;
+  z-index: 0;
+  pointer-events: none;
+  animation: gridPulse 4s ease-in-out infinite;
+}
+
+.content {
+  position: relative;
+  z-index: 1;
+}
+
+/* ========================================
+   Header Section
+   ======================================== */
+
+.header {
+  animation: fadeInUp 0.6s ease-out;
+  margin-bottom: 3rem;
+}
+
+.mainTitle {
+  font-size: clamp(2.5rem, 6vw, 4.5rem);
+  font-weight: 900;
+  background: linear-gradient(135deg, var(--mantine-color-console-5), var(--mantine-color-console-3));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: 0 0 30px light-dark(rgba(49, 176, 0, 0.15), rgba(113, 211, 73, 0.25));
+  margin-bottom: 1.5rem;
+}
+
+.intro {
+  font-size: 1.125rem;
+  line-height: 1.7;
+  max-width: 800px;
+  animation: fadeInUp 0.6s ease-out 0.1s both;
+  color: light-dark(
+    var(--mantine-color-gray-7),
+    var(--mantine-color-gray-4)
+  );
+}
+
+/* ========================================
+   Progress Indicator
+   ======================================== */
+
+.progressBar {
+  position: sticky;
+  top: 60px;
+  z-index: 100;
+  background: light-dark(
+    rgba(255, 255, 255, 0.95),
+    rgba(26, 27, 30, 0.95)
+  );
+  backdrop-filter: blur(10px);
+  padding: 1rem 2rem;
+  margin-bottom: 2rem;
+  border-radius: var(--mantine-radius-lg);
+  border: 1px solid light-dark(
+    var(--mantine-color-gray-2),
+    var(--mantine-color-dark-4)
+  );
+  box-shadow: 0 4px 20px light-dark(rgba(0, 0, 0, 0.05), rgba(0, 0, 0, 0.3));
+  animation: fadeInDown 0.6s ease-out 0.2s both;
+}
+
+.progressSteps {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.progressStep {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+  position: relative;
+}
+
+.progressStepNumber {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.875rem;
+  background: light-dark(
+    var(--mantine-color-gray-1),
+    var(--mantine-color-dark-5)
+  );
+  color: light-dark(
+    var(--mantine-color-gray-6),
+    var(--mantine-color-gray-5)
+  );
+  border: 2px solid light-dark(
+    var(--mantine-color-gray-3),
+    var(--mantine-color-dark-4)
+  );
+  transition: all 0.3s ease;
+}
+
+.progressStep.active .progressStepNumber {
+  background: var(--mantine-color-console-4);
+  color: var(--mantine-color-dark-9);
+  border-color: var(--mantine-color-console-4);
+  box-shadow: 0 0 20px light-dark(rgba(49, 176, 0, 0.3), rgba(113, 211, 73, 0.5));
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.progressStep.completed .progressStepNumber {
+  background: var(--mantine-color-console-5);
+  color: var(--mantine-color-dark-9);
+  border-color: var(--mantine-color-console-5);
+}
+
+.progressStepLabel {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-align: center;
+  color: light-dark(
+    var(--mantine-color-gray-6),
+    var(--mantine-color-gray-5)
+  );
+}
+
+.progressStep.active .progressStepLabel,
+.progressStep.completed .progressStepLabel {
+  color: var(--mantine-color-console-4);
+}
+
+.progressLine {
+  position: absolute;
+  top: 1.25rem;
+  left: 50%;
+  width: 100%;
+  height: 2px;
+  background: light-dark(
+    var(--mantine-color-gray-3),
+    var(--mantine-color-dark-4)
+  );
+  z-index: -1;
+}
+
+.progressStep.completed .progressLine {
+  background: var(--mantine-color-console-4);
+  animation: progressFill 0.5s ease-out;
+}
+
+/* ========================================
+   Step Sections
+   ======================================== */
+
+.stepSection {
+  margin-bottom: 5rem;
+  animation: fadeInUp 0.6s ease-out both;
+  opacity: 0;
+}
+
+.stepSection.visible {
+  opacity: 1;
+}
+
+.stepHeader {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.stepNumber {
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  font-size: 1.5rem;
+  background: linear-gradient(135deg, var(--mantine-color-console-5), var(--mantine-color-console-3));
+  color: var(--mantine-color-dark-9);
+  box-shadow: 0 4px 20px light-dark(rgba(49, 176, 0, 0.3), rgba(113, 211, 73, 0.4));
+  flex-shrink: 0;
+  animation: scaleIn 0.4s ease-out;
+}
+
+.stepTitle {
+  font-size: clamp(1.75rem, 4vw, 2.5rem);
+  font-weight: 800;
+  background: linear-gradient(135deg, var(--mantine-color-console-5), var(--mantine-color-console-3));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.stepContent {
+  padding-left: 0;
+  animation: fadeInUp 0.6s ease-out 0.1s both;
+}
+
+/* ========================================
+   Content Cards
+   ======================================== */
+
+.contentCard {
+  background: light-dark(
+    rgba(255, 255, 255, 0.95),
+    rgba(26, 27, 30, 0.95)
+  );
+  backdrop-filter: blur(10px);
+  border-radius: var(--mantine-radius-lg);
+  border: 1px solid light-dark(
+    var(--mantine-color-gray-3),
+    var(--mantine-color-dark-4)
+  );
+  padding: 2rem;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  animation: fadeInUp 0.6s ease-out both;
+}
+
+.contentCard:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 30px light-dark(rgba(49, 176, 0, 0.15), rgba(113, 211, 73, 0.25));
+  border-color: var(--mantine-color-console-4);
+}
+
+.roleCard {
+  background: light-dark(
+    rgba(255, 255, 255, 0.95),
+    rgba(26, 27, 30, 0.95)
+  );
+  backdrop-filter: blur(10px);
+  border-radius: var(--mantine-radius-md);
+  border: 1px solid light-dark(
+    var(--mantine-color-gray-3),
+    var(--mantine-color-dark-4)
+  );
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  transition: all 0.2s ease;
+}
+
+.roleCard:hover {
+  transform: translateX(8px);
+  border-color: var(--mantine-color-console-4);
+  box-shadow: 0 4px 20px light-dark(rgba(49, 176, 0, 0.15), rgba(113, 211, 73, 0.25));
+}
+
+.roleTitle {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--mantine-color-console-4);
+  margin-bottom: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.roleIcon {
+  font-size: 1.5rem;
+}
+
+/* ========================================
+   Terminal/Code Blocks
+   ======================================== */
+
+.terminalBlock {
+  background: light-dark(
+    var(--mantine-color-dark-9),
+    var(--mantine-color-dark-9)
+  );
+  border-radius: var(--mantine-radius-md);
+  border: 1px solid var(--mantine-color-console-4);
+  box-shadow: 0 4px 20px light-dark(rgba(49, 176, 0, 0.2), rgba(113, 211, 73, 0.3));
+  overflow: hidden;
+  margin: 1.5rem 0;
+  animation: fadeInScale 0.6s ease-out both;
+}
+
+.terminalHeader {
+  background: light-dark(
+    var(--mantine-color-dark-8),
+    var(--mantine-color-dark-8)
+  );
+  padding: 0.75rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-bottom: 1px solid var(--mantine-color-console-4);
+}
+
+.terminalDots {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.terminalDot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.terminalDot:nth-child(1) {
+  background: #ff5f56;
+}
+
+.terminalDot:nth-child(2) {
+  background: #ffbd2e;
+}
+
+.terminalDot:nth-child(3) {
+  background: #27c93f;
+}
+
+.terminalTitle {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--mantine-color-console-4);
+  flex: 1;
+  text-align: center;
+  margin-right: 4rem;
+  font-family: 'Courier New', Courier, monospace;
+}
+
+.terminalContent {
+  padding: 1.5rem;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: var(--mantine-color-console-3);
+  white-space: pre-wrap;
+  overflow-x: auto;
+}
+
+.codeHighlight {
+  color: var(--mantine-color-console-4);
+  font-weight: 600;
+}
+
+.codeComment {
+  color: var(--mantine-color-gray-5);
+  font-style: italic;
+}
+
+.codeKeyword {
+  color: var(--mantine-color-console-5);
+  font-weight: 600;
+}
+
+.codeString {
+  color: var(--mantine-color-console-2);
+}
+
+/* Typing animation for code blocks */
+.typingAnimation {
+  overflow: hidden;
+  border-right: 2px solid var(--mantine-color-console-4);
+  white-space: nowrap;
+  animation: typing 3s steps(40, end), blink 0.75s step-end infinite;
+  animation-fill-mode: forwards;
+}
+
+@keyframes typing {
+  from {
+    width: 0;
+  }
+  to {
+    width: 100%;
+  }
+}
+
+@keyframes blink {
+  from, to {
+    border-color: transparent;
+  }
+  50% {
+    border-color: var(--mantine-color-console-4);
+  }
+}
+
+/* ========================================
+   Feature Highlights
+   ======================================== */
+
+.featureGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+  margin: 2rem 0;
+}
+
+.featureCard {
+  background: light-dark(
+    rgba(255, 255, 255, 0.95),
+    rgba(26, 27, 30, 0.95)
+  );
+  backdrop-filter: blur(10px);
+  border-radius: var(--mantine-radius-md);
+  border: 1px solid light-dark(
+    var(--mantine-color-gray-3),
+    var(--mantine-color-dark-4)
+  );
+  padding: 1.5rem;
+  transition: all 0.2s ease;
+  animation: fadeInUp 0.6s ease-out both;
+}
+
+.featureCard:hover {
+  transform: translateY(-4px);
+  border-color: var(--mantine-color-console-4);
+  box-shadow: 0 8px 30px light-dark(rgba(49, 176, 0, 0.2), rgba(113, 211, 73, 0.3));
+}
+
+.featureIcon {
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+  color: var(--mantine-color-console-4);
+  animation: scaleIn 0.4s ease-out;
+}
+
+.featureTitle {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--mantine-color-console-5);
+  margin-bottom: 0.75rem;
+}
+
+.featureDescription {
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  color: light-dark(
+    var(--mantine-color-gray-7),
+    var(--mantine-color-gray-4)
+  );
+}
+
+/* ========================================
+   Image Containers
+   ======================================== */
+
+.imageContainer {
+  border-radius: var(--mantine-radius-lg);
+  overflow: hidden;
+  border: 2px solid light-dark(
+    var(--mantine-color-gray-3),
+    var(--mantine-color-dark-4)
+  );
+  box-shadow: 0 4px 20px light-dark(rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.4));
+  transition: all 0.3s ease;
+  animation: fadeInScale 0.6s ease-out both;
+}
+
+.imageContainer:hover {
+  transform: scale(1.02);
+  border-color: var(--mantine-color-console-4);
+  box-shadow: 0 8px 30px light-dark(rgba(49, 176, 0, 0.2), rgba(113, 211, 73, 0.3));
+}
+
+/* ========================================
+   Call to Action
+   ======================================== */
+
+.ctaSection {
+  background: linear-gradient(
+    135deg,
+    light-dark(rgba(49, 176, 0, 0.08), rgba(113, 211, 73, 0.12)),
+    light-dark(rgba(0, 142, 0, 0.05), rgba(162, 235, 137, 0.08))
+  );
+  border: 2px solid var(--mantine-color-console-4);
+  border-radius: var(--mantine-radius-xl);
+  padding: 3rem;
+  text-align: center;
+  margin: 4rem 0;
+  animation: fadeInScale 0.6s ease-out both;
+  box-shadow: 0 8px 30px light-dark(rgba(49, 176, 0, 0.2), rgba(113, 211, 73, 0.3));
+}
+
+.ctaTitle {
+  font-size: clamp(1.5rem, 4vw, 2rem);
+  font-weight: 800;
+  background: linear-gradient(135deg, var(--mantine-color-console-5), var(--mantine-color-console-3));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 1rem;
+}
+
+.ctaText {
+  font-size: 1.125rem;
+  line-height: 1.7;
+  color: light-dark(
+    var(--mantine-color-gray-7),
+    var(--mantine-color-gray-4)
+  );
+  margin-bottom: 2rem;
+}
+
+.ctaButton {
+  transition: all 0.2s ease;
+  font-weight: 700;
+  font-size: 1.125rem;
+  padding: 0.875rem 2rem;
+}
+
+.ctaButton:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 30px light-dark(rgba(49, 176, 0, 0.4), rgba(113, 211, 73, 0.5));
+}
+
+/* ========================================
+   Animations & Keyframes
+   ======================================== */
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInScale {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    transform: scale(0);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1.05);
+  }
+}
+
+@keyframes gridPulse {
+  0%, 100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+@keyframes progressFill {
+  from {
+    width: 0;
+  }
+  to {
+    width: 100%;
+  }
+}
+
+/* ========================================
+   Responsive Design
+   ======================================== */
+
+@media (max-width: 768px) {
+  .tutorialPage {
+    padding: 1rem 0;
+  }
+
+  .progressBar {
+    padding: 0.75rem 1rem;
+  }
+
+  .progressStepLabel {
+    font-size: 0.625rem;
+  }
+
+  .progressStepNumber {
+    width: 2rem;
+    height: 2rem;
+    font-size: 0.75rem;
+  }
+
+  .stepHeader {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .stepNumber {
+    width: 3rem;
+    height: 3rem;
+    font-size: 1.25rem;
+  }
+
+  .contentCard,
+  .roleCard {
+    padding: 1.25rem;
+  }
+
+  .featureGrid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .ctaSection {
+    padding: 2rem 1.5rem;
+  }
+
+  .terminalContent {
+    font-size: 0.75rem;
+  }
+}
+
+/* ========================================
+   Reduced Motion Support
+   ======================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .tutorialPage::before,
+  .stepSection,
+  .stepNumber,
+  .contentCard,
+  .roleCard,
+  .featureCard,
+  .imageContainer,
+  .terminalBlock,
+  .ctaSection,
+  .header,
+  .intro,
+  .progressBar,
+  .progressStep.active .progressStepNumber,
+  .progressStep.completed .progressLine,
+  .typingAnimation {
+    animation: none;
+    transition: none;
+  }
+
+  .contentCard:hover,
+  .roleCard:hover,
+  .featureCard:hover,
+  .imageContainer:hover,
+  .ctaButton:hover {
+    transform: none;
+  }
+
+  .mainTitle {
+    text-shadow: none;
+  }
+
+  .typingAnimation {
+    border-right: none;
+    white-space: normal;
+  }
+}
+
+/* ========================================
+   Dark/Light Mode Specific Adjustments
+   ======================================== */
+
+@media (prefers-color-scheme: dark) {
+  .terminalBlock {
+    box-shadow: 0 4px 20px rgba(113, 211, 73, 0.3), 0 0 40px rgba(113, 211, 73, 0.1);
+  }
+}
+
+@media (prefers-color-scheme: light) {
+  .terminalContent {
+    background: rgba(0, 0, 0, 0.02);
+  }
+}

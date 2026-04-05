@@ -1,5 +1,6 @@
 import { ActionIcon, Paper, ScrollArea, Stack, Text, Title, Tooltip } from "@mantine/core";
 import { IconEyeOff } from "@tabler/icons-react";
+import styles from '@/styles/comps/ProblemBox.module.css';
 
 export interface ActiveProblem {
     id: string;
@@ -24,8 +25,7 @@ export default function ProblemBox({ problem, onToggleVisibility }: ProblemBoxPr
         : "";
 
     return (
-        // Remove shadow and use h="100%" to fill the parent Box
-        <Paper p="md" h="100%" bg="transparent" style={{ position: 'relative' }}>
+        <Paper p="md" h="100%" className={styles.container}>
             {/* Toggle button to hide the problem box */}
             {onToggleVisibility && (
                 <Tooltip label="Hide Problem">
@@ -33,25 +33,24 @@ export default function ProblemBox({ problem, onToggleVisibility }: ProblemBoxPr
                         variant="transparent"
                         color="gray"
                         onClick={onToggleVisibility}
-                        style={{ position: 'absolute', top: 16, right: 16, zIndex: 1 }}
+                        className={styles.expandButton}
                         title="Hide Problem"
                     >
                         <IconEyeOff size={20} />
                     </ActionIcon>
                 </Tooltip>
             )}
-            {/* Remove the width: "20%" here! Let the parent handle width. */}
-            <ScrollArea h="100%" offsetScrollbars>
-                <Stack gap="md">
-                    <Title order={3} pr="xl">
+            <ScrollArea className={styles.scrollArea} offsetScrollbars>
+                <Stack gap="md" className={styles.content}>
+                    <Title order={3} className={styles.title}>
                         {title}
                     </Title>
                     {metadata && (
-                        <Text size="xs" c="dimmed">
+                        <Text className={styles.metadata}>
                             {metadata}
                         </Text>
                     )}
-                    <Text size="sm">
+                    <Text className={styles.description}>
                         {description}
                     </Text>
                 </Stack>

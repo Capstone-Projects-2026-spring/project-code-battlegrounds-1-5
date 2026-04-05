@@ -2,6 +2,7 @@ import { Group, Title, useComputedColorScheme, useMantineTheme } from "@mantine/
 import Link from "next/link";
 
 import { Sixtyfour } from "next/font/google";
+import classes from '../styles/comps/Brand.module.css';
 
 const sixtyfour = Sixtyfour({
   subsets: ["latin"],
@@ -25,6 +26,7 @@ export default function Brand(props: BrandProps) {
       component={Link}
       // @ts-expect-error // incorrect typing
       href="/"
+      className={classes.brand}
     >
       <Title
         order={2}

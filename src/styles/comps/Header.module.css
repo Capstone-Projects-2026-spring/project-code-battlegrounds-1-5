@@ -17,16 +17,41 @@
   padding: 8px 12px;
   border-radius: var(--mantine-radius-sm);
   text-decoration: none;
-  /* color: light-dark(var(--mantine-color-gray-7), var(--mantine-color-dark-0)); */
   font-size: var(--mantine-font-size-sm);
   font-weight: 500;
+  transition: text-shadow 0.2s ease, border-bottom 0.2s ease;
+  border-bottom: 2px solid transparent;
+  position: relative;
 
   @mixin hover {
-    background-color: light-dark(var(--mantine-color-gray-0), var(--mantine-color-dark-6));
+    text-shadow: 0 0 15px light-dark(rgba(49, 176, 0, 0.3), rgba(113, 211, 73, 0.3));
   }
 
   [data-mantine-color-scheme] &[data-active] {
-    background-color: var(--mantine-color-blue-filled);
-    color: var(--mantine-color-white);
+    border-bottom-color: var(--mantine-color-console-4);
+    color: var(--mantine-color-console-4);
+  }
+}
+
+.burger {
+  color: var(--mantine-color-console-4);
+  transition: opacity 0.2s ease;
+}
+
+.burger:hover {
+  opacity: 0.7;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .link {
+    transition: none;
+  }
+  
+  .link:hover {
+    text-shadow: none;
+  }
+
+  .burger {
+    transition: none;
   }
 }

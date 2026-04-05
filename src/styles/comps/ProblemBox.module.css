@@ -1,0 +1,156 @@
+/* 
+ * ProblemBox Component - Problem display with green theme
+ * Smooth animations and gradient title
+ */
+
+.container {
+  height: 100%;
+  position: relative;
+  background: light-dark(
+    rgba(255, 255, 255, 0.95),
+    rgba(26, 27, 30, 0.95)
+  );
+  backdrop-filter: blur(10px);
+  border: 2px solid light-dark(
+    var(--mantine-color-gray-3),
+    var(--mantine-color-dark-4)
+  );
+  border-radius: var(--mantine-radius-md);
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+.container:hover {
+  border-color: var(--mantine-color-console-4);
+  box-shadow: 0 4px 20px light-dark(rgba(49, 176, 0, 0.2), rgba(113, 211, 73, 0.3));
+}
+
+.expandButton {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  z-index: 2;
+  transition: all 0.2s ease;
+}
+
+.expandButton:hover {
+  background: light-dark(
+    rgba(49, 176, 0, 0.1),
+    rgba(113, 211, 73, 0.15)
+  );
+  transform: scale(1.1);
+}
+
+.scrollArea {
+  height: 100%;
+}
+
+.content {
+  padding: 1rem;
+}
+
+.title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  padding-right: 2.5rem;
+  background: linear-gradient(135deg, var(--mantine-color-console-5), var(--mantine-color-console-3));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: 0 0 20px light-dark(rgba(49, 176, 0, 0.1), rgba(113, 211, 73, 0.2));
+  animation: titleFadeIn 0.5s ease-out;
+}
+
+.metadata {
+  font-size: 0.75rem;
+  color: var(--mantine-color-console-4);
+  font-family: var(--mantine-font-family-monospace);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  animation: fadeIn 0.5s ease-out 0.1s both;
+}
+
+.description {
+  font-size: 0.875rem;
+  line-height: 1.7;
+  color: light-dark(
+    var(--mantine-color-gray-8),
+    var(--mantine-color-gray-3)
+  );
+  animation: fadeIn 0.5s ease-out 0.2s both;
+}
+
+/* Collapsed state */
+.collapsed {
+  height: auto;
+  max-height: 60px;
+  overflow: hidden;
+}
+
+.collapsed .scrollArea {
+  height: auto;
+}
+
+.collapsed .title {
+  font-size: 1rem;
+  margin-bottom: 0;
+}
+
+.collapsed .metadata,
+.collapsed .description {
+  display: none;
+}
+
+/* Expand/collapse transition */
+.container {
+  transition: max-height 0.4s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* Keyframes */
+@keyframes titleFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .container,
+  .expandButton {
+    transition: none;
+  }
+  
+  .container:hover {
+    box-shadow: none;
+    transform: none;
+  }
+  
+  .expandButton:hover {
+    transform: none;
+  }
+  
+  .title,
+  .metadata,
+  .description {
+    animation: none;
+  }
+  
+  .title {
+    text-shadow: none;
+  }
+}

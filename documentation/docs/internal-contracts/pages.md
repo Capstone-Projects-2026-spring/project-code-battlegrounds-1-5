@@ -111,25 +111,3 @@ Calls `authClient.signUp.email` with current state.
 Calls `authClient.signOut()`. Deletes session from DB and clears cookie. Handled internally by BetterAuth.
 
 ---
-
-## `FindPartnerPage` — `src/pages/findPartnerPage.tsx`
-
-Composition of `HeaderSimple`, `PartnerSearch`, and `StatsGroup` in a full-viewport flex column. No props. No API calls. No session checks.
-
-### Layout
-
-A `Stack` with `h="100vh"` and `gap={0}`:
-
-| Region | Component | CSS behavior |
-|---|---|---|
-| Top | `HeaderSimple` | Natural height. |
-| Middle | `PartnerSearch` in `Box` | `flex: 1` — fills remaining space. |
-| Bottom | `StatsGroup` | Natural height. |
-
-### Props passed to children
-
-| Child | Props |
-|---|---|
-| `HeaderSimple` | `links={["Time", "Players", "Tournament"]}`, `title="Code BattleGrounds"` |
-| `PartnerSearch` | (none) |
-| `StatsGroup` | (none) |

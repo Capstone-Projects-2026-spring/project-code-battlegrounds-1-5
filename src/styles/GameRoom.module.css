@@ -1,0 +1,247 @@
+/* 
+ * Game Room - Subtle Green Theme
+ * Professional workspace with minimal theme accents
+ * Prioritizes code readability and gameplay clarity
+ */
+
+/* ========================================
+   Very Faint Grid Background 
+   Much more subtle than other pages
+   ======================================== */
+
+.gameRoomContainer {
+  position: relative;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.gameRoomContainer::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: 
+    linear-gradient(light-dark(rgba(49, 176, 0, 0.005), rgba(113, 211, 73, 0.008)) 1px, transparent 1px),
+    linear-gradient(90deg, light-dark(rgba(49, 176, 0, 0.005), rgba(113, 211, 73, 0.008)) 1px, transparent 1px);
+  background-size: 50px 50px;
+  opacity: 0.15;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* ========================================
+   Monaco Editor Enhancements
+   Subtle green glow on active editor
+   ======================================== */
+
+.editorContainer {
+  position: relative;
+  flex: 1;
+  border-right: 1px solid #ddd;
+  min-width: 0;
+}
+
+.editorContainer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 2px solid transparent;
+  pointer-events: none;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  border-radius: 0;
+}
+
+.editorContainerActive::after {
+  border-color: light-dark(rgba(49, 176, 0, 0.3), rgba(113, 211, 73, 0.4));
+  box-shadow: 
+    inset 0 0 20px light-dark(rgba(49, 176, 0, 0.05), rgba(113, 211, 73, 0.08)),
+    0 0 15px light-dark(rgba(49, 176, 0, 0.1), rgba(113, 211, 73, 0.15));
+}
+
+/* ========================================
+   Test Console / Terminal Output
+   Matrix-style terminal for test results
+   ======================================== */
+
+.testConsoleContainer {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  position: relative;
+}
+
+.testOutput {
+  font-family: 'Courier New', monospace;
+  background: light-dark(rgba(0, 0, 0, 0.02), rgba(0, 0, 0, 0.3));
+  color: light-dark(var(--mantine-color-console-7), var(--mantine-color-console-3));
+  padding: 0.5rem;
+  border-radius: var(--mantine-radius-sm);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.testOutputSuccess {
+  color: light-dark(var(--mantine-color-console-6), var(--mantine-color-console-4));
+  text-shadow: 0 0 8px light-dark(rgba(49, 176, 0, 0.2), rgba(113, 211, 73, 0.3));
+}
+
+.testOutputError {
+  color: light-dark(var(--mantine-color-red-7), var(--mantine-color-red-4));
+}
+
+.testOutputLine {
+  margin: 0.25rem 0;
+  animation: terminalType 0.3s ease-out;
+}
+
+@keyframes terminalType {
+  from {
+    opacity: 0;
+    transform: translateX(-2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* ========================================
+   UI Element Accents
+   Subtle green touches on non-code elements
+   ======================================== */
+
+.toolbarContainer {
+  padding: var(--mantine-spacing-xs);
+  border-bottom: 1px solid light-dark(#ddd, var(--mantine-color-dark-4));
+  flex-shrink: 0;
+  background: light-dark(#f8f9fa, rgba(26, 27, 30, 0.5));
+  position: relative;
+  z-index: 1;
+}
+
+.runButton {
+  transition: box-shadow 0.2s ease;
+}
+
+.runButton:hover:not(:disabled) {
+  box-shadow: 0 2px 10px light-dark(rgba(6, 182, 212, 0.2), rgba(6, 182, 212, 0.3));
+}
+
+.submitButton {
+  transition: box-shadow 0.2s ease;
+}
+
+.submitButton:hover:not(:disabled) {
+  box-shadow: 0 2px 10px light-dark(rgba(49, 176, 0, 0.2), rgba(113, 211, 73, 0.3));
+}
+
+/* ========================================
+   Sidebar - Problem Box Container
+   ======================================== */
+
+.leftSidebar {
+  width: 20%;
+  min-width: 250px;
+  background-color: #333;
+  color: white;
+  padding: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  flex-shrink: 0;
+  transition: width 0.2s ease, min-width 0.2s ease;
+  position: relative;
+  z-index: 1;
+}
+
+.leftSidebarCollapsed {
+  width: 50px;
+  min-width: 50px;
+  justify-content: center;
+}
+
+/* ========================================
+   Spectator UI
+   ======================================== */
+
+.spectatorControls {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 20;
+}
+
+.spectatorButton {
+  transition: transform 0.1s ease, box-shadow 0.2s ease;
+}
+
+.spectatorButton:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px light-dark(rgba(49, 176, 0, 0.15), rgba(113, 211, 73, 0.25));
+}
+
+/* ========================================
+   Tab Styling for Test Cases
+   ======================================== */
+
+.testTabs {
+  position: relative;
+}
+
+.testTabsList {
+  border-bottom: 1px solid light-dark(var(--mantine-color-gray-3), var(--mantine-color-dark-4));
+}
+
+.testTab {
+  transition: color 0.2s ease, border-color 0.2s ease;
+}
+
+.testTab[data-active="true"] {
+  color: light-dark(var(--mantine-color-console-6), var(--mantine-color-console-4));
+  border-bottom-color: light-dark(var(--mantine-color-console-5), var(--mantine-color-console-3));
+}
+
+/* ========================================
+   Reduced Motion Support
+   ======================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .gameRoomContainer::before {
+    animation: none;
+  }
+  
+  .editorContainer::after,
+  .editorContainerActive::after {
+    transition: none;
+  }
+  
+  .testOutputLine {
+    animation: none;
+  }
+  
+  .spectatorButton:hover {
+    transform: none;
+  }
+  
+  .runButton,
+  .submitButton {
+    transition: none;
+  }
+}
+
+/* ========================================
+   Responsive Design
+   ======================================== */
+
+@media (max-width: 768px) {
+  .leftSidebar {
+    min-width: 200px;
+  }
+  
+  .leftSidebarCollapsed {
+    width: 40px;
+    min-width: 40px;
+  }
+}

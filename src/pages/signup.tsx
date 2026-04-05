@@ -2,10 +2,13 @@ import { authClient } from "@/lib/auth-client";
 import { useState } from "react";
 import { useRouter } from "next/router";
 import { useForm } from "@mantine/form";
-import { Button, Card, Flex, PasswordInput, TextInput } from "@mantine/core";
+import { Button, Card, Flex, PasswordInput, TextInput, Title, Text, Anchor } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { usePostHog } from "posthog-js/react";
 import Brand from "@/components/Brand";
+import greenTheme from "@/styles/shared/GreenTheme.module.css";
+import styles from "@/styles/Signup.module.css";
+import Link from "next/link";
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -40,7 +43,7 @@ export default function SignUpPage() {
       onSuccess: (ctx) => {
         posthog.capture("user_signup_success");
         //redirect to the dashboard or sign in page
-        router.push("/")
+        router.push("/");
       },
       onError: (ctx) => {
         posthog.capture("user_signup_failure");
@@ -52,92 +55,93 @@ export default function SignUpPage() {
   };
 
   return (
-    <Flex justify={"center"} align={"center"} mih="100vh">
-      <Card miw="30%" shadow="xl" withBorder>
+    <div className={`${greenTheme.gridBgFixed} ${styles.signupPage}`}>
+      <div className={styles.gradient} />
+
+      <Card
+        className={styles.formCard}
+        shadow="xl"
+        withBorder
+        padding="xl"
+      >
         <form onSubmit={form.onSubmit(
           (values) => {
             handleSignUp(values.name, values.email, values.password);
           }
         )}>
-          <Flex direction={"column"} gap="sm">
-            <Brand />
-            
-            <TextInput 
-              mt="md"
-              data-testid="name-signup"
-              withAsterisk
-              label="Name"
-              placeholder="Ian Applebaum"
-              key={form.key("name")}
-              {...form.getInputProps("name")}
-            />
+          <Flex direction="column" gap="md">
+            <div className={styles.brand}>
+              <Brand blink />
+            </div>
 
-            <TextInput
-              data-testid="email-signup"
-              withAsterisk
-              label="Email"
-              placeholder="ian@temple.edu"
-              key={form.key("email")}
-              {...form.getInputProps("email")}
-            />
+            <Title ta="center" order={2} className={`${greenTheme.gradientText} ${styles.heading}`}>
+              Join the Arena
+            </Title>
 
-            <PasswordInput
-              data-testid="password-signup"
-              withAsterisk
-              label="Password"
-              placeholder="hunter2"
-              key={form.key("password")}
-              visible={pwVisible}
-              onVisibilityChange={toggle}
-              {...form.getInputProps("password")}
-            />
+            <div className={styles.inputGroup}>
+              <TextInput
+                data-testid="name-signup"
+                withAsterisk
+                label="Name"
+                placeholder="Ian Applebaum"
+                key={form.key("name")}
+                {...form.getInputProps("name")}
+                className={styles.input}
+                size="md"
+              />
+            </div>
+
+            <div className={styles.inputGroup}>
+              <TextInput
+                data-testid="email-signup"
+                withAsterisk
+                label="Email"
+                placeholder="ian@temple.edu"
+                key={form.key("email")}
+                {...form.getInputProps("email")}
+                className={styles.input}
+                size="md"
+              />
+            </div>
+
+            <div className={styles.inputGroup}>
+              <PasswordInput
+                data-testid="password-signup"
+                withAsterisk
+                label="Password"
+                placeholder="hunter2"
+                key={form.key("password")}
+                visible={pwVisible}
+                onVisibilityChange={toggle}
+                {...form.getInputProps("password")}
+                className={styles.input}
+                size="md"
+              />
+            </div>
 
             <Button
               data-testid="signup-button"
               type="submit"
               loading={loading}
+              className={styles.button}
+              size="md"
+              color="console"
+              fullWidth
             >
               Sign Up
             </Button>
+
+            <Text size="sm" c="dimmed" ta="center" className={styles.link}>
+              Already have an account?{" "}
+              <Link href="/login" passHref legacyBehavior>
+                <Anchor component="a" className={styles.link}>
+                  Log in
+                </Anchor>
+              </Link>
+            </Text>
           </Flex>
         </form>
       </Card>
-    </Flex>
-
-
-    // <form
-    //   onSubmit={(e) => {
-    //     e.preventDefault();
-    //     handleSignUp();
-    //   }}
-    // >
-    //   <input
-    //     data-testid="name-signup"
-    //     type="text"
-    //     placeholder="Name"
-    //     value={name}
-    //     onChange={(e) => setName(e.target.value)}
-    //   />
-
-    //   <input
-    //     data-testid="email-signup"
-    //     type="email"
-    //     placeholder="Email"
-    //     value={email}
-    //     onChange={(e) => setEmail(e.target.value)}
-    //   />
-
-    //   <input
-    //     data-testid="password-signup"
-    //     type="password"
-    //     placeholder="Password"
-    //     value={password}
-    //     onChange={(e) => setPassword(e.target.value)}
-    //   />
-
-    //   <button data-testid="signup-button" type="submit" disabled={loading}>
-    //     {loading ? "Creating account..." : "Sign up"}
-    //   </button>
-    // </form>
+    </div>
   );
 }

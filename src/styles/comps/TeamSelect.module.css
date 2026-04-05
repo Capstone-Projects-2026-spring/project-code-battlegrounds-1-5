@@ -1,0 +1,256 @@
+/* 
+ * TeamSelect Component - Team selection with green theme
+ * Animated cards with competitive feel
+ */
+
+.container {
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Grid background */
+.container::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: 
+    linear-gradient(light-dark(rgba(49, 176, 0, 0.02), rgba(113, 211, 73, 0.03)) 1px, transparent 1px),
+    linear-gradient(90deg, light-dark(rgba(49, 176, 0, 0.02), rgba(113, 211, 73, 0.03)) 1px, transparent 1px);
+  background-size: 50px 50px;
+  opacity: 0.3;
+  z-index: 0;
+  pointer-events: none;
+  animation: gridPulse 4s ease-in-out infinite;
+}
+
+.content {
+  position: relative;
+  z-index: 1;
+  animation: fadeInUp 0.6s ease-out;
+}
+
+.title {
+  font-size: 2rem;
+  font-weight: 800;
+  text-align: center;
+  background: linear-gradient(135deg, var(--mantine-color-console-5), var(--mantine-color-console-3));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: 0 0 20px light-dark(rgba(49, 176, 0, 0.1), rgba(113, 211, 73, 0.2));
+  animation: titlePulse 2s ease-in-out infinite;
+}
+
+.roomId {
+  font-size: 1rem;
+  font-weight: 600;
+  text-align: center;
+  color: var(--mantine-color-console-4);
+  font-family: var(--mantine-font-family-monospace);
+  animation: fadeIn 0.6s ease-out 0.2s both;
+}
+
+.teamsGroup {
+  gap: 1.5rem;
+  animation: fadeIn 0.6s ease-out 0.3s both;
+}
+
+.teamCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1.5rem;
+  background: light-dark(
+    rgba(255, 255, 255, 0.95),
+    rgba(26, 27, 30, 0.95)
+  );
+  backdrop-filter: blur(10px);
+  border: 2px solid light-dark(
+    var(--mantine-color-gray-3),
+    var(--mantine-color-dark-4)
+  );
+  border-radius: var(--mantine-radius-md);
+  transition: all 0.3s ease;
+  animation: cardSlideIn 0.4s ease-out;
+}
+
+.teamCard:nth-child(1) {
+  animation-delay: 0.1s;
+}
+
+.teamCard:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.teamCard:hover:not(.disabled) {
+  transform: translateY(-4px);
+  border-color: var(--mantine-color-console-4);
+  box-shadow: 0 8px 30px light-dark(rgba(49, 176, 0, 0.3), rgba(113, 211, 73, 0.4));
+}
+
+.teamCard.disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.teamButton {
+  font-size: 1.125rem;
+  font-weight: 600;
+  min-width: 140px;
+  transition: all 0.2s ease;
+}
+
+.teamButton:not(:disabled):hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 20px light-dark(rgba(49, 176, 0, 0.3), rgba(113, 211, 73, 0.4));
+}
+
+.teamButton:not(:disabled):active {
+  transform: scale(0.98);
+}
+
+.playerCount {
+  font-size: 0.875rem;
+  font-family: var(--mantine-font-family-monospace);
+  font-weight: 600;
+  color: var(--mantine-color-console-4);
+}
+
+.fullBadge {
+  background: light-dark(
+    var(--mantine-color-red-1),
+    rgba(239, 68, 68, 0.2)
+  );
+  color: var(--mantine-color-red-6);
+  border: 1px solid var(--mantine-color-red-4);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  animation: pulseBadge 2s ease-in-out infinite;
+}
+
+.spectatorButton {
+  font-size: 1rem;
+  font-weight: 600;
+  min-width: 160px;
+  background: light-dark(
+    var(--mantine-color-gray-1),
+    var(--mantine-color-dark-5)
+  );
+  border: 2px solid light-dark(
+    var(--mantine-color-gray-4),
+    var(--mantine-color-dark-3)
+  );
+  color: light-dark(
+    var(--mantine-color-gray-8),
+    var(--mantine-color-gray-3)
+  );
+  transition: all 0.2s ease;
+  animation: cardSlideIn 0.4s ease-out 0.3s both;
+}
+
+.spectatorButton:hover {
+  border-color: var(--mantine-color-console-4);
+  background: light-dark(
+    rgba(49, 176, 0, 0.05),
+    rgba(113, 211, 73, 0.1)
+  );
+  color: var(--mantine-color-console-5);
+  transform: scale(1.05);
+}
+
+.spectatorButton:active {
+  transform: scale(0.98);
+}
+
+/* Keyframes */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes cardSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes titlePulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.85;
+  }
+}
+
+@keyframes pulseBadge {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+@keyframes gridPulse {
+  0%, 100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .container::before,
+  .content,
+  .title,
+  .roomId,
+  .teamsGroup,
+  .teamCard,
+  .fullBadge,
+  .spectatorButton {
+    animation: none;
+  }
+  
+  .teamCard:hover:not(.disabled),
+  .teamButton:not(:disabled):hover,
+  .teamButton:not(:disabled):active,
+  .spectatorButton:hover,
+  .spectatorButton:active {
+    transform: none;
+    box-shadow: none;
+  }
+  
+  .title {
+    text-shadow: none;
+  }
+}

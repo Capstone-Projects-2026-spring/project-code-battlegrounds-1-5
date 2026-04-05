@@ -14,25 +14,25 @@ const steps: Step[] = [
     icon: <IconCode size={32} />,
     title: "Match & Select Role",
     description: "Get paired with a teammate. One codes the solution, the other writes test cases to validate it.",
-    color: "blue",
+    color: "console",
   },
   {
     icon: <IconTestPipe size={32} />,
     title: "Collaborate in Real-Time",
     description: "Work together through live code synchronization and chat. Testers validate, coders implement.",
-    color: "cyan",
+    color: "console",
   },
   {
     icon: <IconRefresh size={32} />,
     title: "Swap Roles Mid-Game",
     description: "Automatically switch roles during the match. Experience both perspectives of pair programming.",
-    color: "violet",
+    color: "console",
   },
   {
     icon: <IconTrophy size={32} />,
     title: "Win Through Quality",
     description: "Score based on code efficiency, correctness, and collaboration. Speed matters, but quality wins.",
-    color: "green",
+    color: "console",
   },
 ];
 

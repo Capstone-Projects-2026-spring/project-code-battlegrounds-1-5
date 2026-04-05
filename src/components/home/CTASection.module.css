@@ -1,25 +1,46 @@
 .ctaSection {
   background: linear-gradient(
     135deg,
-    rgba(56, 189, 248, 0.1) 0%,
-    rgba(139, 92, 246, 0.1) 100%
+    light-dark(rgba(49, 176, 0, 0.08), rgba(113, 211, 73, 0.1)) 0%,
+    light-dark(rgba(0, 142, 0, 0.06), rgba(162, 235, 137, 0.08)) 100%
   );
+  border: 1px solid light-dark(rgba(49, 176, 0, 0.2), rgba(113, 211, 73, 0.2));
   border-radius: 1rem;
   margin: 2rem auto;
+  position: relative;
+  overflow: hidden;
+}
+
+.ctaSection::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: 
+    linear-gradient(light-dark(rgba(49, 176, 0, 0.03), rgba(113, 211, 73, 0.05)) 1px, transparent 1px),
+    linear-gradient(90deg, light-dark(rgba(49, 176, 0, 0.03), rgba(113, 211, 73, 0.05)) 1px, transparent 1px);
+  background-size: 50px 50px;
+  opacity: 0.3;
+  pointer-events: none;
 }
 
 .title {
   font-size: clamp(1.75rem, 4vw, 2.25rem);
   font-weight: 800;
+  background: linear-gradient(135deg, var(--mantine-color-console-5), var(--mantine-color-console-3));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .ctaButton {
   transition: transform 0.2s ease, box-shadow 0.2s ease;
+  position: relative;
+  z-index: 1;
 }
 
 .ctaButton:hover {
   transform: scale(1.05);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 12px 32px light-dark(rgba(49, 176, 0, 0.3), rgba(113, 211, 73, 0.4));
 }
 
 .ctaButton:active {
@@ -34,5 +55,10 @@
   .ctaButton:hover,
   .ctaButton:active {
     transform: none;
+    box-shadow: none;
+  }
+  
+  .ctaSection::before {
+    display: none;
   }
 }

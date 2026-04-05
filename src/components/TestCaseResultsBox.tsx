@@ -1,4 +1,6 @@
 import { Paper, Title, Table, Text } from "@mantine/core";
+import { IconCheck, IconX } from "@tabler/icons-react";
+import styles from '@/styles/comps/TestCaseResultsBox.module.css';
 
 // Define the structure of a test case for TypeScript
 interface TestCase {
@@ -18,17 +20,22 @@ export default function TestCaseResultsBox() {
   ];
 
   const rows = testCases.map((element) => (
-    <Table.Tr key={element.id}>
+    <Table.Tr key={element.id} className={styles.tableRow}>
       <Table.Td>
-        <Text size="sm" fw={500} ff="monospace">{element.input}</Text>
+        <Text className={styles.cellInput}>{element.input}</Text>
       </Table.Td>
       <Table.Td>
-        <Text size="sm" fw={700} c={element.passed ? "teal.6" : "red.6"} ff="monospace">
-          {element.actual}
-        </Text>
+        <div className={styles.cellResult}>
+          <span className={element.passed ? styles.statusPass : styles.statusFail}>
+            {element.passed ? <IconCheck size={14} /> : <IconX size={14} />}
+          </span>
+          <Text className={element.passed ? styles.passText : styles.failText}>
+            {element.actual}
+          </Text>
+        </div>
       </Table.Td>
       <Table.Td>
-        <Text size="sm" fw={700} c={element.passed ? "teal.6" : "red.6"} ff="monospace">
+        <Text className={element.passed ? styles.passText : styles.failText}>
           {element.expected}
         </Text>
       </Table.Td>
@@ -36,16 +43,16 @@ export default function TestCaseResultsBox() {
   ));
 
   return (
-    <Paper shadow="sm" radius="md" p="lg" withBorder style={{ flex: 1 }}>
+    <Paper shadow="sm" radius="md" p="lg" withBorder className={styles.container}>
       
-      <Title order={4} mb="md" ta="center">Test Case Overview</Title>
+      <Title order={4} mb="md" className={styles.title}>Test Case Overview</Title>
 
-      <Table highlightOnHover verticalSpacing="sm">
+      <Table highlightOnHover verticalSpacing="sm" className={styles.table}>
         <Table.Thead>
           <Table.Tr>
-            <Table.Th>Input</Table.Th>
-            <Table.Th>Your Result</Table.Th>
-            <Table.Th>Expected Result</Table.Th>
+            <Table.Th className={styles.tableHeader}>Input</Table.Th>
+            <Table.Th className={styles.tableHeader}>Your Result</Table.Th>
+            <Table.Th className={styles.tableHeader}>Expected Result</Table.Th>
           </Table.Tr>
         </Table.Thead>
         <Table.Tbody>{rows}</Table.Tbody>

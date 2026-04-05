@@ -1,6 +1,10 @@
 .statsSection {
-  border-top: 1px solid light-dark(rgba(0, 0, 0, 0.1), rgba(255, 255, 255, 0.1));
-  border-bottom: 1px solid light-dark(rgba(0, 0, 0, 0.1), rgba(255, 255, 255, 0.1));
+  border-top: 1px solid light-dark(rgba(49, 176, 0, 0.2), rgba(113, 211, 73, 0.2));
+  border-bottom: 1px solid light-dark(rgba(49, 176, 0, 0.2), rgba(113, 211, 73, 0.2));
+  background: light-dark(
+    rgba(49, 176, 0, 0.02),
+    rgba(113, 211, 73, 0.03)
+  );
 }
 
 .statCard {
@@ -14,15 +18,17 @@
 .statCard:nth-child(3) { animation-delay: 0.3s; }
 
 .iconWrapper {
-  color: light-dark(var(--mantine-color-blue-6), var(--mantine-color-blue-4));
+  color: light-dark(var(--mantine-color-console-5), var(--mantine-color-console-3));
 }
 
 .statValue {
   font-size: clamp(1.5rem, 3vw, 2rem);
-  background: linear-gradient(135deg, var(--mantine-color-blue-6), var(--mantine-color-cyan-5));
+  background: linear-gradient(135deg, var(--mantine-color-console-5), var(--mantine-color-console-2));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  text-shadow: 0 0 10px light-dark(rgba(49, 176, 0, 0.1), rgba(113, 211, 73, 0.2));
+  font-variant-numeric: tabular-nums;
 }
 
 @keyframes fadeIn {
@@ -46,5 +52,9 @@
   .statCard {
     animation: none;
     opacity: 1;
+  }
+  
+  .statValue {
+    text-shadow: none;
   }
 }
