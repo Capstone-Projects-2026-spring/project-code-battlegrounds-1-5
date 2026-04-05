@@ -6,6 +6,7 @@ import random
 import string
 import subprocess
 import time
+from typing import Any
 
 from  models import *
 
@@ -102,11 +103,10 @@ def run_in_sandbox(
         except Exception:
             pass
 
-
-def format_js_args(testCase: TestableCase):
+def _format_js_args(params: List[Parameter]): # TODO: this is potentially the ugliest python function i've ever written. how can we clean up?
     res = []
-    for p in testCase.functionInput:
-        match p.type: # TODO: this is potentially the ugliest python function i've ever written. how can we clean up?
+    for p in params:
+        match p.type:
             case "string":
                 res.append(f"\"{p.value}\"")
             case "number":
@@ -123,6 +123,12 @@ def format_js_args(testCase: TestableCase):
                 res.append(f"[ { ', '.join(f'[ {", ".join(f"{v}" for v in inner)} ]' for inner in json.loads(p.value))} ]")
     return ', '.join(res)
 
+def format_js_args(arg: Any):
+    if isinstance(arg, TestableCase):
+        return _format_js_args(arg.functionInput)
+    elif isinstance(arg, Parameter):
+        return _format_js_args([arg])
+    return None
 
 
 def write_code_to_file(content: str, language: str, testCase: TestableCase = None):

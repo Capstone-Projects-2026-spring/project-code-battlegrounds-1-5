@@ -126,7 +126,9 @@ def execute(req: ExecutionRequest):
 
         # check if we passed
         stdout_val = result.get("stdout", "").strip()
-        expected_val = (test.expectedOutput.value or "").strip() if test.expectedOutput and test.expectedOutput.value is not None else None
+        # note we are formatting the expected as well, so if it's an array output we're chill. TODO: check language before formatting
+        expected_val = format_js_args(test.expectedOutput)
+        # expected_val = (test.expectedOutput.value or "").strip() if test.expectedOutput and test.expectedOutput.value is not None else None
         error_occurred = result.get("exit_code", 0) != 0
 
         if error_occurred:
