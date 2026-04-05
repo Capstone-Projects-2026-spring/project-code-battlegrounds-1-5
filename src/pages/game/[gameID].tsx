@@ -248,7 +248,17 @@ function PlayGameRoom() {
     //TODO Store submission and evaluate results on the backend, then fetch and display here
     //server broadcasts the event to both player
     if (!socket) return; //make sure the socket is connected before emitting
-    socket.emit("submitCode", { roomId: teamSelected, code: liveCode });
+    const indexes = Array.from(
+          { length: testCaseCtx.cases.length },
+          (_, i) => i
+    );
+
+    socket.emit("submitCode", {
+            roomID: teamSelected,
+            code: gameStateCtx.code,
+            testCases: testCaseCtx.cases,
+            runIDs: indexes,
+    });
   };
 
   const addNewTest = () => {

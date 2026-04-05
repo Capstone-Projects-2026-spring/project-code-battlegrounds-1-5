@@ -119,27 +119,39 @@ function registerSocketHandlers(io, socket, services) {
   });
 
   socket.on('submitCode', async (data) => {
-    const { roomId, code } = data || {};
-    if (!roomId) return;
-    
+    const {
+      roomID,
+      code,
+      testCases,
+      runIDs
+    } = data;
+
+    if (!roomID) return;
+
     // TODO: Store submission
     //Broadcast to both players to redirect to results
 
     try {
       // Post results to the code executor
-      fetch("http://fake-backend.lol:6969/execute", {
+      let payload = {
+        language: "javascript",
+        code: btoa(code),
+        testCases: JSON.stringify(testCases),
+        runIDs: JSON.stringify(runIDs)
+      };
+      // console.log(JSON.stringify(payload));
+      const res = await fetch("http://127.0.0.1:6969/execute", {
         method: "POST",
-        body: {
-          roomId,
-          code: btoa(code)
-        }
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
       });
+      const json = await res.json();
+      console.log(JSON.stringify(json));
     } catch (error) {
       console.error("Error POSTing to code executor:", error);
     } finally {
-      io.to(roomId).emit('gameEnded');
+      io.to(roomID).emit('gameEnded');
     }
-
   });
 
   /**
@@ -159,7 +171,7 @@ function registerSocketHandlers(io, socket, services) {
       testCases,
       runIDs
     } = data;
-    payload = {
+    let payload = {
       language: "javascript",
       code: btoa(code),
       testCases: JSON.stringify(testCases),
