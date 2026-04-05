@@ -1,8 +1,11 @@
 # write to file with its extension, catching error if langauge is not implemented.
 # returns None if langauge is not implemented or the filename written to
 import json
+import os
 import random
 import string
+import subprocess
+import time
 
 from  models import *
 
@@ -103,22 +106,13 @@ def run_in_sandbox(
 def format_js_args(testCase: TestableCase):
     res = []
     for p in testCase.functionInput:
-        # print(p)
-        # type: Literal[
-        #     "string",
-        #     "number",
-        #     "boolean", # TODO: boolean needs to be language specific. how is it being sent via json? how must it be represented in JS?
-        #     "array_string",
-        #     "array_number",
-        #     "array_array_string",
-        #     "array_array_number"
-        # ]
         match p.type: # TODO: this is potentially the ugliest python function i've ever written. how can we clean up?
             case "string":
                 res.append(f"\"{p.value}\"")
             case "number":
                 res.append(f"{p.value}")
-            #TODO: boolean here
+            case "boolean":
+                res.append(f"{p.value}")
             case "array_string":
                 res.append(f"[ {', '.join(f'\"{v}\"' for v in json.loads(p.value))} ]")
             case "array_number":
