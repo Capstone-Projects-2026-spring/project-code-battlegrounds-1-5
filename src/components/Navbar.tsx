@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Burger, Container, Group, Text, Anchor} from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
+import Link from 'next/link'; // <-- Import Next.js Link
 import classes from '../styles/comps/Header.module.css';
 
 interface HeaderProps {
@@ -15,10 +16,8 @@ export default function HeaderSimple(props: HeaderProps) {
 
   // split the title
   const titleParts = props.title.split('|');
-  // get the brand name
-  const brandName = titleParts[0]; // "CODE BATTLEGROUNDS "
-  // put the remaining info back together.
-  const gameInfo = titleParts.slice(1).join('|'); // " GAMEMODE: ... | YOUR ROLE: ..."
+  const brandName = titleParts[0]; 
+  const gameInfo = titleParts.slice(1).join('|'); 
 
   const items = props.links.map((link) => (
     <a
@@ -38,9 +37,10 @@ export default function HeaderSimple(props: HeaderProps) {
       <Container size="md" className={classes.inner}>
         
         <Text c="blue.6" fw={600} mr="auto">
-          {/* mantine anchor tag instead a <a or whatever else we'd use  */}
+
           <Anchor 
-            href="/auth" 
+            component={Link} 
+            href="/" 
             underline="hover" 
             c="blue.6" 
             fw={800} 
