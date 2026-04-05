@@ -1,8 +1,7 @@
-import { useState } from "react";
-import { Center, Stack, Button, Text, Group, Badge, Title } from "@mantine/core";
-import { GameType, Role } from "@prisma/client";
+import { Badge, Button, Center, Group, Stack, Text, Title } from "@mantine/core";
 import { Role } from "@prisma/client";
 import { usePostHog } from "posthog-js/react";
+import { useState } from "react";
 
 export interface TeamCount {
     teamId: string;
