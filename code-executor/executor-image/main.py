@@ -145,7 +145,7 @@ def execute(req: ExecutionRequest):
             "id": test.id,
             "input": testCaseInputs,
             "expected": test.expectedOutput.value,
-            "actual": result.get("stdout", ""),
+            "actual": result.get("stdout", "").strip(),
             "passed": passed,
             "stderr": result.get("stderr", ""),
             "execution_time_ms": result.get("execution_time_ms", 0),
