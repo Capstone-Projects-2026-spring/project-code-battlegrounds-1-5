@@ -146,7 +146,18 @@ export default function ParameterInput(props: ParameterInputProps) {
           checked={value === "true"}
           onChange={(event) => handleBooleanChange(event.currentTarget.checked)}
           disabled={disabled}
-          error={isEqual === false ? `Computed: ${JSON.stringify(computedValue)}` : undefined}
+          error={isEqual !== null ? `Computed: ${JSON.stringify(computedValue)}` : undefined}
+          {...isEqual === true ? {
+            styles: {
+              track: {
+                border: "2px solid var(--mantine-color-green-filled)",
+                color: "var(--mantine-color-green-filled)"
+              },
+              error: {
+                color: "var(--mantine-color-green-filled)"
+              }
+            }
+          } : {}}
         />
       );
 
@@ -167,7 +178,18 @@ export default function ParameterInput(props: ParameterInputProps) {
                 onChange={(e) => stringHandlers.handleElementChange(idx, e.currentTarget.value)}
                 disabled={disabled}
                 // style={{ flex: 1 }}
-                error={isEqual === false}
+                error={isEqual !== null}
+                {...isEqual === true ? {
+                  styles: {
+                    input: {
+                      border: "2px solid var(--mantine-color-green-filled)",
+                      color: "var(--mantine-color-green-filled)"
+                    },
+                    error: {
+                      color: "var(--mantine-color-green-filled)"
+                    },
+                  }
+                } : {}}
               />
 
               <ActionIcon
@@ -201,8 +223,8 @@ export default function ParameterInput(props: ParameterInputProps) {
             <Text size="sm" c="dimmed">Add element</Text>
           </Group>
 
-          {isEqual === false && (
-            <Text c="red" size="sm">
+          {isEqual !== null && (
+            <Text c={isEqual ? "green" : "red"} size="sm">
               Computed: {JSON.stringify(computedValue)}
             </Text>
           )}
@@ -226,7 +248,25 @@ export default function ParameterInput(props: ParameterInputProps) {
                 value={typeof element === 'number' ? element : parseFloat(element) || 0}
                 onChange={(val) => numberHandlers.handleElementChange(idx, typeof val === 'number' ? val : parseFloat(val))}
                 disabled={disabled}
-                error={isEqual === false}
+                error={isEqual !== null}
+                {...isEqual === true ? {
+                  styles: {
+                    input: {
+                      border: "2px solid var(--mantine-color-green-filled)",
+                      color: "var(--mantine-color-green-filled)"
+                    },
+                    error: {
+                      color: "var(--mantine-color-green-filled)"
+                    },
+                    control: {
+                      color: "var(--mantine-color-green-filled)",
+                      ["--input-bd"]: "var(--mantine-color-green-filled)"
+                    },
+                    section: {
+                      borderColor: "var(--mantine-color-green-filled)",
+                    }
+                  }
+                } : {}}
               />
 
               <ActionIcon
@@ -258,8 +298,8 @@ export default function ParameterInput(props: ParameterInputProps) {
             Add element
           </Button>
 
-          {isEqual === false && (
-            <Text c="red" size="sm">
+          {isEqual !== null && (
+            <Text c={isEqual ? "green" : "red"} size="sm">
               Computed: {JSON.stringify(computedValue)}
             </Text>
           )}
@@ -289,7 +329,17 @@ export default function ParameterInput(props: ParameterInputProps) {
                       value={element?.toString() || ""}
                       onChange={(e) => stringHandlers.handleElementChange(rowIdx, colIdx, e.currentTarget.value)}
                       disabled={disabled}
-                    // style={{ flex: 1 }}
+                      {...isEqual === true ? {
+                        styles: {
+                          input: {
+                            border: "2px solid var(--mantine-color-green-filled)",
+                            color: "var(--mantine-color-green-filled)"
+                          },
+                          error: {
+                            color: "var(--mantine-color-green-filled)"
+                          },
+                        }
+                      } : {}}
                     />
 
                     <ActionIcon
@@ -344,8 +394,8 @@ export default function ParameterInput(props: ParameterInputProps) {
             Add row
           </Button>
 
-          {isEqual === false && (
-            <Text c="red" size="sm">
+          {isEqual !== null && (
+            <Text c={isEqual ? "green" : "red"} size="sm">
               Computed: {JSON.stringify(computedValue)}
             </Text>
           )}
@@ -375,6 +425,24 @@ export default function ParameterInput(props: ParameterInputProps) {
                       value={typeof element === 'number' ? element : parseFloat(element) || 0}
                       onChange={(val) => numberHandlers.handleElementChange(rowIdx, colIdx, typeof val === 'number' ? val : parseFloat(val))}
                       disabled={disabled}
+                      {...isEqual === true ? {
+                        styles: {
+                          input: {
+                            border: "2px solid var(--mantine-color-green-filled)",
+                            color: "var(--mantine-color-green-filled)"
+                          },
+                          error: {
+                            color: "var(--mantine-color-green-filled)"
+                          },
+                          control: {
+                            color: "var(--mantine-color-green-filled)",
+                            ["--input-bd"]: "var(--mantine-color-green-filled)"
+                          },
+                          section: {
+                            borderColor: "var(--mantine-color-green-filled)",
+                          }
+                        }
+                      } : {}}
                     />
 
                     <ActionIcon
@@ -429,8 +497,8 @@ export default function ParameterInput(props: ParameterInputProps) {
             Add row
           </Button>
 
-          {isEqual === false && (
-            <Text c="red" size="sm">
+          {isEqual !== null && (
+            <Text c={isEqual ? "green" : "red"} size="sm">
               Computed: {JSON.stringify(computedValue)}
             </Text>
           )}
@@ -445,7 +513,18 @@ export default function ParameterInput(props: ParameterInputProps) {
           value={value || ""}
           onChange={(event) => onChange(event.currentTarget.value)}
           disabled={disabled}
-          error={isEqual === false ? `Computed: ${JSON.stringify(computedValue)}` : undefined}
+          error={isEqual !== null ? `Computed: ${JSON.stringify(computedValue)}` : undefined}
+          {...isEqual === true ? {
+            styles: {
+              input: {
+                border: "2px solid var(--mantine-color-green-filled)",
+                color: "var(--mantine-color-green-filled)"
+              },
+              error: {
+                color: "var(--mantine-color-green-filled)"
+              },
+            }
+          } : {}}
         />
       );
     }
