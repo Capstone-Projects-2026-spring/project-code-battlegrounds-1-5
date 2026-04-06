@@ -76,6 +76,7 @@ export function Results() {
           setAnalysisProps({
             team1Code: data.team1Code,
             team2Code: data.team2Code ?? undefined,
+            gameType: gameType as "TWOPLAYER" | "FOURPLAYER",
           });
         }
       } catch (error) {
@@ -153,8 +154,8 @@ export function Results() {
             </Box>
 
             <Stack style={{ flex: 2 }} gap="md">
-              <AnalysisBox {...analysisProps ?? { team1Code: "" }} />
-              <TestCaseResultsBox gameId={gameId} showOtherTeamColumn={gameType === "FOURPLAYER"} />
+              <AnalysisBox {...analysisProps ?? { team1Code: "", gameType: gameType as "TWOPLAYER" | "FOURPLAYER" }} />
+              <TestCaseResultsBox gameId={gameId} showOtherTeamColumn={gameType === "FOURPLAYER"} gameType={gameType} />
             </Stack>
 
           </Flex>

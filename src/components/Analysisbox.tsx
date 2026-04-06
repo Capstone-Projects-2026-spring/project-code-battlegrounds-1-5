@@ -3,8 +3,9 @@ import { Paper, Text, Group, Box, Badge, Title, Divider, Code } from "@mantine/c
 export interface AnalysisBoxProps {
   team1Code: string;
   team2Code?: string;
+  gameType?: "TWOPLAYER" | "FOURPLAYER";
 }
-export default function AnalysisBox({ team1Code, team2Code }: AnalysisBoxProps) {
+export default function AnalysisBox({ team1Code, team2Code, gameType = "FOURPLAYER" }: AnalysisBoxProps) {
   const hasAnyCode = Boolean(team1Code || team2Code);
 
   return (
@@ -30,7 +31,7 @@ export default function AnalysisBox({ team1Code, team2Code }: AnalysisBoxProps) 
               borderRadius: '4px',
               padding: '0.75rem'
             }}>
-              <Text size="xs" fw={600} mb="xs" c="blue.6">Team 1</Text>
+              <Text size="xs" fw={600} mb="xs" c="blue.6">{gameType === "TWOPLAYER" ? "Your Code" : "Team 1"}</Text>
               <Box style={{
                 flex: 1,
                 minHeight: 0,
@@ -79,7 +80,7 @@ export default function AnalysisBox({ team1Code, team2Code }: AnalysisBoxProps) 
       {/* Performance Metrics - Horizontal layout */}
       <Group grow align="flex-start" gap="md">
         <Box>
-          <Text size="xs" fw={600} mb="xs">Team 1 Metrics</Text>
+          <Text size="xs" fw={600} mb="xs">{gameType === "TWOPLAYER" ? "Your Metrics" : "Team 1 Metrics"}</Text>
           <Group gap="xs">
             <Badge color="teal" variant="light" size="md" radius="sm">
               Runtime: A

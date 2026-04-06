@@ -50,6 +50,7 @@ export default async function handler(
   } catch (error: unknown) {
     if (error instanceof Error) {
       return res.status(500).json({ message: error.message || "Failed to fetch result code" });
+      console.error("Error fetching result code:", error);
     }
 
     return res.status(500).json({ message: "Failed to fetch result code" });

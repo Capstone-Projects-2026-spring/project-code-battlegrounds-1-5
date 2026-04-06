@@ -13,9 +13,10 @@ interface TestCaseResultsBoxProps {
   team1Results?: unknown[];
   team2Results?: unknown[];
   showOtherTeamColumn?: boolean;
+  gameType?: "TWOPLAYER" | "FOURPLAYER";
 }
 
-export default function TestCaseResultsBox({ gameId, team1Results, team2Results, showOtherTeamColumn = true }: TestCaseResultsBoxProps) {
+export default function TestCaseResultsBox({ gameId, team1Results, team2Results, showOtherTeamColumn = true, gameType = "FOURPLAYER" }: TestCaseResultsBoxProps) {
   const [testCases, setTestCases] = useState<TestCase[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -40,7 +41,7 @@ export default function TestCaseResultsBox({ gameId, team1Results, team2Results,
   }, [gameId]);
 
 
-  const formatValue = (value: unknown): string => {
+  const formatValue = (value: ParameterType[] | unknown): string => {
     if (value === undefined || value === null) return '-';
 
     if (typeof value === 'string') return value;
@@ -90,7 +91,7 @@ export default function TestCaseResultsBox({ gameId, team1Results, team2Results,
           <Table.Thead>
             <Table.Tr>
               <Table.Th>Input</Table.Th>
-              <Table.Th>Your Result</Table.Th>
+              <Table.Th>{gameType === "TWOPLAYER" ? "Your Code" : "Your Result"}</Table.Th>
               {showOtherTeamColumn && <Table.Th>Other Team</Table.Th>}
               <Table.Th>Expected Result</Table.Th>
             </Table.Tr>
