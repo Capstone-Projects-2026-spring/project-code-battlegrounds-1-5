@@ -5,6 +5,7 @@ import {
   Center,
   Group,
   Loader,
+  Modal,
   Select,
   Stack,
   Tabs,
@@ -105,6 +106,7 @@ function PlayGameRoom() {
   const [liveCode, setLiveCode] = useState<string>("// Waiting for code...");
   const [activeTestId, setActiveTestId] = useState<number>(0);
   const [gameType, setGameType] = useState<GameType | null>(null);
+  const [isWaitingForOtherTeam, setIsWaitingForOtherTeam] = useState(false);
 
   const [runningAllTests, setRunningAllTests] = useState<boolean>(false);
 
@@ -230,6 +232,7 @@ function PlayGameRoom() {
 
     const handleGameEnded = () => {
       posthog.capture("game_ended", { gameId });
+      setIsWaitingForOtherTeam(false);
       setGameState(GameStatus.FINISHED);
       router.push(`/results/${gameId}`);
     };
@@ -257,12 +260,17 @@ function PlayGameRoom() {
       );
     };
 
+    const handleWaitingForOtherTeam = () => {
+      setIsWaitingForOtherTeam(true);
+    };
+
     socket.on("gameStarting", handleGameStarting);
     socket.on("gameStarted", handleGameStarted);
     socket.on("gameEnded", handleGameEnded);
     socket.on("roleSwapWarning", handleRoleSwapWarning);
     socket.on("roleSwapping", handleRoleSwapping);
     socket.on("roleSwap", handleRoleSwap);
+    socket.on("waitingForOtherTeam", handleWaitingForOtherTeam);
 
     return () => {
       socket.off("gameStarting", handleGameStarting);
@@ -271,6 +279,7 @@ function PlayGameRoom() {
       socket.off("roleSwapWarning", handleRoleSwapWarning);
       socket.off("roleSwapping", handleRoleSwapping);
       socket.off("roleSwap", handleRoleSwap);
+      socket.off("waitingForOtherTeam", handleWaitingForOtherTeam);
     };
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -317,9 +326,10 @@ function PlayGameRoom() {
     //Send bother Coder and Tester to the results page
     //Store submission and evaluate results on the backend
     //server broadcasts the event to both player
-    if (!socket || !gameType) return; //make sure the socket is connected before emitting
+    if (!socket || !gameType || !teamSelected) return; //make sure the socket is connected before emitting
     const team = getTeamLabel();
-    socket.emit("submitCode", { roomId: gameId, code: gameStateCtx.code, type: gameType, team });
+    setIsWaitingForOtherTeam(true);
+    socket.emit("submitCode", { roomId: gameId, code: gameStateCtx.code, type: gameType, team, teamId: teamSelected });
   };
 
   const addNewTest = () => {
@@ -355,7 +365,7 @@ function PlayGameRoom() {
   };
 
   const removeTest = (testId: TestableCase["id"]) => {
-    if (testCaseCtx.cases.length === 1) return;
+    if (testCaseCtx.cases.length === 1 || isWaitingForOtherTeam) return;
 
     const newId = testCaseCtx.cases
       .map((c) => c.id)
@@ -374,6 +384,8 @@ function PlayGameRoom() {
   };
 
   const handleNewParameter = (parameter: ParameterType) => {
+    if (isWaitingForOtherTeam) return;
+
     const cases = testCaseCtx.cases;
     const newCases = cases.map((c) => ({
       ...c,
@@ -394,6 +406,8 @@ function PlayGameRoom() {
   };
 
   const handleParameterDelete = (parameter: ParameterType) => {
+    if (isWaitingForOtherTeam) return;
+
     const cases = testCaseCtx.cases;
     const newCases = cases.map((c) => ({
       ...c,
@@ -411,7 +425,7 @@ function PlayGameRoom() {
   };
 
   const handleTestBoxChange = (testCase: TestableCase) => {
-    if (role !== Role.TESTER || !socket) return;
+    if (role !== Role.TESTER || !socket || isWaitingForOtherTeam) return;
     const updated = testCaseCtx.cases.map((t) =>
       t.id === activeTestId ? testCase : t,
     );
@@ -423,7 +437,7 @@ function PlayGameRoom() {
   };
 
   const handleRunAllTests = () => {
-    if (role !== Role.TESTER || !socket) return;
+    if (role !== Role.TESTER || !socket || isWaitingForOtherTeam) return;
 
     setRunningAllTests(true);
     socket.emit("submitTestCases", {
@@ -496,6 +510,25 @@ function PlayGameRoom() {
 
   return (
     <Box style={{ position: "relative", height: "100vh" }}>
+      {/* Waiting Modal */}
+      <Modal
+        opened={isWaitingForOtherTeam}
+        onClose={() => {}}
+        centered
+        withCloseButton={false}
+        closeOnEscape={false}
+        closeOnClickOutside={false}
+      >
+        <Center>
+          <Stack align="center" gap="md">
+            <Loader size="lg" />
+            <Text size="lg" fw={500}>
+              Waiting for other team to submit...
+            </Text>
+          </Stack>
+        </Center>
+      </Modal>
+
       {/* Spectator view switcher buttons */}
       {/* spectator view bug for 4PLAYER (Teams ordered wrong?) */}
       {isSpectator && (
@@ -663,7 +696,7 @@ function PlayGameRoom() {
                     <Button
                       size="xs"
                       color="cyan"
-                      disabled={isSpectator}
+                      disabled={isSpectator || isWaitingForOtherTeam}
                       onClick={() =>
                         posthog.capture("code_run_triggered", { gameId })
                       }
@@ -677,9 +710,9 @@ function PlayGameRoom() {
                       size="xs"
                       color="green"
                       onClick={submitFinalCode}
-                      disabled={isSpectator}
+                      disabled={isSpectator || isWaitingForOtherTeam}
                     >
-                      Submit Final Code
+                      {isWaitingForOtherTeam ? "Waiting for other team..." : "Submit Final Code"}
                     </Button>
                   </>
                 )}
@@ -708,10 +741,10 @@ function PlayGameRoom() {
                     theme="vs-dark"
                     defaultLanguage="javascript"
                     value={liveCode}
-                    onChange={!isSpectator ? handleEditorChange : undefined}
+                    onChange={!isSpectator && !isWaitingForOtherTeam ? handleEditorChange : undefined}
                     options={{
-                      readOnly: isSpectator || role !== Role.CODER,
-                      domReadOnly: isSpectator || role !== Role.CODER,
+                      readOnly: isSpectator || role !== Role.CODER || isWaitingForOtherTeam,
+                      domReadOnly: isSpectator || role !== Role.CODER || isWaitingForOtherTeam,
                       minimap: { enabled: false },
                     }}
                   />
@@ -772,6 +805,7 @@ function PlayGameRoom() {
                                   size="sm"
                                   style={{ alignSelf: "center" }}
                                   ml="xs"
+                                  disabled={isWaitingForOtherTeam}
                                 >
                                   <IconPlus />
                                 </ActionIcon>
@@ -788,7 +822,7 @@ function PlayGameRoom() {
                             size="compact-sm"
                             variant="filled"
                             color="green"
-                            disabled={isSpectator || runningAllTests}
+                            disabled={isSpectator || runningAllTests || isWaitingForOtherTeam}
                             loading={runningAllTests}
                             onClick={handleRunAllTests}
                             rightSection={

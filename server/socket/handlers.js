@@ -72,6 +72,7 @@ const submitCodeSchema = z.object({
   code: z.string().max(10000), // Adjust max length as needed
   type: z.enum([GameType.TWOPLAYER, GameType.FOURPLAYER]),
   team: z.enum(["team1", "team2"]).nullable().optional(),
+  teamId: z.string().optional(),
 });
 
 
@@ -280,7 +281,7 @@ function registerSocketHandlers(io, socket, services) {
       socket.emit('error', { message: 'Invalid payload for submitCode.' });
       return;
     }
-    const { roomId, code, type, team } = payload;
+    const { roomId, code, type, team, teamId } = payload;
 
     if (!roomId) return;
 
@@ -366,9 +367,11 @@ function registerSocketHandlers(io, socket, services) {
           await gameService.deleteGameData(submissionKey);
         }
       } else {
-        // First team submitted - notify waiting
+        // First team submitted - notify waiting (only to that team)
         console.log('First team submitted, waiting for other team');
-        io.to(roomId).emit('waitingForOtherTeam');
+        if (teamId) {
+          io.to(teamId).emit('waitingForOtherTeam');
+        }
       }
     }
 

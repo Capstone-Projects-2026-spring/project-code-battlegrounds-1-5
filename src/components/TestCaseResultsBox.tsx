@@ -21,9 +21,8 @@ export default function TestCaseResultsBox({ gameId, team1Results, team2Results,
   const [testCases, setTestCases] = useState<TestCase[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // TEMP: Hardcoded test results for verification
-  const team1TestResults = team1Results || ["[1,2]", "[1,2,3]", "[1,2,3,4,5]"];
-  const team2TestResults = team2Results || ["[1,2,2]", "[1,2,2,3]", "[1,2,2,3,4,5]"];
+  const team1TestResults = team1Results;
+  const team2TestResults = team2Results;
 
   useEffect(() => {
     if (!gameId) return;
