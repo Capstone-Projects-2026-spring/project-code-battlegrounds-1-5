@@ -101,7 +101,7 @@ function registerSocketHandlers(io, socket, services) {
     }
 
   });
- 
+
   socket.on('joinGame', async (data) => {
     const payload = validate(joinGameSchema, data);
     if (!payload) {
@@ -281,13 +281,13 @@ function registerSocketHandlers(io, socket, services) {
       socket.emit('error', { message: 'Invalid payload for submitCode.' });
       return;
     }
-    const { roomId, code, type, team, teamId } = payload;
+    const { roomId, code, type, team, teamId, testCases, runIDs } = payload;
 
     if (!roomId) return;
 
     console.log('submitCode received for roomId:', roomId, 'with code length:', code.length, 'and type:', type);
 
-    if(type === GameType.TWOPLAYER) {
+    if (type === GameType.TWOPLAYER) {
       console.log('verify its a twoplayer game');
       await prisma.gameResult.update({
         where: { gameRoomId: roomId },
@@ -300,14 +300,20 @@ function registerSocketHandlers(io, socket, services) {
 
       try {
         // Post results to the code executor
-        fetch("http://fake-backend.lol:6969/execute", {
+        let payload = {
+          language: "javascript",
+          code: btoa(code),
+          testCases: JSON.stringify(testCases),
+          runIDs: JSON.stringify(runIDs)
+        };
+        // console.log(JSON.stringify(payload));
+        const res = await fetch("http://127.0.0.1:6969/execute", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            roomId,
-            code
-          })
+          body: JSON.stringify(payload),
         });
+        const json = await res.json();
+        console.log(JSON.stringify(json));
       } catch (error) {
         console.error("Error POSTing to code executor:", error);
       } finally {
@@ -352,14 +358,21 @@ function registerSocketHandlers(io, socket, services) {
         // Both teams submitted - end game
         console.log('Both teams submitted, ending game');
         try {
-          fetch("http://fake-backend.lol:6969/execute", {
+          // Post results to the code executor
+          let payload = {
+            language: "javascript",
+            code: btoa(code),
+            testCases: JSON.stringify(testCases),
+            runIDs: JSON.stringify(runIDs)
+          };
+          // console.log(JSON.stringify(payload));
+          const res = await fetch("http://127.0.0.1:6969/execute", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              roomId,
-              code
-            })
+            body: JSON.stringify(payload),
           });
+          const json = await res.json();
+          console.log(JSON.stringify(json));
         } catch (error) {
           console.error("Error POSTing to code executor:", error);
         } finally {
@@ -374,7 +387,6 @@ function registerSocketHandlers(io, socket, services) {
         }
       }
     }
-
   });
 
   /**
@@ -387,31 +399,54 @@ function registerSocketHandlers(io, socket, services) {
    * 
    * @see GameTestCasesContext#TestableCase
    */
+  // TODO: should only send test cases needed. also, the model here needs updated to actually hook up (wtf does that mean??). additionally, this sends base64 for undefined, so somethings broke somewhere.
   socket.on("submitTestCases", async (data) => {
     const {
-      gameId,
-      teamId,
       code,
       testCases,
       runIDs
     } = data;
-
-    const res = await fetch("http://fake-backend.lol:6969/execute-tests", {
+    let payload = {
+      language: "javascript",
+      code: btoa(code),
+      testCases: JSON.stringify(testCases),
+      runIDs: JSON.stringify(runIDs)
+    };
+    // console.log(JSON.stringify(payload));
+    const res = await fetch("http://127.0.0.1:6969/execute", {
       method: "POST",
-      body: {
-        gameId,
-        teamId,
-        code,
-        testCases: JSON.stringify(testCases),
-        runIDs: JSON.stringify(runIDs)
-      },
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
     });
     const json = await res.json();
 
     // json.testCases should realistically only modify a single property
     // on the existing testCases object: `computedOutput`. Syncing this
     // back to the frontend is handled over there :)
-    socket.emit("receiveTestCaseSync", json.testCases);
+    console.log(JSON.stringify(json, null, 2));
+
+    /* 
+      export interface TestableCase {
+        id: number;
+        functionInput: ParameterType[];
+        expectedOutput: ParameterType;
+        computedOutput?: string | null;
+      }
+    */
+
+    const toReceive = [];
+    for (const result of json.results) {
+      const matched = testCases.find(t => t.id === result.id);
+      if (!matched) continue;
+      toReceive.push({
+        id: matched.id,
+        functionInput: matched.functionInput,
+        expectedOutput: matched.expectedOutput,
+        computedOutput: result.actual
+      });
+    }
+
+    socket.emit("receiveTestCaseSync", toReceive);
   });
 
   socket.on('requestTeamUpdate', async (data) => {
@@ -433,9 +468,9 @@ function registerSocketHandlers(io, socket, services) {
   });
 
   socket.on('leaveQueue', async ({ gameType, difficulty }) => {
-      if (!socket.userId) return;
-      const result = await matchmakingService.leaveQueue(socket.userId, gameType, difficulty);
-      socket.emit('queueStatus', result);
+    if (!socket.userId) return;
+    const result = await matchmakingService.leaveQueue(socket.userId, gameType, difficulty);
+    socket.emit('queueStatus', result);
   });
 
   // 3. Handle graceful disconnection need to do more to this so will just leave it to this right now
@@ -450,7 +485,7 @@ function registerSocketHandlers(io, socket, services) {
       }
     }
     if (socket.userId) {
-        await matchmakingService.leaveAllQueues(socket.userId);
+      await matchmakingService.leaveAllQueues(socket.userId);
     }
   });
 }

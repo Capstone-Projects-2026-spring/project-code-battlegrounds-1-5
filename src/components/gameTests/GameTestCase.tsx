@@ -2,7 +2,7 @@ import { ActionIcon, Button, Group, Stack, Table, Text, Tooltip } from "@mantine
 import { IconPlayerPlay, IconTrash } from "@tabler/icons-react";
 
 import { ParameterType } from "@/lib/ProblemInputOutput";
-import { TestableCase } from "../contexts/GameTestCasesContext";
+import { TestableCase, useTestCases } from "../contexts/GameTestCasesContext";
 import ParameterInput from "./ParameterInput";
 import { useGameState } from "../contexts/GameStateContext";
 import { useEffect, useState } from "react";
@@ -24,6 +24,7 @@ export interface GameTestCaseProps {
 
 export default function GameTestCase(props: GameTestCaseProps) {
   const gameStateCtx = useGameState();
+  const testCaseCtx = useTestCases();
   const posthog = usePostHog();
   const { testableCase } = props;
 
@@ -34,10 +35,8 @@ export default function GameTestCase(props: GameTestCaseProps) {
     setRunning(true);
 
     gameStateCtx.socket.emit("submitTestCases", {
-      gameId: gameStateCtx.gameId,
-      teamId: gameStateCtx.teamId,
       code: gameStateCtx.code,
-      testCases: testableCase,
+      testCases: testCaseCtx.cases,
       runIDs: [testableCase.id]
     });
 

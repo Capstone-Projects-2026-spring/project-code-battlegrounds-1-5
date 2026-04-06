@@ -241,7 +241,7 @@ function PlayGameRoom() {
       if (role) {
         showRoleSwapWarning(role);
       } else {
-        showRoleSwapWarning(Role.CODER);
+        showRoleSwapWarning(Role.SPECTATOR);
       }
     };
 
@@ -290,14 +290,22 @@ function PlayGameRoom() {
     socket.emit("requestCodeSync", { teamId: teamSelected });
     socket.emit("requestTestCaseSync", { teamId: teamSelected });
 
-    const testHandler = (cases: TestableCase[]) => {
+    const testHandler = (cases: TestableCase[] | null) => {
       console.log("Receiving test case sync!", cases);
-      testCaseCtx.setCases(cases);
+      if (Array.isArray(cases)) {
+        testCaseCtx.setCases(cases);
+      } else {
+        console.warn("Ignoring invalid test case payload from server:", cases);
+      }
       setRunningAllTests(false);
     };
     socket.on("receiveTestCaseSync", testHandler);
 
-    const handler = (newCode: string) => setLiveCode(newCode);
+    const handler = (newCode: string) => {
+      setLiveCode(newCode);
+      // must also set code in game state otherwise coder cant run their test cases
+      gameStateCtx.setCode(newCode);
+    };
     socket.on("receiveCodeUpdate", handler);
 
     return () => {
@@ -329,7 +337,20 @@ function PlayGameRoom() {
     if (!socket || !gameType || !teamSelected) return; //make sure the socket is connected before emitting
     const team = getTeamLabel();
     setIsWaitingForOtherTeam(true);
-    socket.emit("submitCode", { roomId: gameId, code: gameStateCtx.code, type: gameType, team, teamId: teamSelected });
+    const indexes = Array.from(
+          { length: testCaseCtx.cases.length },
+          (_, i) => i
+    );
+    
+    socket.emit("submitCode", { 
+      roomId: gameId, 
+      code: gameStateCtx.code, 
+      type: gameType, 
+      team, 
+      teamId: teamSelected,
+      testCases: testCaseCtx.cases,
+      runIDs: indexes,
+     });
   };
 
   const addNewTest = () => {
@@ -441,8 +462,6 @@ function PlayGameRoom() {
 
     setRunningAllTests(true);
     socket.emit("submitTestCases", {
-      gameId,
-      teamId: teamSelected,
       code: liveCode,
       testCases: testCaseCtx.cases,
       runIDs: testCaseCtx.cases.map((t) => t.id), // all of em!
@@ -790,8 +809,11 @@ function PlayGameRoom() {
                           variant="outline"
                         >
                           <Tabs.List>
-                            {testCaseCtx.cases.map((test, idx) => (
-                              <Tabs.Tab key={idx} value={String(test.id)}>
+                            {(testCaseCtx.cases ?? []).map((test, idx) => (
+                              <Tabs.Tab
+                                key={idx}
+                                value={String(test.id)}
+                              >
                                 Test {idx + 1}
                               </Tabs.Tab>
                             ))}
