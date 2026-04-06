@@ -96,6 +96,10 @@ To develop, you will need a computer with Git, Node, Bun, and Docker Compose.
 
     # for prisma
     DATABASE_URL=postgresql://appuser:SOME_SECRET_TOKEN@localhost:5432/appdb
+
+    # for posthog
+    NEXT_PUBLIC_POSTHOG_KEY=phc_Io7LeSThy8dz3wDLgPJCcKsWny6zZkapNnyrnPRI1gN
+    NEXT_PUBLIC_POSTHOG_HOST=https://cbt.strange.boats
     ```
    Remember to `source` as needed!
 3. Run `bun install` to install the dependencies.

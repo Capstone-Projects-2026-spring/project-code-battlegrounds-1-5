@@ -1,12 +1,14 @@
-import { ActionIcon, Button, Group, Stack, Table, Text, Tooltip } from "@mantine/core";
-import { IconPlayerPlay, IconTrash } from "@tabler/icons-react";
+import { ActionIcon, Button, ComboboxData, Flex, Group, Popover, Select, SelectProps, Stack, Table, Text, Tooltip } from "@mantine/core";
+import { IconPlayerPlay, IconTrash, IconCode, IconCheck, IconHash, IconList, IconListNumbers, IconMatrix, IconTable, IconTextSize, IconToggleRight } from "@tabler/icons-react";
 
-import { ParameterType } from "@/lib/ProblemInputOutput";
+import { ParameterPrimitiveType, ParameterType } from "@/lib/ProblemInputOutput";
 import { TestableCase, useTestCases } from "../contexts/GameTestCasesContext";
 import ParameterInput from "./ParameterInput";
 import { useGameState } from "../contexts/GameStateContext";
 import { useEffect, useState } from "react";
 import { usePostHog } from "posthog-js/react";
+import { useDisclosure } from "@mantine/hooks";
+import { useForm } from "@mantine/form";
 
 export interface GameTestCaseProps {
   testableCase: TestableCase,
@@ -118,21 +120,37 @@ export default function GameTestCase(props: GameTestCaseProps) {
               </Text>
             </Table.Td>
             <Table.Td>
-              <ParameterInput
-                parameter={testableCase.expectedOutput}
-                value={testableCase.expectedOutput.value}
-                onChange={(value) => {
-                  props.onTestCaseChange({
-                    ...testableCase,
-                    expectedOutput: {
-                      ...testableCase.expectedOutput,
-                      value
-                    }
-                  });
-                }}
-                disabled={props.disabled}
-                computedValue={testableCase.computedOutput}
-              />
+              <Group>
+                <ParameterInput
+                  parameter={testableCase.expectedOutput}
+                  value={testableCase.expectedOutput.value}
+                  onChange={(value) => {
+                    props.onTestCaseChange({
+                      ...testableCase,
+                      expectedOutput: {
+                        ...testableCase.expectedOutput,
+                        value
+                      }
+                    });
+                  }}
+                  disabled={props.disabled}
+                  computedValue={testableCase.computedOutput}
+                  flex={1}
+                />
+
+                <ChangeParameterTypeButton
+                  onTypeChanged={(type) => {
+                    props.onTestCaseChange({
+                      ...testableCase,
+                      expectedOutput: {
+                        ...testableCase.expectedOutput,
+                        value: null,
+                        type
+                      }
+                    });
+                  }}
+                />
+              </Group>
             </Table.Td>
           </Table.Tr>
         </Table.Tbody>
@@ -164,5 +182,113 @@ export default function GameTestCase(props: GameTestCaseProps) {
         </Button>
       </Group>
     </Stack>
+  );
+}
+
+interface ChangeParameterTypeButtonProps {
+  onTypeChanged: (type: ParameterPrimitiveType) => void;
+}
+function ChangeParameterTypeButton(props: ChangeParameterTypeButtonProps) {
+  interface FormValues {
+    type: ParameterPrimitiveType | null
+  }
+  const form = useForm<FormValues>({
+    mode: "uncontrolled",
+    initialValues: {
+      type: null
+    }
+  });
+
+  const data: ComboboxData = [
+    { value: "string", label: "String" },
+    { value: "number", label: "Number" },
+    { value: "boolean", label: "Boolean" },
+    { value: "array_string", label: "String Array" },
+    { value: "array_number", label: "Number Array" },
+    { value: "array_array_string", label: "2D String Array" },
+    { value: "array_array_number", label: "2D Number Array" },
+  ];
+
+  const iconProps = {
+    stroke: 1.5,
+    color: "currentColor",
+    opacity: 0.8,
+    size: 20
+  };
+  const icons: Record<ParameterPrimitiveType, React.ReactNode> = {
+    string: <IconTextSize {...iconProps} />,
+    number: <IconHash {...iconProps} />,
+    boolean: <IconToggleRight {...iconProps} />,
+    array_string: <IconList {...iconProps} />,
+    array_number: <IconListNumbers {...iconProps} />,
+    array_array_string: <IconTable {...iconProps} />,
+    array_array_number: <IconMatrix {...iconProps} />
+  };
+
+  const renderSelectOption: SelectProps["renderOption"] = ({ option, checked }) => (
+    <Group flex={1} gap="xs">
+      {icons[option.value as ParameterPrimitiveType]}
+      {option.label}
+      {checked && <IconCheck style={{ marginInlineStart: 'auto' }} {...iconProps} />}
+    </Group>
+  );
+
+  const [opened, { close, toggle }] = useDisclosure();
+
+  const handleSubmit = (values: FormValues) => {
+    form.reset();
+    if (values.type)
+      props.onTypeChanged(values.type);
+    close();
+  };
+
+  return (
+    <Popover opened={opened}>
+      <Popover.Target>
+        <Tooltip label="Change output type">
+          <ActionIcon
+            color="blue"
+            variant="light"
+            size="sm"
+            onClick={toggle}
+          >
+            <IconCode />
+          </ActionIcon>
+        </Tooltip>
+      </Popover.Target>
+
+      <Popover.Dropdown>
+        <form onSubmit={form.onSubmit(handleSubmit)}>
+          <Flex direction={"column"} gap="xs">
+            <Select
+              required
+              label="Type"
+              data={data}
+              renderOption={renderSelectOption}
+              comboboxProps={{ withinPortal: false }}
+              {...form.getInputProps("type")}
+            />
+
+            <Group gap="xs" flex={1} mt="sm">
+              <Button
+                size="sm"
+                onClick={close}
+                variant="outline"
+                flex={1}
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                type="submit"
+                flex={1}
+              >
+                Done
+              </Button>
+            </Group>
+          </Flex>
+        </form>
+      </Popover.Dropdown>
+    </Popover>
   );
 }

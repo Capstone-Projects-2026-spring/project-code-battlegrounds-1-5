@@ -27,23 +27,25 @@ export interface GameTestCasesContextAPI {
 
 export const GameTestCasesContext = createContext<GameTestCasesContextAPI | null>(null);
 
+export const DEFAULT_TEST_CASES: TestableCase[] = [
+  {
+    id: 0,
+    functionInput: [
+      { name: "a", type: "number", value: "2" },
+      { name: "b", type: "number", value: "3" }
+    ],
+    expectedOutput:
+      { name: "result", type: "number", value: "5", isOutputParameter: true }
+  }
+];
+
 export const GameTestCasesProvider = ({ children }: { children: ReactNode }) => {
   const [parameters, setParameters] = useState<ParameterType[]>([
     { name: "a", type: "number", value: null },
     { name: "b", type: "number", value: null },
     { name: "result", type: "number", value: null, isOutputParameter: true }
   ]);
-  const [cases, setCases] = useState<TestableCase[]>([
-    {
-      id: 0,
-      functionInput: [
-        { name: "a", type: "number", value: "2" },
-        { name: "b", type: "number", value: "3" }
-      ],
-      expectedOutput: 
-        { name: "result", type: "number", value: "5", isOutputParameter: true }
-    }
-  ]);
+  const [cases, setCases] = useState<TestableCase[]>(DEFAULT_TEST_CASES);
 
   const addCase = (testCase: TestableCase) => {
     console.log("adding a new case!", "existing cases", cases, "new case", testCase);
