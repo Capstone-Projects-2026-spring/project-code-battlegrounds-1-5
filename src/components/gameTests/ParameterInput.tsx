@@ -118,7 +118,25 @@ export default function ParameterInput(props: ParameterInputProps) {
           value={value ? parseFloat(value) : undefined}
           onChange={handleNumberChange}
           disabled={disabled}
-          error={isEqual === false ? `Computed: ${JSON.stringify(computedValue)}` : undefined}
+          error={isEqual !== null ? `Computed: ${JSON.stringify(computedValue)}` : undefined}
+          {...isEqual === true ? {
+            styles: {
+              input: {
+                border: "2px solid var(--mantine-color-green-filled)",
+                color: "var(--mantine-color-green-filled)"
+              },
+              error: {
+                color: "var(--mantine-color-green-filled)"
+              },
+              control: {
+                color: "var(--mantine-color-green-filled)",
+                ["--input-bd"]: "var(--mantine-color-green-filled)"
+              },
+              section: {
+                borderColor: "var(--mantine-color-green-filled)",
+              }
+            }
+          } : {}}
         />
       );
 
