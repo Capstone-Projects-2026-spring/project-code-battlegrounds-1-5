@@ -271,33 +271,39 @@ function registerSocketHandlers(io, socket, services) {
   });
 
   socket.on('submitCode', async (data) => {
-    const payload = validate(submitCodeSchema, data);
-    if (!payload) {
-      socket.emit('error', { message: 'Invalid payload for submitCode.' });
-      return;
-    }
-    const { roomId, code } = payload;
+    const {
+      roomID,
+      code,
+      testCases,
+      runIDs
+    } = data;
 
-    if (!roomId) return;
-    
+    if (!roomID) return;
+
     // TODO: Store submission
     //Broadcast to both players to redirect to results
 
     try {
       // Post results to the code executor
-      fetch("http://fake-backend.lol:6969/execute", {
+      let payload = {
+        language: "javascript",
+        code: btoa(code),
+        testCases: JSON.stringify(testCases),
+        runIDs: JSON.stringify(runIDs)
+      };
+      // console.log(JSON.stringify(payload));
+      const res = await fetch("http://127.0.0.1:6969/execute", {
         method: "POST",
-        body: {
-          roomId,
-          code
-        }
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
       });
+      const json = await res.json();
+      console.log(JSON.stringify(json));
     } catch (error) {
       console.error("Error POSTing to code executor:", error);
     } finally {
-      io.to(roomId).emit('gameEnded');
+      io.to(roomID).emit('gameEnded');
     }
-
   });
 
   /**
@@ -310,31 +316,54 @@ function registerSocketHandlers(io, socket, services) {
    * 
    * @see GameTestCasesContext#TestableCase
    */
+  // TODO: should only send test cases needed. also, the model here needs updated to actually hook up (wtf does that mean??). additionally, this sends base64 for undefined, so somethings broke somewhere.
   socket.on("submitTestCases", async (data) => {
     const {
-      gameId,
-      teamId,
       code,
       testCases,
       runIDs
     } = data;
-
-    const res = await fetch("http://fake-backend.lol:6969/execute-tests", {
+    let payload = {
+      language: "javascript",
+      code: btoa(code),
+      testCases: JSON.stringify(testCases),
+      runIDs: JSON.stringify(runIDs)
+    };
+    // console.log(JSON.stringify(payload));
+    const res = await fetch("http://127.0.0.1:6969/execute", {
       method: "POST",
-      body: {
-        gameId,
-        teamId,
-        code,
-        testCases: JSON.stringify(testCases),
-        runIDs: JSON.stringify(runIDs)
-      },
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
     });
     const json = await res.json();
 
     // json.testCases should realistically only modify a single property
     // on the existing testCases object: `computedOutput`. Syncing this
     // back to the frontend is handled over there :)
-    socket.emit("receiveTestCaseSync", json.testCases);
+    console.log(JSON.stringify(json, null, 2));
+
+    /* 
+      export interface TestableCase {
+        id: number;
+        functionInput: ParameterType[];
+        expectedOutput: ParameterType;
+        computedOutput?: string | null;
+      }
+    */
+
+    const toReceive = [];
+    for (const result of json.results) {
+      const matched = testCases.find(t => t.id === result.id);
+      if(!matched) continue;
+      toReceive.push({
+        id: matched.id,
+        functionInput: matched.functionInput,
+        expectedOutput: matched.expectedOutput,
+        computedOutput: result.actual
+      });
+    }
+
+    socket.emit("receiveTestCaseSync", toReceive);
   });
 
   socket.on('requestTeamUpdate', async (data) => {

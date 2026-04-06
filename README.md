@@ -110,6 +110,7 @@ To develop, you will need a computer with Git, Node, Bun, and Docker Compose.
 - `docker compose -f ./dev-docker-compose.yml down -v` will stop the containers and purge the volumes. Good if you _really_ mess something up (you WILL lose data!).
 - `bunx --bun prisma migrate reset` will drop the DB (you WILL lose data!).
 - If your database is stuck out of sync and you can't apply migrations, run `rm -rf ./prisma/migrations/**` to remove all pending migrations. Then recreate the migration with `bunx prisma migrate dev --name dev` and apply it.
+- If you want to pull new images, just run `sudo docker compose -f ./dev-docker-compose.yml pull`.
 - To see how the websockets are working, try opening up the game page in an incognito tab to be registered as a different client.
 
 ## Testing
