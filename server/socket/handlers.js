@@ -424,19 +424,8 @@ function registerSocketHandlers(io, socket, services) {
     // so need to figure out a way to emit to all users in the game room including those in team select but not in the game room yet thinking another id to join off of that can be left after teamselect is done
   });
 
-  socket.on('joinQueue', async ({ userId, gameType, difficulty, partyId }) => {
-    const result = await matchmakingService.joinQueue(userId, gameType, difficulty, partyId ?? null);
-    socket.emit('queueStatus', result);
-  });
-
-  socket.on('leaveQueue', async ({ gameType, difficulty }) => {
-      if (!socket.userId) return;
-      const result = await matchmakingService.leaveQueue(socket.userId, gameType, difficulty);
-      socket.emit('queueStatus', result);
-  });
-
-  socket.on('joinQueue', async ({ userId, gameType, difficulty, lobbyId }) => {
-    const result = await matchmakingService.joinQueue(userId, gameType, difficulty, lobbyId ?? null);
+  socket.on('joinQueue', async ({ userId, gameType, difficulty, partyId, lobbyId }) => {
+    const result = await matchmakingService.joinQueue(userId, gameType, difficulty, partyId ?? lobbyId ?? null);
     socket.emit('queueStatus', result);
   });
 
