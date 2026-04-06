@@ -1,5 +1,5 @@
 import { ActionIcon, Button, Group, Stack, Table, Text, Tooltip } from "@mantine/core";
-import { IconPlayerPlay, IconTrash } from "@tabler/icons-react";
+import { IconPlayerPlay, IconTrash, IconCode } from "@tabler/icons-react";
 
 import { ParameterType } from "@/lib/ProblemInputOutput";
 import { TestableCase, useTestCases } from "../contexts/GameTestCasesContext";
@@ -118,21 +118,34 @@ export default function GameTestCase(props: GameTestCaseProps) {
               </Text>
             </Table.Td>
             <Table.Td>
-              <ParameterInput
-                parameter={testableCase.expectedOutput}
-                value={testableCase.expectedOutput.value}
-                onChange={(value) => {
-                  props.onTestCaseChange({
-                    ...testableCase,
-                    expectedOutput: {
-                      ...testableCase.expectedOutput,
-                      value
-                    }
-                  });
-                }}
-                disabled={props.disabled}
-                computedValue={testableCase.computedOutput}
-              />
+              <Group>
+                <ParameterInput
+                  parameter={testableCase.expectedOutput}
+                  value={testableCase.expectedOutput.value}
+                  onChange={(value) => {
+                    props.onTestCaseChange({
+                      ...testableCase,
+                      expectedOutput: {
+                        ...testableCase.expectedOutput,
+                        value
+                      }
+                    });
+                  }}
+                  disabled={props.disabled}
+                  computedValue={testableCase.computedOutput}
+                  flex={1}
+                />
+
+                <Tooltip label="Change output type">
+                  <ActionIcon
+                    color="blue"
+                    variant="light"
+                    size="sm"
+                  >
+                    <IconCode />
+                  </ActionIcon>
+                </Tooltip>
+              </Group>
             </Table.Td>
           </Table.Tr>
         </Table.Tbody>
