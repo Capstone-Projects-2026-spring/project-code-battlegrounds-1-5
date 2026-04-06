@@ -6,7 +6,6 @@ import { ProblemDifficulty, GameType } from "@prisma/client";
 import handler from "../../src/pages/api/rooms/create";
 import {auth} from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { nanoid } from "nanoid";
 // --- Mocks ---
 // Replace real dependencies with fakes so tests don't need a database or auth server.
 
@@ -32,9 +31,13 @@ jest.mock("nanoid", () => ({
 // --- Mock shortcuts ---
 // These give us easy handles to the fake functions above so we can configure
 // their return values in each test (e.g. mockGetSession.mockResolvedValue(...)).
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const mockGetSession = auth.api.getSession as unknown as jest.MockedFunction<(...args: any[]) => any>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const mockFindFirst = prisma.problem.findFirst as unknown as jest.MockedFunction<(...args: any[]) => any>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const mockCountProblems = prisma.problem.count as unknown as jest.MockedFunction<(...args: any[]) => any>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const mockCreateGameRoom = prisma.gameRoom.create as unknown as jest.MockedFunction<(...args: any[]) => any>;
 
 // --- Fake HTTP response ---

@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react"
+import { useState } from "react";
 import { Center, Stack, Button, Text, Group, Badge, Title } from "@mantine/core";
-import { GameType, Role } from "@prisma/client";
+import { Role } from "@prisma/client";
+import { usePostHog } from "posthog-js/react";
 
 export interface TeamCount {
     teamId: string;
@@ -11,39 +12,12 @@ interface TeamSelectProps {
     userId: string;
     teams: TeamCount[];
     gameRoomId: string;
-    gameType: GameType;
     onJoined: (teamId: string | null, role: Role, playerCount: number | null) => void;
 }
 
-export default function TeamSelect({ userId, teams, gameType, gameRoomId, onJoined }: TeamSelectProps) {
+export default function TeamSelect({ userId, teams, gameRoomId, onJoined }: TeamSelectProps) {
+    const posthog = usePostHog();
     const [loading, setLoading] = useState<string | null>(null);
-
-    useEffect(() => {
-        if (!gameRoomId || !userId || !teams) return;
-        if (gameType === GameType.TWOPLAYER) {
-            const teamId = teams[0]?.teamId;
-            if (!teamId) return;
-            fetch(`/api/team/join`, {
-                method: "POST",
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId, teamId, gameRoomId })
-            }).then(r => r.json()).then(data => {
-                onJoined(teamId, data.role, data.playerCount);
-            }).catch(() => {
-                onJoined(null, Role.SPECTATOR, null);
-            });
-            return;
-        }
-        const checkExisting = async () => {
-            const res = await fetch(`/api/team/existing?gameRoomId=${gameRoomId}&userId=${userId}`);
-            const data = await res.json();
-            if (data.teamId) {
-                onJoined(data.teamId, data.role, null); // skip TeamSelect entirely on reconnect
-            }
-        }
-        checkExisting();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [gameRoomId, userId, gameType, teams]);
 
     const handleJoin = async (teamId: string) => {
         setLoading(teamId);
@@ -86,7 +60,12 @@ export default function TeamSelect({ userId, teams, gameType, gameRoomId, onJoin
                     })}
                     <Button
                         data-testid="spectator-button"
-                        onClick={() => { onJoined(null, Role.SPECTATOR, null) }}
+                        onClick={() => { 
+                            posthog.capture("spectator_joined", {
+                                gameId: gameRoomId
+                            });
+                            onJoined(null, Role.SPECTATOR, null);
+                         }}
                     >
                         Spectator Mode
                     </Button>

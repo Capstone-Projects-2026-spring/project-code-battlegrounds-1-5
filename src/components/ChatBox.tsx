@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { ScrollArea, TextInput, ActionIcon, Paper, Text, Stack, Box } from '@mantine/core';
 import { IconSend2 } from '@tabler/icons-react';
 import type { Socket } from 'socket.io-client';
+import { usePostHog } from 'posthog-js/react';
+import { Role } from '@prisma/client';
 
 export interface Message {
   id: string;
@@ -9,14 +11,18 @@ export interface Message {
   userName: string;
   timestamp: number;
 }
+
 interface ChatBoxProps {
   socket: Socket;
   roomId: string;
   userName: string;
   isSpectator?: boolean;
+  role?: Role | null // for analytic purposes
 }
 
-export default function ChatBox({ socket, roomId, userName, isSpectator = false }: ChatBoxProps) {
+export default function ChatBox({ socket, roomId, userName, isSpectator = false, role }: ChatBoxProps) {
+
+  const posthog = usePostHog();
   const [messages, setMessages] = useState<Message[]>([]);
 
   // State for the text currently being typed in the input box
@@ -58,6 +64,13 @@ export default function ChatBox({ socket, roomId, userName, isSpectator = false 
 
     // Send it to the server to broadcast to the other person
     socket.emit('sendChat', { teamId: roomId, message: newMessage });
+
+    posthog.capture("chat_message_sent", { 
+      roomId, 
+      message: newMessage, 
+      isSpectator,
+      role // helpful to know which role is sending more messages
+    });
 
     // Clear the input box
     setCurrentText('');

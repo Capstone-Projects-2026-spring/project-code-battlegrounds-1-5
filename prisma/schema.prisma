@@ -83,6 +83,18 @@ model InfraTestKv {
   @@map("infra_test_kv")
 }
 
+model Party {
+  id      String        @id @default(uuid())
+  members PartyMember[]
+}
+
+model PartyMember {
+  id      String @id @default(uuid())
+  userId  String
+  partyId String
+  lobby   Party  @relation(fields: [partyId], references: [id])
+}
+
 enum GameStatus {
   WAITING
   STARTING
@@ -115,6 +127,7 @@ model GameRoom {
 model Team {
   id         String       @id @default(uuid())
   gameRoomId String
+  createdAt  DateTime     @default(now())
   gameRoom   GameRoom     @relation(fields: [gameRoomId], references: [id], onDelete: Cascade)
   players    TeamPlayer[]
   wonGame    GameResult?  @relation("WinningTeamRelation")

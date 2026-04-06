@@ -5,7 +5,7 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-  if (process.env.NODE_ENV !== "test") {
+  if (process.env.NODE_ENV !== "development") {
     return res.status(403).json({ error: "Forbidden" });
   }
 
@@ -26,6 +26,6 @@ export default async function handler(
 
     return res.status(200).json({ ok: true });
   } catch (err) {
-    return res.status(500).json({ error: "Failed to delete user" });
+    return res.status(500).json({ error: "Failed to delete user"});
   }
 }

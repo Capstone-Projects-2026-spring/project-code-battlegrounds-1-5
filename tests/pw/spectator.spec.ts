@@ -1,5 +1,5 @@
 import { test, expect, chromium, Browser, Page } from '@playwright/test';
-import { loginAs, setupGame4, createGame4 } from './helpers'
+import { loginAs, setupGame4, createGame4 } from '../../src/util/playwrightHelpers';
 
 test.describe('Spectator flow', () => {
     let browsers: Browser[] = [];

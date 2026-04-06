@@ -1,21 +1,26 @@
 import type { NextApiRequest, NextApiResponse } from "next";
+import { Role, GameType, ProblemDifficulty } from "@prisma/client";
+import { TeamCount } from "@/components/TeamSelect";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 /**
  * Room details API endpoint.
  *
  * Purpose:
- * Returns the problem assigned to a specific game room so gameplay UI
- * components can render the exact prompt selected during room creation.
+ * Returns all important details about a game room that the game page needs to render the problem and related information. 
  */
 interface RoomDetailsResponse {
   problem: {
     id: string;
     title: string;
     description: string;
-    difficulty: "EASY" | "MEDIUM" | "HARD";
+    difficulty: ProblemDifficulty;
     topics: string[];
   };
+  teams: TeamCount[];
+  gameType: GameType;
+  teamId: string | null; // Allows user to choose team if not already assigned
+  role: Role | null; // Allows user to choose role if not already assigned
 }
 
 interface ErrorResponse {
@@ -39,16 +44,22 @@ export default async function handler(
   }
 
   // Validate the dynamic route parameter before querying the database.
-  const { gameId } = req.query;
+  const { gameId, userId } = req.query;
   if (!gameId || typeof gameId !== "string") {
     return res.status(400).json({ message: "Invalid room ID" });
   }
 
+  if (!userId || typeof userId !== "string") {
+    return res.status(400).json({ message: "Invalid user ID" });
+  }
+
   try {
-    // Fetch the room and only the fields needed by ProblemBox.
+    // Fetch the room and only the fields needed for the game page
     const room = await prisma.gameRoom.findUnique({
-      where: { id: gameId },
-      include: {
+      where: { 
+        id: gameId,
+      },
+      select: {
         problem: {
           select: {
             id: true,
@@ -58,13 +69,36 @@ export default async function handler(
             topics: true,
           },
         },
-      },
-    });
+        gameType: true,
+        teams: {
+          orderBy: { createdAt: "asc" },
+          select: {
+            id: true,
+            players: {
+              select: {
+                userId: true,
+                role: true,
+            },
+          },
+        },
+      }
+    }});
 
-    // Either the room does not exist or it has no linked problem.
-    if (!room || !room.problem) {
+    // Either the room does not exist or it has no linked problem or no gameType or no teams.
+    if (!room || !room.problem || !room.gameType || !room.teams) {
       return res.status(404).json({ message: "Room not found" });
     }
+
+    const teams = room.teams.map(t => ({
+      teamId: t.id,
+      playerCount: t.players.filter(p => p.role !== Role.SPECTATOR).length
+    }))
+
+
+    // Find which team this user is on
+    const userTeam = room.teams.find(t => t.players.some(p => p.userId === userId));
+    const teamId = userTeam?.id ?? null;
+    const role = userTeam?.players.find(p => p.userId === userId)?.role ?? null;
 
     // Return a stable shape that the game page can pass directly to the UI.
     return res.status(200).json({
@@ -75,6 +109,10 @@ export default async function handler(
         difficulty: room.problem.difficulty,
         topics: room.problem.topics,
       },
+      gameType: room.gameType,
+      teams,
+      teamId,
+      role
     });
   } catch (error: unknown) {
     // Surface a useful message while preserving a fallback for unknown errors.

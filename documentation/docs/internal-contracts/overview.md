@@ -17,7 +17,6 @@ Contracts must stay in sync with the implementation. If a method signature, exce
 | `proxy` | `src/proxy.ts` | [Middleware](./proxy) |
 | `Question` / `handler` | `src/pages/api/question.ts` | [Question API](./question-api) |
 | `HeaderSimple` | `src/components/Navbar.tsx` | [UI Components](./components) |
-| `StatsGroup` | `src/components/Broadstats.tsx` | [UI Components](./components) |
 | `Subgrid` | `src/components/DifficultyGrid.tsx` | [UI Components](./components) |
 | `PartnerSearch` | `src/components/PartnerSearch.tsx` | [UI Components](./components) |
 | `LoginPage` | `src/pages/login.tsx` | [Pages](./pages) |

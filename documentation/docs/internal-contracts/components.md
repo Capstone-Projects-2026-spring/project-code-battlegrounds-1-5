@@ -41,26 +41,6 @@ Top navigation bar. Title on left, links on right, hamburger below the `xs` brea
 
 ---
 
-## `StatsGroup` — `src/components/Broadstats.tsx`
-
-Displays three stat tiles. No props. Data is **hard-coded** in the module-level `data` constant — no API calls are made. Replace `data` with a fetch when real metrics are available.
-
-### `data` shape
-
-| Field | Type | Description |
-|---|---|---|
-| `title` | `string` | Stat label. |
-| `stats` | `string` | Formatted value string. |
-| `description` | `string` | Context sentence. |
-
-### Example
-
-```tsx
-<StatsGroup />
-```
-
----
-
 ## `Subgrid` — `src/components/DifficultyGrid.tsx`
 
 Three-column difficulty selection grid (Easy / Medium / Hard). No props.
