@@ -38,6 +38,7 @@ import { Role, GameStatus, GameType } from "@prisma/client";
 import { authClient } from "@/lib/auth-client";
 import GameTestCase from "@/components/gameTests/GameTestCase";
 import {
+  DEFAULT_TEST_CASES,
   GameTestCasesProvider,
   TestableCase,
   useTestCases,
@@ -180,6 +181,14 @@ function PlayGameRoom() {
 
     socketInstance.emit("register", { userId: session.user.id });
 
+    // Emit the default test cases ONCE to the socket
+    // so that they're at least synced and ready to go should somebody
+    // hit the run button or attempt to make a new case.
+    socketInstance.emit("updateTestCases", {
+      teamId: teamSelected,
+      testCases: DEFAULT_TEST_CASES
+    });
+
     // This is so if another person picks while someone is deciding
     socketInstance.on("teamUpdated", ({ teamId, playerCount }) => {
       setTeams((prev) =>
@@ -196,7 +205,7 @@ function PlayGameRoom() {
       socketInstance.disconnect();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gameId, session?.user.id]);
+  }, [gameId, session?.user.id, teamSelected]);
 
   useEffect(() => {
     // Runs after team gets selected - join rooms first, then set up room-specific listeners
