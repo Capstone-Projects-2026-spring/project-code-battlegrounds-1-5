@@ -77,6 +77,22 @@ CREATE TABLE "infra_test_kv" (
 );
 
 -- CreateTable
+CREATE TABLE "Party" (
+    "id" TEXT NOT NULL,
+
+    CONSTRAINT "Party_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "PartyMember" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "partyId" TEXT NOT NULL,
+
+    CONSTRAINT "PartyMember_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "game_rooms" (
     "id" TEXT NOT NULL,
     "status" "GameStatus" NOT NULL DEFAULT 'STARTING',
@@ -92,6 +108,7 @@ CREATE TABLE "game_rooms" (
 CREATE TABLE "Team" (
     "id" TEXT NOT NULL,
     "gameRoomId" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "Team_pkey" PRIMARY KEY ("id")
 );
@@ -198,6 +215,9 @@ ALTER TABLE "session" ADD CONSTRAINT "session_userId_fkey" FOREIGN KEY ("userId"
 
 -- AddForeignKey
 ALTER TABLE "account" ADD CONSTRAINT "account_userId_fkey" FOREIGN KEY ("userId") REFERENCES "user"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "PartyMember" ADD CONSTRAINT "PartyMember_partyId_fkey" FOREIGN KEY ("partyId") REFERENCES "Party"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "game_rooms" ADD CONSTRAINT "game_rooms_problemId_fkey" FOREIGN KEY ("problemId") REFERENCES "problem"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
