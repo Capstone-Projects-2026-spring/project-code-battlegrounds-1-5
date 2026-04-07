@@ -155,9 +155,11 @@ CREATE TABLE "ProblemTest" (
 CREATE TABLE "GameResult" (
     "id" TEXT NOT NULL,
     "gameRoomId" TEXT NOT NULL,
-    "winningTeamId" TEXT NOT NULL,
-    "bestCode" TEXT NOT NULL,
-    "timeToPassMs" INTEGER NOT NULL,
+    "winningTeamId" TEXT,
+    "team1Code" TEXT,
+    "team2Code" TEXT,
+    "team1TimeToPassMs" INTEGER,
+    "team2TimeToPassMs" INTEGER,
 
     CONSTRAINT "GameResult_pkey" PRIMARY KEY ("id")
 );
@@ -235,7 +237,7 @@ ALTER TABLE "TeamPlayer" ADD CONSTRAINT "TeamPlayer_userId_fkey" FOREIGN KEY ("u
 ALTER TABLE "ProblemTest" ADD CONSTRAINT "ProblemTest_problemId_fkey" FOREIGN KEY ("problemId") REFERENCES "problem"("slug") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "GameResult" ADD CONSTRAINT "GameResult_winningTeamId_fkey" FOREIGN KEY ("winningTeamId") REFERENCES "Team"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "GameResult" ADD CONSTRAINT "GameResult_winningTeamId_fkey" FOREIGN KEY ("winningTeamId") REFERENCES "Team"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "GameResult" ADD CONSTRAINT "GameResult_gameRoomId_fkey" FOREIGN KEY ("gameRoomId") REFERENCES "game_rooms"("id") ON DELETE CASCADE ON UPDATE CASCADE;

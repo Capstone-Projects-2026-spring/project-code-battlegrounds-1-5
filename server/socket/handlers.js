@@ -1,5 +1,6 @@
 const { GameType } = require("@prisma/client");
 const { z } = require("zod");
+const { getPrisma } = require("../prisma");
 
 const ParameterPrimitive = z.union([
   z.literal("string"),
@@ -68,7 +69,10 @@ const requestTeamUpdateSchema = z.object({
 
 const submitCodeSchema = z.object({
   roomId: z.string(),
-  code: z.string().max(10000) // Adjust max length as needed
+  code: z.string().max(10000), // Adjust max length as needed
+  type: z.enum([GameType.TWOPLAYER, GameType.FOURPLAYER]),
+  team: z.enum(["team1", "team2"]).nullable().optional(),
+  teamId: z.string().optional(),
 });
 
 
@@ -76,6 +80,7 @@ const submitCodeSchema = z.object({
 // Expects io (Server), socket (Socket), and services to manage game state
 function registerSocketHandlers(io, socket, services) {
   const { gameService, matchmakingService } = services;
+  const prisma = getPrisma();
 
   console.log(`New connection: ${socket.id}`);
 
@@ -96,7 +101,7 @@ function registerSocketHandlers(io, socket, services) {
     }
 
   });
- 
+
   socket.on('joinGame', async (data) => {
     const payload = validate(joinGameSchema, data);
     if (!payload) {
@@ -271,38 +276,116 @@ function registerSocketHandlers(io, socket, services) {
   });
 
   socket.on('submitCode', async (data) => {
-    const {
-      roomID,
-      code,
-      testCases,
-      runIDs
-    } = data;
+    const payload = validate(submitCodeSchema, data);
+    if (!payload) {
+      socket.emit('error', { message: 'Invalid payload for submitCode.' });
+      return;
+    }
+    const { roomId, code, type, team, teamId, testCases, runIDs } = payload;
 
-    if (!roomID) return;
+    if (!roomId) return;
 
-    // TODO: Store submission
-    //Broadcast to both players to redirect to results
+    console.log('submitCode received for roomId:', roomId, 'with code length:', code.length, 'and type:', type);
 
-    try {
-      // Post results to the code executor
-      let payload = {
-        language: "javascript",
-        code: btoa(code),
-        testCases: JSON.stringify(testCases),
-        runIDs: JSON.stringify(runIDs)
-      };
-      // console.log(JSON.stringify(payload));
-      const res = await fetch("http://127.0.0.1:6969/execute", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+    if (type === GameType.TWOPLAYER) {
+      console.log('verify its a twoplayer game');
+      await prisma.gameResult.update({
+        where: { gameRoomId: roomId },
+        data: {
+          gameRoomId: roomId,
+          team1Code: code
+        }
       });
-      const json = await res.json();
-      console.log(JSON.stringify(json));
-    } catch (error) {
-      console.error("Error POSTing to code executor:", error);
-    } finally {
-      io.to(roomID).emit('gameEnded');
+      console.log('code submitted for two-player game');
+
+      try {
+        // Post results to the code executor
+        let payload = {
+          language: "javascript",
+          code: btoa(code),
+          testCases: JSON.stringify(testCases),
+          runIDs: JSON.stringify(runIDs)
+        };
+        // console.log(JSON.stringify(payload));
+        const res = await fetch("http://127.0.0.1:6969/execute", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const json = await res.json();
+        console.log(JSON.stringify(json));
+      } catch (error) {
+        console.error("Error POSTing to code executor:", error);
+      } finally {
+        io.to(roomId).emit('gameEnded');
+      }
+    }
+    else if (type === GameType.FOURPLAYER) {
+      console.log('verify its a fourplayer game');
+      if (!team) {
+        socket.emit('error', { message: 'Missing team for four-player submitCode.' });
+        return;
+      }
+
+      // Track submissions in Redis
+      const submissionKey = `game:${roomId}:submissions`;
+      const existingSubmissions = await gameService.getGameData(submissionKey);
+
+      if (existingSubmissions && existingSubmissions[team]) {
+        console.log(`Team ${team} already submitted, ignoring duplicate submission`);
+        return;
+      }
+
+      // Store this team's code
+      await prisma.gameResult.update({
+        where: { gameRoomId: roomId },
+        data: {
+          gameRoomId: roomId,
+          ...(team === "team1" ? { team1Code: code } : { team2Code: code })
+        }
+      });
+      console.log(`code submitted for four-player game by ${team}`);
+
+      // Track submission
+      const updatedSubmissions = {
+        ...(existingSubmissions || {}),
+        [team]: true
+      };
+      await gameService.saveGameData(submissionKey, JSON.stringify(updatedSubmissions));
+
+      // Check if both teams have submitted
+      if (Object.keys(updatedSubmissions).length === 2) {
+        // Both teams submitted - end game
+        console.log('Both teams submitted, ending game');
+        try {
+          // Post results to the code executor
+          let payload = {
+            language: "javascript",
+            code: btoa(code),
+            testCases: JSON.stringify(testCases),
+            runIDs: JSON.stringify(runIDs)
+          };
+          // console.log(JSON.stringify(payload));
+          const res = await fetch("http://127.0.0.1:6969/execute", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          const json = await res.json();
+          console.log(JSON.stringify(json));
+        } catch (error) {
+          console.error("Error POSTing to code executor:", error);
+        } finally {
+          io.to(roomId).emit('gameEnded');
+          await gameService.deleteGameData(submissionKey);
+        }
+      } else {
+        // First team submitted - notify waiting (only to that team)
+        console.log('First team submitted, waiting for other team');
+        if (teamId) {
+          io.to(teamId).emit('waitingForOtherTeam');
+        }
+      }
     }
   });
 
@@ -354,7 +437,7 @@ function registerSocketHandlers(io, socket, services) {
     const toReceive = [];
     for (const result of json.results) {
       const matched = testCases.find(t => t.id === result.id);
-      if(!matched) continue;
+      if (!matched) continue;
       toReceive.push({
         id: matched.id,
         functionInput: matched.functionInput,
@@ -379,18 +462,18 @@ function registerSocketHandlers(io, socket, services) {
     // so need to figure out a way to emit to all users in the game room including those in team select but not in the game room yet thinking another id to join off of that can be left after teamselect is done
   });
 
-  socket.on('joinQueue', async ({ userId, gameType, difficulty, partyId }) => {
-    const result = await matchmakingService.joinQueue(userId, gameType, difficulty, partyId ?? null);
+  socket.on('joinQueue', async ({ userId, gameType, difficulty, partyId, lobbyId }) => {
+    const result = await matchmakingService.joinQueue(userId, gameType, difficulty, partyId ?? lobbyId ?? null);
     socket.emit('queueStatus', result);
   });
 
   socket.on('leaveQueue', async ({ gameType, difficulty }) => {
-      if (!socket.userId) return;
-      const result = await matchmakingService.leaveQueue(socket.userId, gameType, difficulty);
-      socket.emit('queueStatus', result);
+    if (!socket.userId) return;
+    const result = await matchmakingService.leaveQueue(socket.userId, gameType, difficulty);
+    socket.emit('queueStatus', result);
   });
 
-  // 3. Handle graceful disconnection
+  // 3. Handle graceful disconnection need to do more to this so will just leave it to this right now
   socket.on('disconnect', async () => {
     if (socket.gameId && socket.userId) {
       try {
@@ -402,7 +485,7 @@ function registerSocketHandlers(io, socket, services) {
       }
     }
     if (socket.userId) {
-        await matchmakingService.leaveAllQueues(socket.userId);
+      await matchmakingService.leaveAllQueues(socket.userId);
     }
   });
 }

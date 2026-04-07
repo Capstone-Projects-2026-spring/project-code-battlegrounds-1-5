@@ -1,28 +1,85 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import Head from "next/head";
-import { Stack, Box, Title, Flex } from "@mantine/core";
+import { Stack, Box, Title, Flex, ActionIcon, Tooltip } from "@mantine/core";
 import Navbar from "@/components/Navbar";
 import { useRouter } from "next/router";
 import { authClient } from "@/lib/auth-client";
 import TestCaseResultsBox from "@/components/TestCaseResultsBox";
-import AnalysisBox from "@/components/Analysisbox";
+import AnalysisBox, { AnalysisBoxProps } from "@/components/Analysisbox";
 import ProblemBox from "@/components/ProblemBox";
 import { usePostHog } from "posthog-js/react";
+import type { ActiveProblem } from '@/components/ProblemBox';
+import { IconEye } from '@tabler/icons-react';
 
 
-export default function Results() {
+interface RoomDetailsResponse {
+  problem: ActiveProblem;
+  gameType: string;
+  team1Code: string | null;
+  team2Code: string | null;
+  userTeamNumber: 1 | 2;
+}
+
+export default function Page() {
+  const { data: session, isPending } = authClient.useSession();
   const router = useRouter();
-  const { gameID } = router.query;
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+
+  // Early auth check to prevent loading all the heavy stuff
+  // if we aren't even logged in
+  useEffect(() => {
+    if (!isPending && !session) {
+      router.replace("/auth");
+    }
+  }, [isPending, session, router]);
+  return <Results />;
+}
+
+export function Results() {
+  //grab id from url
+  const router = useRouter();
+  const gameId = router.query.gameID as string;
   const { data: session } = authClient.useSession();
+  const [problem, setProblem] = useState<ActiveProblem | null>(null);
   const posthog = usePostHog();
 
   useEffect(() => {
     posthog.capture("results_viewed");
   }, [posthog]);
 
-  if (!session) return null;
+  const [isProblemVisible, setIsProblemVisible] = useState(true);
+  const toggleProblemVisibility = () => setIsProblemVisible((prev) => !prev);
+  const [analysisProps, setAnalysisProps] = useState<AnalysisBoxProps | null>(null);
+  const [gameType, setGameType] = useState<string | null>(null);
+  const [userTeamNumber, setUserTeamNumber] = useState<1 | 2>(1);
+
+  useEffect(() => {
+    if (!session?.user.id || !gameId) return;
+
+    const loadGameData = async () => {
+      try {
+        const response = await fetch(`/api/rooms/${gameId}`);
+        if (!response.ok) return;
+        const data = (await response.json()) as RoomDetailsResponse;
+
+        setProblem(data.problem);
+        setGameType(data.gameType);
+        setUserTeamNumber(data.userTeamNumber);
+
+        if (data.team1Code) {
+          setAnalysisProps({
+            team1Code: data.team1Code,
+            team2Code: data.team2Code ?? undefined,
+            gameType: data.gameType as "TWOPLAYER" | "FOURPLAYER",
+            userTeamNumber: data.userTeamNumber,
+          });
+        }
+      } catch (error) {
+        console.error('Failed to load game data', error);
+      }
+    };
+
+    loadGameData();
+  }, [gameId, session?.user.id]);
 
   return (
     <>
@@ -45,13 +102,39 @@ export default function Results() {
 
           <Flex gap="md" align="stretch" style={{ flex: 1 }}>
 
-            <Box style={{ flex: 1 }}>
-              <ProblemBox />
+            <Box
+              style={{
+                width: isProblemVisible ? "25%" : "50px",
+                minWidth: isProblemVisible ? "250px" : "50px",
+                color: "white",
+                backgroundColor: "#333",
+                padding: "0",
+                overflowY: "auto",
+                display: "flex",
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: isProblemVisible ? 'flex-start' : 'center',
+                flexShrink: 0,
+                transition: 'width 0.2s ease, min-width 0.2s ease',
+                borderRadius: '8px',
+              }}
+            >
+              {isProblemVisible ? (
+                <Box style={{ width: '100%', flex: 1, minHeight: 0, padding: '1rem' }}>
+                  <ProblemBox problem={problem} onToggleVisibility={toggleProblemVisibility} />
+                </Box>
+              ) : (
+                <Tooltip label="Show Problem">
+                  <ActionIcon variant="transparent" color="gray" size="xl" onClick={toggleProblemVisibility} title="Show Problem">
+                    <IconEye size={24} />
+                  </ActionIcon>
+                </Tooltip>
+              )}
             </Box>
 
             <Stack style={{ flex: 2 }} gap="md">
-              <AnalysisBox />
-              <TestCaseResultsBox />
+              <AnalysisBox {...analysisProps ?? { team1Code: "", gameType: gameType as "TWOPLAYER" | "FOURPLAYER", userTeamNumber }} />
+              <TestCaseResultsBox gameId={gameId} showOtherTeamColumn={gameType === "FOURPLAYER"} gameType={gameType as "TWOPLAYER" | "FOURPLAYER"} userTeamNumber={userTeamNumber} />
             </Stack>
 
           </Flex>

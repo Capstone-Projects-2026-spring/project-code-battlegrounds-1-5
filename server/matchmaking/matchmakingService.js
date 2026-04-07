@@ -204,6 +204,9 @@ function createMatchmakingService(stateRedis, io) {
                             },
                         })),
                     },
+                    gameResult: {
+                        create: {},
+                    },
                 },
                 include: {
                     teams: { include: { players: true } },

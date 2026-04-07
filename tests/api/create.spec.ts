@@ -148,7 +148,13 @@ const mockCreateGameRoom = prisma.gameRoom.create as unknown as jest.MockedFunct
                 skip: 0,
             });
             expect(prisma.gameRoom.create).toHaveBeenCalledWith({
-                data: { id: "abcd1234", problemId: "problem1", gameType: GameType.TWOPLAYER, teams: { create: [{}] } }
+                data: {
+                    id: "abcd1234",
+                    problemId: "problem1",
+                    gameType: GameType.TWOPLAYER,
+                    teams: { create: [{}] },
+                    gameResult: { create: {} }
+                }
             });
             expect(res.status).toHaveBeenCalledWith(201);
             expect(res.body).toEqual({ gameId: "abcd1234" });
@@ -178,7 +184,13 @@ const mockCreateGameRoom = prisma.gameRoom.create as unknown as jest.MockedFunct
                 skip: 0,
             });
             expect(prisma.gameRoom.create).toHaveBeenCalledWith({
-                data: { id: "abcd1234", problemId: "problem1", gameType: GameType.FOURPLAYER, teams: { create: [{}, {}] } }
+                data: {
+                    id: "abcd1234",
+                    problemId: "problem1",
+                    gameType: GameType.FOURPLAYER,
+                    teams: { create: [{}, {}] },
+                    gameResult: { create: {} }
+                }
             });
             expect(res.status).toHaveBeenCalledWith(201);
             expect(res.body).toEqual({ gameId: "abcd1234" });

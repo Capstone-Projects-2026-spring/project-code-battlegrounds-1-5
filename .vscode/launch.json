@@ -15,6 +15,15 @@
       ],
       "jinja": true,
       "cwd": "${workspaceFolder}/code-executor/executor-image"
+    },
+    {
+      "name": "node",
+      "type": "node",
+      "request": "launch",
+      "skipFiles": [
+        "<node_internals>/**"
+      ],
+      "program": "${workspaceFolder}\\server\\index.js"
     }
   ]
 }

@@ -94,6 +94,19 @@ function createGameService(stateRedis) {
       // TODO: remove expiration key if not expired yet.
       // potential future cleanup: code, submissions, etc.
     },
+
+    async saveGameData(key, value) {
+      return stateRedis.set(key, value);
+    },
+
+    async getGameData(key) {
+      const data = await stateRedis.get(key);
+      return data ? JSON.parse(data) : null;
+    },
+
+    async deleteGameData(key) {
+      return stateRedis.del(key);
+    },
   };
 }
 
