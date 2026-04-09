@@ -15,6 +15,13 @@ export default function HeaderSimple(props: HeaderProps) {
   const [opened, { toggle }] = useDisclosure(false);
   const [active, setActive] = useState(props.links[0]);
 
+  // split the title
+  const titleParts = props.title.split('|');
+  // get the brand name
+  const brandName = titleParts[0]; // "CODE BATTLEGROUNDS "
+  // put the remaining info back together.
+  const gameInfo = titleParts.slice(1).join('|'); // " GAMEMODE: ... | YOUR ROLE: ..."
+
   const items = props.links.map((link) => (
     <Anchor
       key={link}
@@ -34,6 +41,19 @@ export default function HeaderSimple(props: HeaderProps) {
 
         <Brand blink />
         <Text fw={600} mr="auto">
+          {/* mantine anchor tag instead a <a or whatever else we'd use  */}
+          {/* <Anchor
+            component={Link}
+            href="/"
+            underline="hover"
+            fw={800}
+            style={{ letterSpacing: '1px' }}
+          >
+            {brandName}
+          </Anchor> */}
+
+          {/* Remaining status text */}
+          {gameInfo && <span style={{ opacity: 0.8, fontWeight: 400 }}> | {gameInfo}</span>}
 
           {props.isSpectator && (
             <span style={{ marginLeft: 8, color: 'rgb(0, 102, 255)', fontWeight: 500 }}>

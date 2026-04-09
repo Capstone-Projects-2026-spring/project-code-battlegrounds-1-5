@@ -1,4 +1,4 @@
-import { Group, Title, useComputedColorScheme, useMantineTheme } from "@mantine/core";
+import { Group, Title, useComputedColorScheme, useMantineTheme, Text } from "@mantine/core";
 import Link from "next/link";
 
 import { Sixtyfour } from "next/font/google";
@@ -11,7 +11,6 @@ const sixtyfour = Sixtyfour({
 export interface BrandProps {
   blink?: boolean;
 }
-
 export default function Brand(props: BrandProps) {
   const colorScheme = useComputedColorScheme();
   const theme = useMantineTheme();
