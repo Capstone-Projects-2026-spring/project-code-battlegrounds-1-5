@@ -619,8 +619,9 @@ function PlayGameRoom() {
             <PanelGroup orientation="horizontal">
               {/* Left Sidebar - Problem Box */}
               <Panel
-                defaultSize={isProblemVisible ? 300 : 5}
-                minSize={isProblemVisible ? 15 : 5}
+                defaultSize={isProblemVisible ? 300 : 70}
+                minSize={isProblemVisible ? 15 : 70}
+                maxSize={isProblemVisible ? undefined : 70}
                 collapsible={false}
               >
                 <Box
@@ -657,12 +658,13 @@ function PlayGameRoom() {
               </Panel>
 
               {isProblemVisible && (
-                <PanelResizeHandle style={{
-                  width: '4px',
-                  backgroundColor: '#ddd',
-                  cursor: 'col-resize',
-                  transition: 'background-color 0.2s',
-                }}
+                <PanelResizeHandle
+                  style={{
+                    width: '4px',
+                    backgroundColor: '#ddd',
+                    cursor: 'col-resize',
+                    transition: 'background-color 0.2s',
+                  }}
                   onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#999'}
                   onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ddd'}
                 />
