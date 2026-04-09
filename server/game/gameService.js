@@ -1,5 +1,4 @@
 // The game service handlers itself. note that this is the only file that should interact with redis
-// Redis can be accessed in the api layer for special cases now
 
 const GAME_DURATION_MS = 5 * 60 * 1000; // 5 minutes in milliseconds
 const SECONDS_BEFORE_ROLE_SWAP_WARNING = 60 * 1000; // 60 seconds in milliseconds
@@ -8,10 +7,6 @@ const SECONDS_BEFORE_ROLE_SWAP_WARNING = 60 * 1000; // 60 seconds in millisecond
 function createGameService(stateRedis) {
   return {
     GAME_DURATION_MS,
-
-    async registerSocketToUser(userId, socketId) {
-      await stateRedis.set(`socket:${userId}`, socketId); // link userId
-    },
 
     async startGameIfNeeded(gameId) {
       const key = `game:${gameId}:expires`;

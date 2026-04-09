@@ -189,8 +189,6 @@ function PlayGameRoom() {
     setSocket(socketRef.current);
     gameStateCtx.setSocket(socketRef.current);
 
-    socketInstance.emit("register", { userId: session.user.id });
-
     // This is so if another person picks while someone is deciding
     socketInstance.on("teamUpdated", ({ teamId, playerCount }) => {
       setTeams((prev) =>

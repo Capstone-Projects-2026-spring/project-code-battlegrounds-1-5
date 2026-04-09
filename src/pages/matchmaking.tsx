@@ -40,8 +40,6 @@ export default function QueuePage() {
         socketRef.current = socketInstance;
         setSocket(socketRef.current);
 
-        socketInstance.emit('register', { userId: session.user.id });
-
         socketInstance.on('matchFound', ({ gameId }) => {
             setStatus('matched');
             posthog.capture("match_found", {

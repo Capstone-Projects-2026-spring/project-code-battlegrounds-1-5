@@ -19,10 +19,6 @@ const Parameter = z.object({
   isOutputParameter: z.optional(z.boolean().default(false))
 });
 
-const registerSchema = z.object({
-  userId: z.string(),
-});
-
 const joinGameSchema = z.object({
   gameId: z.string(),
   teamId: z.string(),
@@ -84,7 +80,7 @@ function registerSocketHandlers(io, socket, services) {
 
   console.log(`New connection: ${socket.id}`);
 
-  socket.on('register', async (data) => {
+  socket.on('register', async (data) => { // might not be needed anymore but keeping in case it breaks main
     const payload = validate(registerSchema, data);
     if (!payload) {
       socket.emit('error', { message: 'Invalid payload for register.' });

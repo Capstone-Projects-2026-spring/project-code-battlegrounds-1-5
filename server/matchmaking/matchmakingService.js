@@ -10,11 +10,16 @@ const REQUIRED_PLAYERS = {
     [GameType.FOURPLAYER]: 4,
 };
 
-const src = join(__dirname, "./popAndMatch.lua")
+const src = join(__dirname, "./popAndMatch.lua");
 const POP_AND_MATCH_SCRIPT = readFileSync(src).toString();
 
 function createMatchmakingService(stateRedis, io) {
     return {
+        
+        // SOCKET REGISTRATION (needed for matchmaking and used in middleware)
+        async registerSocketToUser(userId, socketId) {
+            await stateRedis.set(`socket:${userId}`, socketId); // link userId
+        },
 
         // QUEUE MANAGEMENT SECTION
 
@@ -28,9 +33,9 @@ function createMatchmakingService(stateRedis, io) {
             });
             if (alreadyQueued) return { status: 'already_queued' };
 
-            // TWOPLAYER + lobby = instant game, no queue needed
+            // TWOPLAYER + party = instant game, no queue needed
             if (partyId && gameType === GameType.TWOPLAYER) {
-                return await this._formLobbyGame(partyId, gameType, difficulty);
+                return await this._formPartyGame(partyId, gameType, difficulty);
             }
 
             const entry = partyId
@@ -101,17 +106,17 @@ function createMatchmakingService(stateRedis, io) {
                     const parsed = JSON.parse(raw);
 
                     if (parsed.partyId) {
-                        const lobby = await getPrisma().lobby.findUnique({
+                        const party = await getPrisma().party.findUnique({
                             where: { id: parsed.partyId },
                             include: { members: true },
                         });
 
-                        if (!lobby || lobby.members.length < 2) {
-                            console.warn(`Lobby ${parsed.partyId} invalid at match time, dropping`);
+                        if (!party || party.members.length < 2) {
+                            console.warn(`Party ${parsed.partyId} invalid at match time, dropping`);
                             return null;
                         }
 
-                        return lobby.members.map(m => ({ userId: m.userId, partyId: parsed.partyId }));
+                        return party.members.map(m => ({ userId: m.userId, partyId: parsed.partyId }));
                     }
 
                     return [{ userId: parsed.userId }];
@@ -120,7 +125,7 @@ function createMatchmakingService(stateRedis, io) {
 
             const players = resolved.flat().filter(Boolean);
 
-            // If a dropped lobby left us short, re-queue the valid players and abort
+            // If a dropped party left us short, re-queue the valid players and abort
             if (players.length < required) {
                 for (const player of players) {
                     const reEntry = player.partyId
@@ -136,16 +141,16 @@ function createMatchmakingService(stateRedis, io) {
             return { status: 'matched', gameId: gameRoom.id };
         },
 
-        async _formLobbyGame(partyId, gameType, difficulty) {
-            const lobby = await getPrisma().lobby.findUnique({
+        async _formPartyGame(partyId, gameType, difficulty) {
+            const party = await getPrisma().party.findUnique({
                 where: { id: partyId },
                 include: { members: true },
             });
 
-            if (!lobby) return { error: 'lobby_not_found' };
-            if (lobby.members.length < 2) return { error: 'lobby_not_full' };
+            if (!party) return { error: 'party_not_found' };
+            if (party.members.length < 2) return { error: 'party_not_full' };
 
-            const players = lobby.members.map(m => ({ userId: m.userId, partyId }));
+            const players = party.members.map(m => ({ userId: m.userId, partyId }));
             const gameRoom = await this._createGameInDB(players, gameType, difficulty);
             await this._notifyPlayers(gameRoom);
             return { status: 'matched', gameId: gameRoom.id };
