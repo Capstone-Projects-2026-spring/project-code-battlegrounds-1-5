@@ -5,8 +5,10 @@ export interface AnalysisBoxProps {
   team2Code?: string;
   gameType?: "TWOPLAYER" | "FOURPLAYER";
   userTeamNumber?: 1 | 2;
+  team1TimeToPassMs?: number | null;
+  team2TimeToPassMs?: number | null;
 }
-export default function AnalysisBox({ team1Code, team2Code, gameType = "FOURPLAYER", userTeamNumber = 1 }: AnalysisBoxProps) {
+export default function AnalysisBox({ team1Code, team2Code, gameType = "FOURPLAYER", userTeamNumber = 1, team1TimeToPassMs, team2TimeToPassMs }: AnalysisBoxProps) {
   const hasAnyCode = Boolean(team1Code || team2Code);
 
   return (
@@ -110,13 +112,7 @@ export default function AnalysisBox({ team1Code, team2Code, gameType = "FOURPLAY
             <Text size="xs" fw={600} mb="xs">Your Metrics (Team 2)</Text>
             <Group gap="xs">
               <Badge color="teal" variant="light" size="md" radius="sm">
-                Runtime: A
-              </Badge>
-              <Badge color="yellow" variant="light" size="md" radius="sm">
-                Space: B
-              </Badge>
-              <Badge color="orange" variant="light" size="md" radius="sm">
-                Time: C
+                Time to Pass: {team2TimeToPassMs ? `${team2TimeToPassMs}ms` : 'N/A'}
               </Badge>
             </Group>
           </Box>
@@ -126,13 +122,7 @@ export default function AnalysisBox({ team1Code, team2Code, gameType = "FOURPLAY
           <Text size="xs" fw={600} mb="xs">{gameType === "TWOPLAYER" ? "Your Metrics" : userTeamNumber === 1 ? "Your Metrics (Team 1)" : "Team 1 Metrics"}</Text>
           <Group gap="xs">
             <Badge color="teal" variant="light" size="md" radius="sm">
-              Runtime: A
-            </Badge>
-            <Badge color="yellow" variant="light" size="md" radius="sm">
-              Space: B
-            </Badge>
-            <Badge color="orange" variant="light" size="md" radius="sm">
-              Time: C
+              Time to Pass: {team1TimeToPassMs ? `${team1TimeToPassMs}ms` : 'N/A'}
             </Badge>
           </Group>
         </Box>
@@ -142,13 +132,7 @@ export default function AnalysisBox({ team1Code, team2Code, gameType = "FOURPLAY
             <Text size="xs" fw={600} mb="xs">Team 2 Metrics</Text>
             <Group gap="xs">
               <Badge color="teal" variant="light" size="md" radius="sm">
-                Runtime: A
-              </Badge>
-              <Badge color="yellow" variant="light" size="md" radius="sm">
-                Space: B
-              </Badge>
-              <Badge color="orange" variant="light" size="md" radius="sm">
-                Time: C
+                Time to Pass: {team2TimeToPassMs ? `${team2TimeToPassMs}ms` : 'N/A'}
               </Badge>
             </Group>
           </Box>

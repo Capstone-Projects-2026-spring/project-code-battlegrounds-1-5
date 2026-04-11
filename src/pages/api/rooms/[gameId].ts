@@ -22,6 +22,10 @@ interface RoomDetailsResponse {
   gameType: string;
   team1Code: string | null;
   team2Code: string | null;
+  team1Results: unknown[] | null;
+  team2Results: unknown[] | null;
+  team1TimeToPassMs: number | null;
+  team2TimeToPassMs: number | null;
   userTeamNumber: 1 | 2;
 }
 
@@ -110,6 +114,10 @@ export default async function handler(
       select: {
         team1Code: true,
         team2Code: true,
+        team1Results: true,
+        team2Results: true,
+        team1TimeToPassMs: true,
+        team2TimeToPassMs: true,
       },
     });
 
@@ -125,6 +133,10 @@ export default async function handler(
       gameType: room.gameType,
       team1Code: gameResult?.team1Code ?? null,
       team2Code: gameResult?.team2Code ?? null,
+      team1Results: (gameResult?.team1Results as unknown[] | null) ?? null,
+      team2Results: (gameResult?.team2Results as unknown[] | null) ?? null,
+      team1TimeToPassMs: gameResult?.team1TimeToPassMs ?? null,
+      team2TimeToPassMs: gameResult?.team2TimeToPassMs ?? null,
       userTeamNumber,
     });
   } catch (error: unknown) {

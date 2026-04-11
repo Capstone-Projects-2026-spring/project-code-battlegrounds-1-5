@@ -325,21 +325,8 @@ function registerSocketHandlers(io, socket, services) {
           code: Buffer.from(code).toString('base64'),
           testCases: JSON.stringify(dbTestCases.map((tc, idx) => ({
             id: idx,
-            functionInput: tc.functionInput.map(input => {
-              try {
-                return JSON.parse(input.value);
-              } catch {
-                return input.value;
-              }
-            }),
-            expectedOutput: (() => {
-              const expected = Array.isArray(tc.expectedOutput) ? tc.expectedOutput[0] : tc.expectedOutput;
-              try {
-                return JSON.parse(expected.value);
-              } catch {
-                return expected.value;
-              }
-            })()
+            functionInput: tc.functionInput,
+            expectedOutput: Array.isArray(tc.expectedOutput) ? tc.expectedOutput[0] : tc.expectedOutput
           }))),
           runIDs: JSON.stringify(dbTestCases.map((t, idx) => idx))
         };
@@ -447,21 +434,8 @@ function registerSocketHandlers(io, socket, services) {
 
           const testCasesStr = JSON.stringify(dbTestCases.map((tc, idx) => ({
             id: idx,
-            functionInput: tc.functionInput.map(input => {
-              try {
-                return JSON.parse(input.value);
-              } catch {
-                return input.value;
-              }
-            }),
-            expectedOutput: (() => {
-              const expected = Array.isArray(tc.expectedOutput) ? tc.expectedOutput[0] : tc.expectedOutput;
-              try {
-                return JSON.parse(expected.value);
-              } catch {
-                return expected.value;
-              }
-            })()
+            functionInput: tc.functionInput,
+            expectedOutput: Array.isArray(tc.expectedOutput) ? tc.expectedOutput[0] : tc.expectedOutput
           })));
           const runIDsStr = JSON.stringify(dbTestCases.map((t, idx) => idx));
 
