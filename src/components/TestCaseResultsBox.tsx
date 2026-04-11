@@ -89,7 +89,7 @@ export default function TestCaseResultsBox({ gameId, team1Results, team2Results,
         // Show error badge with tooltip
         const errorLines = result.stderr.split('\n').slice(0, 3).join('\n');
         return (
-          <Tooltip label={result.stderr} multiline mw={300}>
+          <Tooltip label={result.stderr} multiline>
             <Badge color="red" variant="filled">Error</Badge>
           </Tooltip>
         );
