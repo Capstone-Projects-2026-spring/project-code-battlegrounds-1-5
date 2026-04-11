@@ -663,9 +663,10 @@ function PlayGameRoom() {
                           const team = getTeamLabel();
                           socket.emit("submitCode", {
                             roomId: gameId,
-                            code: gameStateCtx.code, 
-                            type: gameType, 
+                            code: gameStateCtx.code,
+                            type: gameType,
                             team,
+                            teamId: teamSelected,
                           });
                         }
                       }}
