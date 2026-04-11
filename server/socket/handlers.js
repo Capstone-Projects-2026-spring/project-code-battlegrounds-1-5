@@ -295,21 +295,78 @@ function registerSocketHandlers(io, socket, services) {
       console.log('code submitted for two-player game');
 
       try {
-        // Post results to the code executor
+        // Fetch the game room and its problem
+        const gameRoom = await prisma.gameRoom.findUnique({
+          where: { id: roomId },
+          include: { problem: true }
+        });
+
+        if (!gameRoom || !gameRoom.problem) {
+          console.warn('Game room or problem not found for roomId:', roomId);
+          io.to(roomId).emit('gameEnded');
+          return;
+        }
+
+        // Fetch test cases from database using problem's slug
+        const dbTestCases = await prisma.problemTest.findMany({
+          where: { problemId: gameRoom.problem.slug }
+        });
+
+        console.log('Fetched test cases from DB for problem slug', gameRoom.problem.slug, ':', JSON.stringify(dbTestCases, null, 2));
+
+        if (!dbTestCases || dbTestCases.length === 0) {
+          console.warn('No test cases found for problem:', gameRoom.problem.slug);
+          io.to(roomId).emit('gameEnded');
+          return;
+        }
+
         let payload = {
           language: "javascript",
-          code: btoa(code),
-          testCases: JSON.stringify(testCases),
-          runIDs: JSON.stringify(runIDs)
+          code: Buffer.from(code).toString('base64'),
+          testCases: JSON.stringify(dbTestCases.map((tc, idx) => ({
+            id: idx,
+            functionInput: tc.functionInput.map(input => {
+              try {
+                return JSON.parse(input.value);
+              } catch {
+                return input.value;
+              }
+            }),
+            expectedOutput: (() => {
+              const expected = Array.isArray(tc.expectedOutput) ? tc.expectedOutput[0] : tc.expectedOutput;
+              try {
+                return JSON.parse(expected.value);
+              } catch {
+                return expected.value;
+              }
+            })()
+          }))),
+          runIDs: JSON.stringify(dbTestCases.map((t, idx) => idx))
         };
-        // console.log(JSON.stringify(payload));
+        console.log('Sending payload to executor with', dbTestCases.length, 'test cases');
         const res = await fetch("http://127.0.0.1:6969/execute", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
         const json = await res.json();
-        console.log(JSON.stringify(json));
+        console.log('Full executor response:', JSON.stringify(json, null, 2));
+
+        // Extract and store full results (including errors)
+        const results = json.results || [];
+        // Sum up execution times from all results
+        const totalTime = results.reduce((sum, r) => sum + (r.execution_time_ms || 0), 0);
+
+        console.log('Extracted results:', JSON.stringify(results, null, 2));
+        console.log('Total time:', totalTime, 'ms');
+
+        await prisma.gameResult.update({
+          where: { gameRoomId: roomId },
+          data: {
+            team1Results: results,
+            team1TimeToPassMs: totalTime
+          }
+        });
       } catch (error) {
         console.error("Error POSTing to code executor:", error);
       } finally {
@@ -354,21 +411,110 @@ function registerSocketHandlers(io, socket, services) {
         // Both teams submitted - end game
         console.log('Both teams submitted, ending game');
         try {
-          // Post results to the code executor
-          let payload = {
+          // Fetch both codes from the database
+          const gameResult = await prisma.gameResult.findUnique({
+            where: { gameRoomId: roomId },
+            select: { team1Code: true, team2Code: true }
+          });
+
+          if (!gameResult?.team1Code || !gameResult?.team2Code) {
+            throw new Error('One or both team codes are missing');
+          }
+
+          // Fetch the game room and its problem
+          const gameRoom = await prisma.gameRoom.findUnique({
+            where: { id: roomId },
+            include: { problem: true }
+          });
+
+          if (!gameRoom || !gameRoom.problem) {
+            console.warn('Game room or problem not found for roomId:', roomId);
+            io.to(roomId).emit('gameEnded');
+            return;
+          }
+
+          // Fetch test cases from database using problem's slug
+          const dbTestCases = await prisma.problemTest.findMany({
+            where: { problemId: gameRoom.problem.slug }
+          });
+          console.log('Fetched test cases from DB for 4-player problem', gameRoom.problem.slug, ':', JSON.stringify(dbTestCases, null, 2));
+
+          if (!dbTestCases || dbTestCases.length === 0) {
+            console.warn('No test cases found for problem:', gameRoom.problem.slug);
+            io.to(roomId).emit('gameEnded');
+            return;
+          }
+
+          const testCasesStr = JSON.stringify(dbTestCases.map((tc, idx) => ({
+            id: idx,
+            functionInput: tc.functionInput.map(input => {
+              try {
+                return JSON.parse(input.value);
+              } catch {
+                return input.value;
+              }
+            }),
+            expectedOutput: (() => {
+              const expected = Array.isArray(tc.expectedOutput) ? tc.expectedOutput[0] : tc.expectedOutput;
+              try {
+                return JSON.parse(expected.value);
+              } catch {
+                return expected.value;
+              }
+            })()
+          })));
+          const runIDsStr = JSON.stringify(dbTestCases.map((t, idx) => idx));
+
+          // Execute team1 code
+          let payload1 = {
             language: "javascript",
-            code: btoa(code),
-            testCases: JSON.stringify(testCases),
-            runIDs: JSON.stringify(runIDs)
+            code: Buffer.from(gameResult.team1Code).toString('base64'),
+            testCases: testCasesStr,
+            runIDs: runIDsStr
           };
-          // console.log(JSON.stringify(payload));
-          const res = await fetch("http://127.0.0.1:6969/execute", {
+          const res1 = await fetch("http://127.0.0.1:6969/execute", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
+            body: JSON.stringify(payload1),
           });
-          const json = await res.json();
-          console.log(JSON.stringify(json));
+          const json1 = await res1.json();
+          console.log('Full Team 1 executor response:', JSON.stringify(json1, null, 2));
+
+          // Execute team2 code
+          let payload2 = {
+            language: "javascript",
+            code: Buffer.from(gameResult.team2Code).toString('base64'),
+            testCases: testCasesStr,
+            runIDs: runIDsStr
+          };
+          const res2 = await fetch("http://127.0.0.1:6969/execute", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload2),
+          });
+          const json2 = await res2.json();
+          console.log('Full Team 2 executor response:', JSON.stringify(json2, null, 2));
+
+          // Extract full results with error information
+          const team1Results = json1.results || [];
+          const team2Results = json2.results || [];
+          const team1Time = team1Results.reduce((sum, r) => sum + (r.execution_time_ms || 0), 0);
+          const team2Time = team2Results.reduce((sum, r) => sum + (r.execution_time_ms || 0), 0);
+
+          console.log('Extracted team1Results:', JSON.stringify(team1Results, null, 2));
+          console.log('Extracted team2Results:', JSON.stringify(team2Results, null, 2));
+          console.log('Team 1 time:', team1Time, 'ms Team 2 time:', team2Time, 'ms');
+
+          // Store results for both teams
+          await prisma.gameResult.update({
+            where: { gameRoomId: roomId },
+            data: {
+              team1Results,
+              team2Results,
+              team1TimeToPassMs: team1Time,
+              team2TimeToPassMs: team2Time
+            }
+          });
         } catch (error) {
           console.error("Error POSTing to code executor:", error);
         } finally {
