@@ -90,8 +90,14 @@ export default function DashboardPage() {
       case "new_game":
         router.push("/matchmaking");
         break;
-      case "resume":
-        router.push("/game");
+      case "signout":
+        authClient.signOut({
+          fetchOptions: {
+            onSuccess: () => {
+              router.push("/login"); // redirect to login page
+            },
+          },
+        });
         break;
       case "stats":
         router.push("/stats");
@@ -159,14 +165,14 @@ export default function DashboardPage() {
 
           <Box
             className={classes.actionCard}
-            onClick={() => handleQuickAction("resume")}
+            onClick={() => handleQuickAction("signout")}
           >
             <Box className={classes.actionIconWrapper}>
               <IconClock size={32} className={classes.actionIcon} />
             </Box>
-            <Text className={classes.actionTitle}>Resume Game</Text>
+            <Text className={classes.actionTitle}>Sign Out</Text>
             <Text className={classes.actionDescription}>
-              Continue your ongoing battle
+              Sign out of your account
             </Text>
           </Box>
 
@@ -212,18 +218,16 @@ export default function DashboardPage() {
                   <Text fw={600}>{game.opponent}</Text>
                   <Box>
                     <span
-                      className={`${classes.statusBadge} ${
-                        game.result === "win"
+                      className={`${classes.statusBadge} ${game.result === "win"
                           ? classes.statusWin
                           : classes.statusLoss
-                      }`}
+                        }`}
                     >
                       <span
-                        className={`${classes.statusDot} ${
-                          game.result === "win"
+                        className={`${classes.statusDot} ${game.result === "win"
                             ? classes.statusDotWin
                             : classes.statusDotLoss
-                        }`}
+                          }`}
                       />
                       {game.result}
                     </span>

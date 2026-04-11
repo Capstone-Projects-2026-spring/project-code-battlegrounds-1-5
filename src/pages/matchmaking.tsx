@@ -200,7 +200,7 @@ export default function QueuePage() {
                                             label: (
                                                 <Center style={{ gap: 8 }}>
                                                     <IconUsers size={16} />
-                                                    <span>2v2</span>
+                                                    <span data-testid="mode-2v2">2v2</span>
                                                 </Center>
                                             ),
                                             value: GameType.FOURPLAYER
