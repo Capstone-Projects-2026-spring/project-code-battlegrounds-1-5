@@ -17,6 +17,10 @@ interface RoomDetailsResponse {
   gameType: string;
   team1Code: string | null;
   team2Code: string | null;
+  team1Results: unknown[] | null;
+  team2Results: unknown[] | null;
+  team1TimeToPassMs: number | null;
+  team2TimeToPassMs: number | null;
   userTeamNumber: 1 | 2;
 }
 
@@ -51,6 +55,10 @@ export function Results() {
   const [analysisProps, setAnalysisProps] = useState<AnalysisBoxProps | null>(null);
   const [gameType, setGameType] = useState<string | null>(null);
   const [userTeamNumber, setUserTeamNumber] = useState<1 | 2>(1);
+  const [team1Results, setTeam1Results] = useState<unknown[] | null>(null);
+  const [team2Results, setTeam2Results] = useState<unknown[] | null>(null);
+  const [team1TimeToPassMs, setTeam1TimeToPassMs] = useState<number | null>(null);
+  const [team2TimeToPassMs, setTeam2TimeToPassMs] = useState<number | null>(null);
 
   useEffect(() => {
     if (!session?.user.id || !gameId) return;
@@ -64,6 +72,10 @@ export function Results() {
         setProblem(data.problem);
         setGameType(data.gameType);
         setUserTeamNumber(data.userTeamNumber);
+        setTeam1Results(data.team1Results);
+        setTeam2Results(data.team2Results);
+        setTeam1TimeToPassMs(data.team1TimeToPassMs);
+        setTeam2TimeToPassMs(data.team2TimeToPassMs);
 
         if (data.team1Code) {
           setAnalysisProps({
@@ -71,6 +83,8 @@ export function Results() {
             team2Code: data.team2Code ?? undefined,
             gameType: data.gameType as "TWOPLAYER" | "FOURPLAYER",
             userTeamNumber: data.userTeamNumber,
+            team1TimeToPassMs: data.team1TimeToPassMs,
+            team2TimeToPassMs: data.team2TimeToPassMs,
           });
         }
       } catch (error) {
@@ -134,7 +148,7 @@ export function Results() {
 
             <Stack style={{ flex: 2 }} gap="md">
               <AnalysisBox {...analysisProps ?? { team1Code: "", gameType: gameType as "TWOPLAYER" | "FOURPLAYER", userTeamNumber }} />
-              <TestCaseResultsBox gameId={gameId} showOtherTeamColumn={gameType === "FOURPLAYER"} gameType={gameType as "TWOPLAYER" | "FOURPLAYER"} userTeamNumber={userTeamNumber} />
+              <TestCaseResultsBox gameId={gameId} team1Results={team1Results ?? undefined} team2Results={team2Results ?? undefined} showOtherTeamColumn={gameType === "FOURPLAYER"} gameType={gameType as "TWOPLAYER" | "FOURPLAYER"} userTeamNumber={userTeamNumber} />
             </Stack>
 
           </Flex>

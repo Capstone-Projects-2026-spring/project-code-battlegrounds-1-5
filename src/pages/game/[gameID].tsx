@@ -329,6 +329,7 @@ function PlayGameRoom() {
 
   const handleEditorChange = (value: string | undefined) => {
     if (value !== undefined && role === Role.CODER && socket) {
+      setLiveCode(value);
       socket.emit("codeChange", { teamId: teamSelected, code: value });
       gameStateCtx.setCode(value);
     }
@@ -662,9 +663,10 @@ function PlayGameRoom() {
                           const team = getTeamLabel();
                           socket.emit("submitCode", {
                             roomId: gameId,
-                            code: gameStateCtx.code, 
-                            type: gameType, 
+                            code: gameStateCtx.code,
+                            type: gameType,
                             team,
+                            teamId: teamSelected,
                           });
                         }
                       }}

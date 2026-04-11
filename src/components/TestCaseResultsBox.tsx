@@ -1,4 +1,4 @@
-import { Paper, Title, Table, Text, Box } from "@mantine/core";
+import { Paper, Title, Table, Text, Box, Badge, Tooltip } from "@mantine/core";
 import { useEffect, useState } from "react";
 import { ParameterType } from "@/lib/ProblemInputOutput";
 
@@ -6,6 +6,16 @@ interface TestCase {
   id: string;
   input: ParameterType[];
   expected: ParameterType[];
+}
+
+interface ExecutorResult {
+  id: number;
+  input: string[];
+  expected: string;
+  actual: string;
+  passed: boolean | null;
+  stderr?: string;
+  execution_time_ms: number;
 }
 
 interface TestCaseResultsBoxProps {
@@ -21,8 +31,6 @@ export default function TestCaseResultsBox({ gameId, team1Results, team2Results,
   const [testCases, setTestCases] = useState<TestCase[]>([]);
   const [loading, setLoading] = useState(false);
 
-  //const team1TestResults = team1Results || ["[1,2]", "[1,2,3]", "[1,2,3,4,5]"];
-  //const team2TestResults = team2Results || ["[1,2,2]", "[1,2,2,3]", "[1,2,2,3,4,5]"];
   const team1TestResults = team1Results;
   const team2TestResults = team2Results;
 
@@ -46,6 +54,10 @@ export default function TestCaseResultsBox({ gameId, team1Results, team2Results,
     fetchTests();
   }, [gameId]);
 
+  // Helper to check if a result object is an executor result with error info
+  const isExecutorResult = (value: unknown): value is ExecutorResult => {
+    return typeof value === 'object' && value !== null && 'actual' in value && 'stderr' in value;
+  };
 
   const formatValue = (value: ParameterType[] | unknown): string => {
     if (value === undefined || value === null) return '-';
@@ -69,6 +81,26 @@ export default function TestCaseResultsBox({ gameId, team1Results, team2Results,
     return String(value);
   };
 
+  const renderResultCell = (result: unknown) => {
+    if (!result) return <Text size="sm" ff="monospace">-</Text>;
+
+    if (isExecutorResult(result)) {
+      if (result.stderr) {
+        // Show error badge with tooltip
+        const errorLines = result.stderr.split('\n').slice(0, 3).join('\n');
+        return (
+          <Tooltip label={result.stderr} multiline>
+            <Badge color="red" variant="filled">Error</Badge>
+          </Tooltip>
+        );
+      }
+      return <Text size="sm" fw={500} ff="monospace">{result.actual || '-'}</Text>;
+    }
+
+    // Fallback for simple values
+    return <Text size="sm" fw={500} ff="monospace">{formatValue(result)}</Text>;
+  };
+
   const rows = testCases.map((element, index) => {
     // Determine which results to show based on user's team
     const yourResults = userTeamNumber === 2 ? team2TestResults : team1TestResults;
@@ -80,11 +112,11 @@ export default function TestCaseResultsBox({ gameId, team1Results, team2Results,
           <Text size="sm" fw={500} ff="monospace">{formatValue(element.input)}</Text>
         </Table.Td>
         <Table.Td>
-          <Text size="sm" fw={500} ff="monospace">{yourResults && yourResults[index] !== undefined ? formatValue(yourResults[index]) : '-'}</Text>
+          {yourResults && yourResults[index] !== undefined ? renderResultCell(yourResults[index]) : <Text size="sm" ff="monospace">-</Text>}
         </Table.Td>
         {showOtherTeamColumn && (
           <Table.Td>
-            <Text size="sm" fw={500} ff="monospace">{otherTeamResults && otherTeamResults[index] !== undefined ? formatValue(otherTeamResults[index]) : '-'}</Text>
+            {otherTeamResults && otherTeamResults[index] !== undefined ? renderResultCell(otherTeamResults[index]) : <Text size="sm" ff="monospace">-</Text>}
           </Table.Td>
         )}
         <Table.Td>

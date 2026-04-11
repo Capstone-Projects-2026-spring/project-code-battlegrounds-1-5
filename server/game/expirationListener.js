@@ -86,6 +86,46 @@ function startExpirationListener(io, pubClient) {
 
       if (!acquired) return; // another instance already handling
 
+      try {
+        // Auto-save any code in Redis to the database before ending
+        const teams = await getPrisma().team.findMany({
+          where: { gameRoomId: gameId },
+          select: { id: true },
+          take: 2
+        });
+
+        const gameResult = await getPrisma().gameResult.findUnique({
+          where: { gameRoomId: gameId },
+          select: { team1Code: true, team2Code: true }
+        });
+
+        // Save team1 code if not already saved
+        if (teams[0] && !gameResult?.team1Code) {
+          const team1Code = await pubClient.get(`game:${teams[0].id}:code`);
+          if (team1Code) {
+            console.log(`Auto-saving team1 code on game expiration`);
+            await getPrisma().gameResult.update({
+              where: { gameRoomId: gameId },
+              data: { team1Code }
+            });
+          }
+        }
+
+        // Save team2 code if not already saved (for 4-player games)
+        if (teams[1] && !gameResult?.team2Code) {
+          const team2Code = await pubClient.get(`game:${teams[1].id}:code`);
+          if (team2Code) {
+            console.log(`Auto-saving team2 code on game expiration`);
+            await getPrisma().gameResult.update({
+              where: { gameRoomId: gameId },
+              data: { team2Code }
+            });
+          }
+        }
+      } catch (error) {
+        console.error(`Error auto-saving code for game ${gameId} on expiration:`, error);
+      }
+
       io.to(gameId).emit('gameEnded');
     }
 
