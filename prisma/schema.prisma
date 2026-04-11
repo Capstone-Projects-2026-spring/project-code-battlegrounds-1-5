@@ -202,8 +202,6 @@ model GameResult {
   team2Code      String?
   team1TimeToPassMs Int?
   team2TimeToPassMs Int?
-  team1Results   Json?
-  team2Results   Json?
 
   winningTeam Team?     @relation("WinningTeamRelation", fields: [winningTeamId], references: [id])
   gameRoom    GameRoom @relation(fields: [gameRoomId], references: [id], onDelete: Cascade)
