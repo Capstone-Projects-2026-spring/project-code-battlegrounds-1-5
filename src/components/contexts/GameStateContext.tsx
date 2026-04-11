@@ -32,7 +32,7 @@ export const GameStateProvider = ({ children }: { children: ReactNode }) => {
   const [teamId, setTeamId] = useState<string>();
   const [gameId, setGameId] = useState<string>();
   const [gameType, setGameType] = useState<GameType>();
-  const [code, setCode] = useState<string>();
+  const [code, setCode] = useState<string | undefined>("// Waiting for code...");
 
   const v: GameStateContextAPI = {
     socket,
