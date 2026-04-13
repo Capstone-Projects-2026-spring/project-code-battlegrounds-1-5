@@ -10,6 +10,9 @@ const HeroSection = dynamic(() => import("@/components/home/HeroSection"), {
 const HowItWorksSection = dynamic(() => import("@/components/home/HowItWorksSection"), {
   ssr: true
 });
+const LiveDemoSection = dynamic(() => import("@/components/home/LiveDemoSection"), {
+  ssr: true
+});
 // const StatsSection = dynamic(() => import("@/components/home/StatsSection"));
 const CTASection = dynamic(() => import("@/components/home/CTASection"), {
   ssr: true
@@ -47,6 +50,9 @@ export default function Home() {
 
         {/* How It Works - Education */}
         <HowItWorksSection />
+
+        {/* Live Gameplay Demo */}
+        <LiveDemoSection />
 
         {/* Secondary - Join by Game ID
         <Container size="lg" py="xl">

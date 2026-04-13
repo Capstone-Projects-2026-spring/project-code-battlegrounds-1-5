@@ -1,0 +1,208 @@
+.section {
+  position: relative;
+}
+
+.section::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      circle at 10% 20%,
+      light-dark(rgba(49, 176, 0, 0.07), rgba(113, 211, 73, 0.12)) 0%,
+      transparent 45%
+    ),
+    radial-gradient(
+      circle at 90% 80%,
+      light-dark(rgba(0, 142, 0, 0.05), rgba(162, 235, 137, 0.08)) 0%,
+      transparent 45%
+    );
+}
+
+.sectionTitle {
+  font-size: clamp(2rem, 4vw, 2.7rem);
+  font-weight: 800;
+  line-height: 1.15;
+  background: linear-gradient(135deg, var(--mantine-color-console-5), var(--mantine-color-console-3));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.demoShell {
+  position: relative;
+  overflow: hidden;
+  backdrop-filter: blur(10px);
+  border-color: light-dark(rgba(49, 176, 0, 0.22), rgba(113, 211, 73, 0.2));
+  background: light-dark(
+    rgba(255, 255, 255, 0.9),
+    rgba(20, 22, 25, 0.88)
+  );
+  box-shadow: 0 18px 50px light-dark(rgba(49, 176, 0, 0.08), rgba(113, 211, 73, 0.12));
+}
+
+.demoShell::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(light-dark(rgba(49, 176, 0, 0.03), rgba(113, 211, 73, 0.04)) 1px, transparent 1px),
+    linear-gradient(90deg, light-dark(rgba(49, 176, 0, 0.03), rgba(113, 211, 73, 0.04)) 1px, transparent 1px);
+  background-size: 44px 44px;
+  opacity: 0.3;
+}
+
+.demoShell > * {
+  position: relative;
+  z-index: 1;
+}
+
+.phaseControl {
+  --sc-shadow: inset 0 0 0 1px light-dark(rgba(49, 176, 0, 0.16), rgba(113, 211, 73, 0.18));
+}
+
+.syncMeta {
+  padding: 0.3rem 0.1rem;
+}
+
+.workspacePane {
+  height: 100%;
+  border-color: light-dark(rgba(49, 176, 0, 0.15), rgba(113, 211, 73, 0.18));
+  background: light-dark(
+    rgba(255, 255, 255, 0.8),
+    rgba(17, 18, 20, 0.9)
+  );
+}
+
+.editorPane {
+  box-shadow: inset 0 0 0 1px light-dark(rgba(49, 176, 0, 0.06), rgba(113, 211, 73, 0.08));
+}
+
+.mirrorPane {
+  border-color: light-dark(rgba(0, 115, 255, 0.2), rgba(120, 175, 255, 0.24));
+}
+
+.codeWindow {
+  border-radius: 0.6rem;
+  border: 1px solid light-dark(rgba(49, 176, 0, 0.2), rgba(113, 211, 73, 0.2));
+  padding: 0.9rem;
+  min-height: 250px;
+  background: linear-gradient(
+    180deg,
+    light-dark(rgba(244, 255, 244, 0.75), rgba(8, 12, 10, 0.95)) 0%,
+    light-dark(rgba(234, 252, 234, 0.9), rgba(13, 15, 18, 1)) 100%
+  );
+  overflow-x: auto;
+}
+
+.mirrorWindow {
+  border-color: light-dark(rgba(0, 115, 255, 0.24), rgba(120, 175, 255, 0.28));
+  background: linear-gradient(
+    180deg,
+    light-dark(rgba(244, 249, 255, 0.8), rgba(8, 10, 15, 0.95)) 0%,
+    light-dark(rgba(236, 245, 255, 0.9), rgba(10, 13, 20, 1)) 100%
+  );
+}
+
+.codeWindow pre {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.6;
+  font-family: var(--mantine-font-family-monospace);
+  color: light-dark(var(--mantine-color-dark-7), #8af7ad);
+}
+
+.caret {
+  display: inline-block;
+  margin-left: 2px;
+  color: light-dark(var(--mantine-color-console-6), #9affba);
+  animation: caretBlink 1s step-end infinite;
+}
+
+.testRow {
+  border: 1px solid transparent;
+  border-radius: 0.5rem;
+  padding: 0.45rem 0.6rem;
+  background: light-dark(rgba(0, 0, 0, 0.02), rgba(255, 255, 255, 0.02));
+}
+
+.testPass {
+  border-color: light-dark(rgba(49, 176, 0, 0.3), rgba(113, 211, 73, 0.34));
+}
+
+.testFail {
+  border-color: light-dark(rgba(238, 82, 83, 0.35), rgba(255, 135, 135, 0.4));
+}
+
+.passIcon {
+  color: light-dark(var(--mantine-color-console-6), var(--mantine-color-console-4));
+}
+
+.failIcon {
+  color: light-dark(var(--mantine-color-red-6), var(--mantine-color-red-4));
+}
+
+.pendingIcon {
+  color: light-dark(var(--mantine-color-gray-6), var(--mantine-color-gray-4));
+  animation: spin 1s linear infinite;
+}
+
+.chatBubble {
+  padding: 0.5rem 0.6rem;
+  border-radius: 0.55rem;
+  border: 1px solid light-dark(rgba(49, 176, 0, 0.16), rgba(113, 211, 73, 0.2));
+  background: light-dark(rgba(49, 176, 0, 0.04), rgba(113, 211, 73, 0.07));
+}
+
+.chatAuthor {
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: light-dark(var(--mantine-color-console-6), var(--mantine-color-console-3));
+}
+
+.loopTrack {
+  max-width: 560px;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes caretBlink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0;
+  }
+}
+
+@media (max-width: 768px) {
+  .demoShell {
+    padding: 1rem;
+  }
+
+  .codeWindow {
+    min-height: 200px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pendingIcon {
+    animation: none;
+  }
+
+  .caret {
+    animation: none;
+  }
+}
