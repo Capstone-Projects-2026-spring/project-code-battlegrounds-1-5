@@ -47,7 +47,7 @@ export default function QueuePage() {
 
     useEffect(() => {
         if (!isPending && !session) {
-            router.push('/auth');
+            router.push('/login');
         }
     }, [isPending, session, router]);
 

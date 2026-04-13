@@ -51,14 +51,6 @@
   );
 }
 
-.mainCard:hover {
-  box-shadow: 0 12px 40px light-dark(rgba(49, 176, 0, 0.15), rgba(113, 211, 73, 0.2));
-  border-color: light-dark(
-    var(--mantine-color-console-3),
-    var(--mantine-color-console-4)
-  );
-}
-
 .segmentedControl {
   background: light-dark(
     var(--mantine-color-gray-0),
