@@ -1,5 +1,4 @@
-import NavBar from '@/components/Navbar'
-import { Badge, Box, Button, Container, Grid, Group, Image, Paper, Stack, Text, Title } from '@mantine/core';
+import { Box, Button, Container, Grid, Group, Image, Paper, Stack, Text, Title } from '@mantine/core';
 import { usePostHog } from 'posthog-js/react';
 import { useEffect, useState } from 'react';
 import styles from '@/styles/Tutorial.module.css';
@@ -42,14 +41,6 @@ export default function GameTutorial() {
     ];
 
     return(<>
-        <NavBar 
-            links={[
-                "Home", 
-                "How to Play",
-                "Leaderboard",
-                "Play"
-            ]} title="Code Battlegrounds"
-        />
         
         <Box className={styles.tutorialPage}>
             <div className={styles.content}>
