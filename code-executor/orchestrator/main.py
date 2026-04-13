@@ -89,6 +89,7 @@ class Pool: # we're gonna make a VM per game. based on my math, if a VM is 50$ a
         vm = VM(game_id)
         ok, ip = self.provisioner.create_instance(vm.game_id)
         if ok:
+            print("VM created successfully at IP " + ip)
             vm.ip = ip
             self.games[game_id] = vm
             return vm.game_id
