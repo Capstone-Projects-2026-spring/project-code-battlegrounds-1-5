@@ -1,4 +1,3 @@
-from typing import Optional, List
 import subprocess
 import socket
 import time
@@ -8,7 +7,7 @@ import string
 import requests
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse, PlainTextResponse
-from pydantic import BaseModel
+from models import *
 
 app = FastAPI()
 
@@ -33,17 +32,6 @@ def root():
 @app.get("/health")
 def health():
     return {"status": "ok"}
-
-class TestCase(BaseModel):
-    input: str
-    expected: Optional[str] = None
-
-
-class ExecutionRequest(BaseModel):
-    language: str
-    code: str
-    stdin: Optional[str] = ""
-    testCases: Optional[List[TestCase]] = None
 
 @app.post("/execute")
 def execute(req: ExecutionRequest):
@@ -84,7 +72,7 @@ def execute(req: ExecutionRequest):
 
     Containers.map[container_name] = host_port
 
-    # Wait for health endpoint to be available (max ~10s)
+    # wait for container to start by pinging /health endpoint
     base_url = f"http://127.0.0.1:{host_port}"
     healthy = False
     for _ in range(40):
@@ -105,13 +93,7 @@ def execute(req: ExecutionRequest):
 
     # send the execution request to the container and wait for its result
     try:
-        payload = {
-            "language": req.language,
-            "code": req.code,
-            "stdin": req.stdin or "",
-            "testCases": [tc.dict() for tc in (req.testCases or [])] or None,
-        }
-        exec_resp = requests.post(f"{base_url}/execute", json=payload, timeout=15)
+        exec_resp = requests.post(f"{base_url}/execute", json=req, timeout=10)
         exec_json = exec_resp.json() if exec_resp.headers.get("content-type", "").startswith("application/json") else {"stdout": exec_resp.text}
     except Exception as e:
         exec_json = {"error": "Failed to call executor API", "details": str(e)}
