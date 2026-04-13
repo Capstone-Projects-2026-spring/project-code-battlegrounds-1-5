@@ -2,9 +2,10 @@ import { ActionIcon, Button, Group, Stack, Table, Text, Tooltip } from "@mantine
 import { IconPlayerPlay, IconTrash } from "@tabler/icons-react";
 
 import { ParameterType } from "@/lib/ProblemInputOutput";
-import { TestableCase } from "../../contexts/GameTestCasesContext";
+import { TestableCase } from "@/contexts/GameTestCasesContext";
 import ParameterInput from "./ParameterInput";
-import { useGameState } from "../../contexts/GameStateContext";
+import { useSocket } from "@/contexts/SocketContext";
+import { useGameState } from "@/contexts/GameStateContext";
 import { useEffect, useState } from "react";
 import { usePostHog } from "posthog-js/react";
 
@@ -24,16 +25,17 @@ export interface GameTestCaseProps {
 
 export default function GameTestCase(props: GameTestCaseProps) {
   const gameStateCtx = useGameState();
+  const { socket } = useSocket();
   const posthog = usePostHog();
   const { testableCase } = props;
 
   const [running, setRunning] = useState<boolean>(false);
 
   const runTest = () => {
-    if (!gameStateCtx.socket) throw new Error("Missing socket!");
+    if (!socket) throw new Error("Missing socket!");
     setRunning(true);
 
-    gameStateCtx.socket.emit("submitTestCases", {
+    socket.emit("submitTestCases", {
       gameId: gameStateCtx.gameId,
       teamId: gameStateCtx.teamId,
       code: gameStateCtx.code,
