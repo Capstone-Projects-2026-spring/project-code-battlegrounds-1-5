@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Container, Title, Text, Stack, Button, Group, Box, Badge, Card } from "@mantine/core";
 import { IconUsers, IconUser } from "@tabler/icons-react";
 import { useRouter } from "next/router";
@@ -7,7 +6,7 @@ import { usePostHog } from "posthog-js/react";
 import { GameType } from "@prisma/client";
 import { notifications } from "@mantine/notifications";
 import { useCreateRoom } from "@/hooks/useCreateRoom";
-import classes from "./DifficultySection.module.css";
+import classes from "@/styles/comps/DifficultySection.module.css";
 
 type DifficultyType = "EASY" | "MEDIUM" | "HARD";
 

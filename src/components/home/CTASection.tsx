@@ -3,7 +3,7 @@ import { IconPlayerPlay } from "@tabler/icons-react";
 import { useRouter } from "next/router";
 import { authClient } from "@/lib/auth-client";
 import { usePostHog } from "posthog-js/react";
-import classes from "./CTASection.module.css";
+import classes from "@/styles/comps/CTASection.module.css";
 
 export default function CTASection() {
   const router = useRouter();

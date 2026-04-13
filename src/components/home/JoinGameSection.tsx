@@ -4,7 +4,7 @@ import { IconSearch, IconArrowRight } from "@tabler/icons-react";
 import { useRouter } from "next/router";
 import { usePostHog } from "posthog-js/react";
 import Link from "next/link";
-import classes from "./JoinGameSection.module.css";
+import classes from "@/styles/comps/JoinGameSection.module.css";
 
 export default function JoinGameSection() {
   const [gameId, setGameId] = useState("");
@@ -12,7 +12,7 @@ export default function JoinGameSection() {
   const router = useRouter();
   const posthog = usePostHog();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.SubmitEvent) => {
     e.preventDefault();
     
     const trimmedId = gameId.trim();

@@ -3,7 +3,7 @@ import { IconPlayerPlay, IconUsers } from "@tabler/icons-react";
 import { useRouter } from "next/router";
 import { authClient } from "@/lib/auth-client";
 import { usePostHog } from "posthog-js/react";
-import classes from "./HeroSection.module.css";
+import classes from "@/styles/comps/HeroSection.module.css";
 import Brand from "../Brand";
 
 export default function HeroSection() {
