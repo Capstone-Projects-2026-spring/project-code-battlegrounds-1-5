@@ -23,11 +23,11 @@ export default function JoinGameSection() {
     }
 
     // Basic UUID validation (optional but good UX)
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (!uuidRegex.test(trimmedId)) {
-      setError("Invalid Game ID format");
-      return;
-    }
+    // const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    // if (!uuidRegex.test(trimmedId)) {
+    //   setError("Invalid Game ID format");
+    //   return;
+    // }
 
     setError("");
     posthog?.capture("room_joined_by_id", { roomId: trimmedId });
@@ -57,7 +57,7 @@ export default function JoinGameSection() {
         <form onSubmit={handleSubmit}>
           <Group gap="md" align="flex-start">
             <TextInput
-              placeholder="Enter Game ID (e.g., 550e8400-e29b-41d4-a716-446655440000)"
+              placeholder="Enter Game ID (e.g., 550e8400)"
               size="md"
               value={gameId}
               onChange={(e) => {
