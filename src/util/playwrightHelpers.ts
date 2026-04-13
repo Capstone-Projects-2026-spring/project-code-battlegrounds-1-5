@@ -51,7 +51,8 @@ export async function setupGame2(pages: Page[], difficulty: 'easy' | 'medium' | 
 }
 
 export async function createGame2(page: Page, difficulty: 'easy' | 'medium' | 'hard'): Promise<string> {
-    await page.goto('/');
+    await page.goto('/matchmaking');
+    await page.click('[data-testid="create-game-tab"]');
     const navigationPromise = page.waitForURL(/\/game\/.+/, { timeout: 10000 });
     await page.click(`[data-testid="co-op-create-room-button-${difficulty}"]`);
     await navigationPromise;
@@ -59,7 +60,8 @@ export async function createGame2(page: Page, difficulty: 'easy' | 'medium' | 'h
 }
 
 export async function createGame4(page: Page, difficulty: 'easy' | 'medium' | 'hard'): Promise<string> {
-    await page.goto('/');
+    await page.goto('/matchmaking');
+    await page.click('[data-testid="create-game-tab"]');
     // wait to confirm it's selected
     await page.waitForTimeout(300);
     const navigationPromise = page.waitForURL(/\/game\/.+/, { timeout: 10000 });

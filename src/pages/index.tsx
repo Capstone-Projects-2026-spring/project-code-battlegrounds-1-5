@@ -9,7 +9,6 @@ const HeroSection = dynamic(() => import("@/components/home/HeroSection"), {
   ssr: true,
 });
 const HowItWorksSection = dynamic(() => import("@/components/home/HowItWorksSection"));
-const DifficultySection = dynamic(() => import("@/components/home/DifficultySection"));
 // const StatsSection = dynamic(() => import("@/components/home/StatsSection"));
 const CTASection = dynamic(() => import("@/components/home/CTASection"));
 const JoinGameSection = dynamic(() => import("@/components/home/JoinGameSection"));
@@ -46,9 +45,6 @@ export default function Home() {
 
         {/* How It Works - Education */}
         <HowItWorksSection />
-
-        {/* Main CTA - Difficulty Selection */}
-        <DifficultySection />
 
         {/* Secondary - Join by Game ID */}
         <Container size="lg" py="xl">
