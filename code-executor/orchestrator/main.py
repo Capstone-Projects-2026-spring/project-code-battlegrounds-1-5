@@ -8,6 +8,7 @@ from enum import Enum
 from contextlib import asynccontextmanager
 from fastapi_globals import g, GlobalsMiddleware
 from starlette.responses import Response
+import requests
 
 # TODO: this can now create vms (but needs to make new image as it won't automatically update git repo - maybe add git commands to startup?).
 # TODO: still need to have the request-warm-vm endpoint ping on subsequent requests until ready, as well as deleting vms
@@ -31,6 +32,34 @@ class VMProvisioner:
         self.zones = zones
         self.client = compute_v1.InstancesClient()
 
+    def _extract_ip_from_instance(self, created) -> Optional[str]:
+        # Prefer external NAT IP if available, fallback to internal
+        if getattr(created, 'network_interfaces', None):
+            for nic in created.network_interfaces:
+                # External NAT IP
+                if getattr(nic, 'access_configs', None):
+                    for ac in nic.access_configs:
+                        nat_ip = getattr(ac, 'nat_i_p', None) or getattr(ac, 'nat_ip', None)
+                        if nat_ip:
+                            return nat_ip
+                # Internal IP (if external not found)
+                internal_ip = getattr(nic, 'network_i_p', None) or getattr(nic, 'network_ip', None)
+                if internal_ip:
+                    return internal_ip
+        return None
+
+    def fetch_ip(self, name: str) -> Optional[str]:
+        # Iterate zones to find instance and pull IP
+        for zone in self.zones:
+            try:
+                created = self.client.get(project=self.project_id, zone=zone, instance=name)
+                ip = self._extract_ip_from_instance(created)
+                if ip:
+                    return ip
+            except Exception:
+                continue
+        return None
+
     def create_instance(self, name: str) -> Tuple[bool, Optional[str]]:
         # tries all zones and returns (True, ip) on first accepted creation, (False, None) if none accepted
         for zone in self.zones:
@@ -44,29 +73,13 @@ class VMProvisioner:
                     instance_resource=instance,
                 )
                 print(f"Instance creation requested for {name} in zone {zone}. Operation: {op.name if hasattr(op, 'name') else 'N/A'}")
-                # Try to fetch instance details immediately to get IP (may be None if not ready yet)
-                ip: Optional[str] = None
+                # Attempt a quick IP fetch (may be None if not ready yet)
                 try:
                     created = self.client.get(project=self.project_id, zone=zone, instance=name)
-                    # Prefer external NAT IP if available, fallback to internal
-                    if getattr(created, 'network_interfaces', None):
-                        for nic in created.network_interfaces:
-                            # External NAT IP
-                            if getattr(nic, 'access_configs', None):
-                                for ac in nic.access_configs:
-                                    nat_ip = getattr(ac, 'nat_i_p', None) or getattr(ac, 'nat_ip', None)
-                                    if nat_ip:
-                                        ip = nat_ip
-                                        break
-                            # Internal IP (if external not found)
-                            if not ip:
-                                internal_ip = getattr(nic, 'network_i_p', None) or getattr(nic, 'network_ip', None)
-                                if internal_ip:
-                                    ip = internal_ip
-                            if ip:
-                                break
+                    ip = self._extract_ip_from_instance(created)
                 except Exception as ge:
                     print(f"Instance created but unable to fetch IP for {name} in zone {zone} yet: {ge}")
+                    ip = None
                 return True, ip
             except Exception as e:
                 print(f"Unable to create instance {name} in zone {zone}: {e}")
@@ -89,11 +102,11 @@ class Pool: # we're gonna make a VM per game. based on my math, if a VM is 50$ a
         vm = VM(game_id)
         ok, ip = self.provisioner.create_instance(vm.game_id)
         if ok:
+            vm.ip = ip
             if ip:
                 print("VM created successfully at IP " + ip)
             else:
                 print("Unable to fetch VM IP yet!")
-            vm.ip = ip
             self.games[game_id] = vm
             return vm.game_id
         else:
@@ -132,11 +145,25 @@ def request_warm_vm(request: PrewarmRequest):
     # if vm is not made for this gameid yet, make it. otherwise, ping the vm on it's /health endpoint and see if it's ready.
     if request.gameId in g.p.games:
         print("VM for game " + request.gameId + " already made. Client pinging for status")
-        if g.p.games[request.gameId].ip is not None:
-            # TODO: if ip != none, ping /health on port 8000 and update status with findings and return. return instantly
-            pass
-
-        return Response(status_code=status.HTTP_200_OK)
+        vm = g.p.games[request.gameId]
+        # try to fetch the ip if we don't have it yet
+        if not vm.ip:
+            vm.ip = g.p.provisioner.fetch_ip(vm.game_id)
+        # if we have an ip, ping the /health endpoint on port 8000
+        if vm.ip:
+            try:
+                r = requests.get(f"http://{vm.ip}:8000/health", timeout=2)
+                if r.status_code == 200:
+                    vm.status = Status.READY
+                    return Response(status_code=status.HTTP_200_OK)
+                else:
+                    # not healthy yet
+                    return Response(status_code=status.HTTP_201_CREATED)
+            except Exception as e:
+                print(f"Health check failed for {vm.game_id} at {vm.ip}: {e}")
+                return Response(status_code=status.HTTP_201_CREATED)
+        # no ip means still spinning up
+        return Response(status_code=status.HTTP_201_CREATED)
     chk = g.p.scale(request.gameId)
     if chk is not None:
         return Response(status_code=status.HTTP_201_CREATED) # created but not ready
