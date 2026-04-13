@@ -1,18 +1,20 @@
 import { useState } from 'react';
-import { Burger, Container, Group, Text, Anchor } from '@mantine/core';
+import { Avatar, Burger, Container, Drawer, Group, Text, Anchor } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import classes from '../styles/comps/Header.module.css';
 import Brand from './Brand';
+import SidePanel from './sidebar/SidePanel';
 
 interface HeaderProps {
   links: string[],
-  title: string,
+  username: string,
   isSpectator?: boolean
 }
 
 export default function HeaderSimple(props: HeaderProps) {
   const [opened, { toggle }] = useDisclosure(false);
   const [active, setActive] = useState(props.links[0]);
+  const [openFriend, { toggle: toggleFriend }] = useDisclosure(false);
 
   const items = props.links.map((link) => (
     <Anchor
@@ -53,6 +55,20 @@ export default function HeaderSimple(props: HeaderProps) {
           size="sm"
           className={classes.burger}
         />
+
+        <Avatar
+          ml="auto"
+          name={props.username}
+          size="md"
+          radius="sm"
+          style={{ cursor: 'pointer' }}
+          onClick={toggleFriend}
+          alt="Profile picture"
+        />
+
+
+
+        <SidePanel opened={openFriend} onClose={toggleFriend} />
       </Container>
     </header>
   );

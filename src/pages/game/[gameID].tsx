@@ -2,13 +2,12 @@ import { ActionIcon, Box, Button, Center, Group, Loader, Select, Stack, Tabs, Te
 import { Editor } from '@monaco-editor/react';
 import { useRouter } from 'next/router';
 import { useEffect, useState, useRef } from 'react';
-import { io, Socket } from 'socket.io-client';
+import { Socket } from 'socket.io-client';
 import { IconEye, IconPlayerPlay, IconPlayerTrackNextFilled, IconPlus } from '@tabler/icons-react';
 import { usePostHog } from 'posthog-js/react';
 
 import ChatBox from '@/components/ChatBox';
 import GameTimer from '@/components/GameTimer';
-import Navbar from '@/components/Navbar';
 import TeamSelect from "@/components/TeamSelect";
 import { TeamCount } from "@/components/TeamSelect";
 import type { ActiveProblem } from '@/components/ProblemBox';
@@ -19,10 +18,12 @@ import { showRoleSwapWarning } from '@/components/notifications';
 import { Role, GameStatus, GameType } from "@prisma/client";
 import { authClient } from "@/lib/auth-client";
 import GameTestCase from '@/components/gameTests/GameTestCase';
-import { GameTestCasesProvider, TestableCase, useTestCases } from "@/components/contexts/GameTestCasesContext";
+import { GameTestCasesProvider, TestableCase, useTestCases } from "@/contexts/GameTestCasesContext";
 import { ParameterType } from '@/lib/ProblemInputOutput';
 import NewParameterButton from '@/components/gameTests/NewParameterButton';
-import { GameStateProvider, useGameState } from '@/components/contexts/GameStateContext';
+import { GameStateProvider, useGameState } from '@/contexts/GameStateContext';
+import { useSocket } from '@/contexts/SocketContext';
+import { useMatchmaking } from '@/contexts/MatchmakingContext';
 import styles from '@/styles/GameRoom.module.css';
 
 interface RoomDetailsResponse {
@@ -70,15 +71,14 @@ function PlayGameRoom() {
   const { data: session } = authClient.useSession();
   const posthog = usePostHog();
 
-  // 2. Set up our state for the socket connection and the user's role
+  // 2. Set up our game state and the user's role
   const [role, setRole] = useState<Role | null>(null);
-  const [socket, setSocket] = useState<Socket | null>(null);
   const [gameState, setGameState] = useState<GameStatus>(GameStatus.WAITING);
   const [loading, setLoading] = useState(true);
   const [problem, setProblem] = useState<ActiveProblem | null>(null);
   const [teams, setTeams] = useState<TeamCount[]>([]);
   const [teamSelected, setTeamSelected] = useState<string | null>(null);
-  const [liveCode, setLiveCode] = useState<string>("// Waiting for code...");
+  const [liveCode, setLiveCode] = useState<string>("function solution(a, b) { \n\treturn a + b;\n}");
   const [activeTestId, setActiveTestId] = useState<number>(0);
   const [gameType, setGameType] = useState<GameType | null>(null);
 
@@ -87,6 +87,8 @@ function PlayGameRoom() {
   // Context <3
   const testCaseCtx = useTestCases();
   const gameStateCtx = useGameState();
+  const { socket } = useSocket();
+  const { setStatus } = useMatchmaking();
 
   const [spectatorView, setSpectatorView] = useState<Role>(Role.SPECTATOR);
 
@@ -96,13 +98,11 @@ function PlayGameRoom() {
   const toggleProblemVisibility = () => setIsProblemVisible((prev) => !prev);
   const [editorFocused, setEditorFocused] = useState(false);
 
-  const socketRef = useRef<Socket | null>(null);
-
   const isSpectator = role === Role.SPECTATOR;
 
   // ONLY HAPPENS ON PAGE LAUNCH
   useEffect(() => {
-    if (!session?.user.id || !gameId || socketRef.current) return;
+    if (!session?.user.id || !gameId || !socket) return;
 
     gameStateCtx.setGameId(gameId);
 
@@ -143,27 +143,24 @@ function PlayGameRoom() {
     setLoading(false);
 
     // 3. Initialize the connection to our custom server.js backend
-    const socketInstance = io();
-    socketRef.current = socketInstance;
-    setSocket(socketRef.current);
-    gameStateCtx.setSocket(socketRef.current);
 
-    socketInstance.emit("register", { userId: session.user.id });
+    const teamUpdatedHandler = ({ teamId, playerCount }: { teamId: string; playerCount: number }) => {
+      setTeams((prev) => prev.map((t) => (t.teamId === teamId ? { ...t, playerCount } : t)));
+    };
+
+    const errorHandler = (data: JSON) => {
+      console.error("Socket error:", data);
+    };
 
     // This is so if another person picks while someone is deciding
-    socketInstance.on("teamUpdated", ({ teamId, playerCount }) => {
-      setTeams((prev) =>
-        prev.map((t) => (t.teamId === teamId ? { ...t, playerCount } : t)),
-      );
-    });
+    socket.on("teamUpdated", teamUpdatedHandler);
 
-    socketInstance.on("error", (data) => {
-      console.error("Socket error:", data);
-    });
+    socket.on("error", errorHandler);
 
     // 6. Cleanup: disconnect the socket if the user leaves the page
     return () => {
-      socketInstance.disconnect();
+      socket.off("teamUpdated", teamUpdatedHandler);
+      socket.off("error", errorHandler);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameId, session?.user.id]);
@@ -193,6 +190,7 @@ function PlayGameRoom() {
     const handleGameEnded = () => {
       posthog.capture("game_ended", { gameId });
       setGameState(GameStatus.FINISHED);
+      setStatus("idle"); // reset matchmaking status so players can queue again from results page
       router.push(`/results/${gameId}`);
     };
 
@@ -466,11 +464,6 @@ function PlayGameRoom() {
       {showGameUI && (
         <Box data-testid={(effectiveRole === Role.CODER) ? "coder-pov" : "tester-pov"} h="100vh" style={{ display: "flex", flexDirection: "column" }}>
           <RoleFlipPopup gameState={gameState} />
-          <Navbar
-            links={["Timer", "Players", "Tournament"]}
-            title="CODE BATTLEGROUNDS | GAMEMODE: TIMER"
-            isSpectator={isSpectator}
-          />
 
           <Box style={{ flex: 1, display: "flex", overflow: "hidden" }}>
             {/* Left Sidebar */}

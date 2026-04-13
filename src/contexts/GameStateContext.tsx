@@ -8,11 +8,9 @@ import {
   type SetStateAction,
 } from "react";
 import { type Socket } from "socket.io-client";
+import { useSocket } from "./SocketContext";
 
 export interface GameStateContextAPI {
-  socket: Socket | undefined,
-  setSocket: Dispatch<SetStateAction<Socket | undefined>>,
-
   teamId: string | undefined,
   setTeamId: Dispatch<SetStateAction<string | undefined>>
   gameId: string | undefined,
@@ -28,15 +26,13 @@ export interface GameStateContextAPI {
 export const GameStateContext = createContext<GameStateContextAPI | null>(null);
 
 export const GameStateProvider = ({ children }: { children: ReactNode }) => {
-  const [socket, setSocket] = useState<Socket>();
+  const { socket } = useSocket();
   const [teamId, setTeamId] = useState<string>();
   const [gameId, setGameId] = useState<string>();
   const [gameType, setGameType] = useState<GameType>();
   const [code, setCode] = useState<string>();
 
   const v: GameStateContextAPI = {
-    socket,
-    setSocket,
     teamId,
     setTeamId,
     gameId,

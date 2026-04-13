@@ -94,6 +94,10 @@ function createGameService(stateRedis) {
       // TODO: remove expiration key if not expired yet.
       // potential future cleanup: code, submissions, etc.
     },
+
+    async getSocketId(userId) {
+      return stateRedis.get(`socket:${userId}`);
+    }
   };
 }
 

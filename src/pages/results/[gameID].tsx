@@ -14,7 +14,6 @@ import {
   IconArrowRight,
   IconHome
 } from "@tabler/icons-react";
-import Navbar from "@/components/Navbar";
 import { useRouter } from "next/router";
 import { authClient } from "@/lib/auth-client";
 import { usePostHog } from "posthog-js/react";
@@ -142,11 +141,7 @@ export default function Results() {
 
       <div className={styles.resultsPage}>
         <div className={styles.gradient} />
-        
-        <Navbar
-          links={["Time", "Players", "Tournament"]}
-          title="Code BattleGrounds"
-        />
+
 
         <Container className={styles.container} size="xl">
           {/* Victory Banner */}

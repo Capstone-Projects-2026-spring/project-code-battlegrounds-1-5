@@ -1,7 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
-import { useRouter } from 'next/router';
+import { useRef } from 'react';
 import Head from 'next/head';
-import { io, Socket } from 'socket.io-client';
 import {
     Button,
     Center,
@@ -17,101 +15,59 @@ import {
     Stack,
     Badge,
     ThemeIcon,
-    Progress
 } from '@mantine/core';
 import { IconUsers, IconUser, IconTrophy } from '@tabler/icons-react';
 import { GameType, ProblemDifficulty } from '@prisma/client';
 import { authClient } from '@/lib/auth-client';
 import { usePostHog } from 'posthog-js/react';
+import { useMatchmaking } from '@/contexts/MatchmakingContext';
+import { useParty } from '@/contexts/PartyContext';
+import { useSocket } from '@/contexts/SocketContext';
 import classes from '@/styles/Matchmaking.module.css';
-
-type QueueStatus = 'idle' | 'queued' | 'matched' | 'error';
 
 export default function QueuePage() {
     const posthog = usePostHog();
-
-    const router = useRouter();
     const { data: session, isPending } = authClient.useSession();
 
-    const socketRef = useRef<Socket | null>(null);
-    const [socket, setSocket] = useState<Socket | null>(null);
+    const { socket } = useSocket();
 
-    const [gameType, setGameType] = useState<GameType>(GameType.TWOPLAYER);
-    const [difficulty, setDifficulty] = useState<ProblemDifficulty>(ProblemDifficulty.MEDIUM);
-    const [status, setStatus] = useState<QueueStatus>('idle');
+    const {
+        status,
+        setStatus,
+        gameType,
+        setGameType,
+        difficulty,
+        setDifficulty,
+        gameId,
+    } = useMatchmaking();
+
+    const { joinedParty, partyMember, partyCode } = useParty();
 
     // Tracks what the user actually queued for so leaveQueue cancels the right one
     const queuedSelectionRef = useRef<{ gameType: GameType; difficulty: ProblemDifficulty } | null>(null);
 
-    const partyId = (router.query.partyId as string) ?? null; // TODO: this is a bit hacky, we should have a proper lobby component ideally throughout the app instead of just a query param
+    // TODO: pull from PartyContext once party member is wired up
+    const inParty = partyMember !== null || joinedParty !== null;
 
-    useEffect(() => {
-        if (!isPending && !session) {
-            router.push('/auth');
-        }
-    }, [isPending, session, router]);
-
-    useEffect(() => {
-        if (!session?.user.id) return;
-        if (socketRef.current) return;
-
-        const socketInstance = io();
-        socketRef.current = socketInstance;
-        setSocket(socketRef.current);
-
-        socketInstance.emit('register', { userId: session.user.id });
-
-        socketInstance.on('matchFound', ({ gameId }) => {
-            setStatus('matched');
-            posthog.capture("match_found", {
-                gameId,
-                gameType,
-                difficulty
-            });
-            router.push({
-                pathname: `/game/${gameId}`,
-            });
-        });
-
-        socketInstance.on('queueStatus', ({ status: queueStatus, error }) => {
-            if (error) {
-                setStatus('error');
-                return;
-            }
-            if (queueStatus === 'already_queued') setStatus('queued');
-            if (queueStatus === 'queued') setStatus('queued');
-            if (queueStatus === 'matched') setStatus('matched');
-        });
-
-        return () => {
-            socketInstance.disconnect();
-            socketRef.current = null;
-        };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [session?.user.id]);
 
     const handleJoinQueue = () => {
         if (!socket || !session?.user.id) return;
         queuedSelectionRef.current = { gameType, difficulty };
         setStatus('queued');
-        posthog.capture("user_joined_queue", {
-            gameType,
-            difficulty
-        });
+        posthog.capture('user_joined_queue', { gameType, difficulty });
+        socket.emit('partySearch', { partyMember, state: 'queued' });
         socket.emit('joinQueue', {
             userId: session.user.id,
             gameType,
             difficulty,
-            partyId,
+            partyId: partyMember ? partyCode : null,
         });
     };
 
     const handleLeaveQueue = () => {
         if (!socket || !queuedSelectionRef.current) return;
-        posthog.capture("user_left_queue", {
-            gameType,
-            difficulty
-        });
+        posthog.capture('user_left_queue', { gameType, difficulty });
+        socket.emit('partySearch', { partyMember, state : 'idle'});
         socket.emit('leaveQueue', {
             gameType: queuedSelectionRef.current.gameType,
             difficulty: queuedSelectionRef.current.difficulty,
@@ -151,30 +107,18 @@ export default function QueuePage() {
 
             <Box className={classes.matchmakingPage}>
                 <Container size="sm" py={60}>
-                    {/* Header Section */}
                     <Stack gap="xl" mb={60} className={classes.header}>
                         <Box ta="center">
-                            <Title
-                                order={1}
-                                size="h1"
-                                mb="md"
-                                className={classes.title}
-                            >
+                            <Title order={1} size="h1" mb="md" className={classes.title}>
                                 Find Your Match
                             </Title>
                         </Box>
                     </Stack>
 
-                    {/* Main Card */}
-                    <Card
-                        withBorder
-                        shadow="md"
-                        radius="lg"
-                        padding="xl"
-                        className={classes.mainCard}
-                    >
+                    <Card withBorder shadow="md" radius="lg" padding="xl" className={classes.mainCard}>
                         <Stack gap="xl">
-                            {/* Game Mode Selection */}
+
+                            {/* Game Mode */}
                             <Box>
                                 <Group justify="space-between" mb="xs">
                                     <Text size="sm" fw={600}>Game Mode</Text>
@@ -184,8 +128,11 @@ export default function QueuePage() {
                                     fullWidth
                                     size="md"
                                     value={gameType}
-                                    onChange={(val) => setGameType(val as GameType)}
-                                    disabled={status === 'queued' || status === 'matched'}
+                                    onChange={(val) => {
+                                        if (partyMember) socket?.emit('updateQueueSelection', { gameType: val as GameType, difficulty, partyMember });
+                                        setGameType(val as GameType);
+                                    }}
+                                    disabled={status === 'queued' || status === 'matched' || joinedParty !== null }
                                     data={[
                                         {
                                             label: (
@@ -194,7 +141,7 @@ export default function QueuePage() {
                                                     <span>Co-Op</span>
                                                 </Center>
                                             ),
-                                            value: GameType.TWOPLAYER
+                                            value: GameType.TWOPLAYER,
                                         },
                                         {
                                             label: (
@@ -203,14 +150,14 @@ export default function QueuePage() {
                                                     <span data-testid="mode-2v2">2v2</span>
                                                 </Center>
                                             ),
-                                            value: GameType.FOURPLAYER
+                                            value: GameType.FOURPLAYER,
                                         },
                                     ]}
                                     className={classes.segmentedControl}
                                 />
                             </Box>
 
-                            {/* Difficulty Selection */}
+                            {/* Difficulty */}
                             <Box>
                                 <Group justify="space-between" mb="xs">
                                     <Text size="sm" fw={600}>Difficulty</Text>
@@ -218,41 +165,33 @@ export default function QueuePage() {
                                 <Select
                                     size="md"
                                     value={difficulty}
-                                    onChange={(val) => setDifficulty(val as ProblemDifficulty)}
-                                    disabled={status === 'queued' || status === 'matched'}
-                                    data={Object.values(ProblemDifficulty).map(d => ({
+                                    onChange={(val) => {
+                                        if (partyMember) socket?.emit('updateQueueSelection', { gameType, difficulty: val as ProblemDifficulty, partyMember });
+                                        setDifficulty(val as ProblemDifficulty);
+                                    }}
+                                    disabled={status === 'queued' || status === 'matched' || joinedParty !== null }
+                                    data={Object.values(ProblemDifficulty).map((d) => ({
                                         label: difficultyLabels[d],
                                         value: d,
                                     }))}
-                                    styles={{
-                                        input: {
-                                            fontWeight: 500,
-                                        }
-                                    }}
+                                    styles={{ input: { fontWeight: 500 } }}
                                 />
                             </Box>
 
-                            {/* Party ID Badge */}
-                            {partyId && (
-                                <Badge
-                                    size="lg"
-                                    variant="light"
-                                    color="blue"
-                                    leftSection={<IconUsers size={14} />}
-                                >
+                            {/* Party badge — TODO: replace partyId with PartyContext */}
+                            {inParty && (
+                                <Badge size="lg" variant="light" color="blue" leftSection={<IconUsers size={14} />}>
                                     Queueing with lobby
                                 </Badge>
                             )}
 
-                            {/* Status Display */}
+                            {/* Status */}
                             {status === 'queued' && (
                                 <Card withBorder padding="md" className={classes.statusCard}>
                                     <Stack gap="md">
-                                        <Group justify="space-between">
-                                            <Group gap="sm">
-                                                <Loader size="sm" />
-                                                <Text fw={500}>Searching for opponents...</Text>
-                                            </Group>
+                                        <Group gap="sm">
+                                            <Loader size="sm" />
+                                            <Text fw={500}>Searching for opponents...</Text>
                                         </Group>
                                     </Stack>
                                 </Card>
@@ -265,7 +204,7 @@ export default function QueuePage() {
                                             <IconTrophy size={24} />
                                         </ThemeIcon>
                                         <Text fw={600} size="lg" c="green">Match Found!</Text>
-                                        <Text size="sm" c="dimmed">Preparing your battle arena...</Text>
+                                        <Text size="sm" c="dimmed">Preparing your battle arena... {gameId}</Text>
                                         <Loader size="sm" color="green" />
                                     </Stack>
                                 </Card>
@@ -274,21 +213,22 @@ export default function QueuePage() {
                             {status === 'error' && (
                                 <Card withBorder padding="md" className={classes.errorCard}>
                                     <Text c="red" ta="center" fw={500}>
-                                        ⚠️ Something went wrong. Please try again.
+                                        Something went wrong. Please try again.
                                     </Text>
                                 </Card>
                             )}
 
-                            {/* Action Button */}
+                            {/* Action */}
                             {status === 'idle' || status === 'error' ? (
                                 <Button
                                     fullWidth
                                     size="lg"
                                     radius="md"
                                     onClick={handleJoinQueue}
+                                    disabled={joinedParty !== null}
                                     className={classes.primaryButton}
                                 >
-                                    {partyId ? 'Queue with Lobby' : 'Find Match'}
+                                    {inParty ? 'Queue with Lobby' : 'Find Match'}
                                 </Button>
                             ) : (
                                 <Button
@@ -298,7 +238,7 @@ export default function QueuePage() {
                                     color="red"
                                     variant="outline"
                                     onClick={handleLeaveQueue}
-                                    disabled={status === 'matched'}
+                                    disabled={status === 'matched' || joinedParty !== null}
                                     className={classes.cancelButton}
                                 >
                                     Cancel Search
@@ -307,7 +247,6 @@ export default function QueuePage() {
                         </Stack>
                     </Card>
 
-                    {/* Help Text */}
                     <Text size="sm" c="dimmed" ta="center" mt="xl">
                         New to Code Battlegrounds?{' '}
                         <Text
@@ -321,7 +260,6 @@ export default function QueuePage() {
                     </Text>
                 </Container>
 
-                {/* Animated background gradient */}
                 <div className={classes.gradient} aria-hidden="true" />
             </Box>
         </>

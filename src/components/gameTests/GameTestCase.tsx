@@ -2,9 +2,9 @@ import { ActionIcon, Button, Group, Stack, Table, Text, Tooltip } from "@mantine
 import { IconPlayerPlay, IconTrash } from "@tabler/icons-react";
 
 import { ParameterType } from "@/lib/ProblemInputOutput";
-import { TestableCase } from "../contexts/GameTestCasesContext";
+import { TestableCase } from "../../contexts/GameTestCasesContext";
 import ParameterInput from "./ParameterInput";
-import { useGameState } from "../contexts/GameStateContext";
+import { useGameState } from "../../contexts/GameStateContext";
 import { useEffect, useState } from "react";
 import { usePostHog } from "posthog-js/react";
 

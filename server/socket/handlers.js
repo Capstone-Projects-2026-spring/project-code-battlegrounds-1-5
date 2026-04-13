@@ -14,7 +14,7 @@ const ParameterPrimitive = z.union([
 const Parameter = z.object({
   name: z.string(),
   type: ParameterPrimitive,
-  value: z.string().nullable(), // Will be coerced into the correct primitive based on type.
+  value: z.string().nullable(),
   isOutputParameter: z.optional(z.boolean().default(false))
 });
 
@@ -30,7 +30,7 @@ const joinGameSchema = z.object({
 
 const codeChangeSchema = z.object({
   teamId: z.string(),
-  code: z.string().max(10000) // Adjust max length as needed
+  code: z.string().max(10000)
 });
 
 const messageSchema = z.object({
@@ -42,7 +42,7 @@ const messageSchema = z.object({
 
 const chatMessageSchema = z.object({
   teamId: z.string(),
-  message: messageSchema 
+  message: messageSchema
 });
 
 const testableCaseSchema = z.object({
@@ -68,14 +68,31 @@ const requestTeamUpdateSchema = z.object({
 
 const submitCodeSchema = z.object({
   roomId: z.string(),
-  code: z.string().max(10000) // Adjust max length as needed
+  code: z.string().max(10000)
 });
 
+// ─── Social schemas ───────────────────────────────────────────────────────────
 
-// Socket event handlers isolated here
-// Expects io (Server), socket (Socket), and services to manage game state
+const partyInviteSchema = z.object({
+  toUserId: z.string(),
+});
+
+const partyJoinByCodeSchema = z.object({
+  code: z.string().min(1).max(10),
+});
+
+const friendRequestSchema = z.object({
+  friendCode: z.string().min(1).max(20),
+});
+
+const friendRequestRespondSchema = z.object({
+  requestId: z.string(),
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 function registerSocketHandlers(io, socket, services) {
-  const { gameService, matchmakingService } = services;
+  const { gameService, matchmakingService, inviteService } = services;
 
   console.log(`New connection: ${socket.id}`);
 
@@ -89,14 +106,13 @@ function registerSocketHandlers(io, socket, services) {
     const { userId } = payload;
     socket.userId = userId;
     try {
-      await gameService.registerSocketToUser(userId, socket.id); // needed before to emit from api to socket leaving in case useful later down the road
+      await gameService.registerSocketToUser(userId, socket.id);
     } catch (e) {
       console.error('Error registering socket to user in Redis', e);
       socket.emit('error', { e, message: 'Failed to register socket.' });
     }
-
   });
- 
+
   socket.on('joinGame', async (data) => {
     const payload = validate(joinGameSchema, data);
     if (!payload) {
@@ -113,15 +129,11 @@ function registerSocketHandlers(io, socket, services) {
       socket.emit('error', { e, message: 'Failed to join game room.' });
     }
 
-    // OK to bind to socket object because there are individual
-    // sockets being created for every request. This is **not**
-    // a global socket.
     socket.teamId = teamId;
     socket.gameId = gameId;
 
     let numPlayers = 0;
 
-    // Determine how many people are currently in this specific room (cluster-aware)
     try {
       const socketsInRoom = await io.in(gameId).allSockets();
       console.log(`Room ${gameId} now has ${socketsInRoom.size} sockets`);
@@ -143,7 +155,7 @@ function registerSocketHandlers(io, socket, services) {
 
     if (gameExists) {
       try {
-        const time = await gameService.startGameIfNeeded(gameId); // gets the time
+        const time = await gameService.startGameIfNeeded(gameId);
         socket.emit('gameStarted', {
           start: time.remaining,
           _duration: gameService.GAME_DURATION_MS
@@ -153,7 +165,6 @@ function registerSocketHandlers(io, socket, services) {
         socket.emit('error', { e, message: 'Failed to start game.' });
       }
     } else if ((numPlayers === 4 && gameType === GameType.FOURPLAYER) || (numPlayers === 2 && gameType === GameType.TWOPLAYER)) {
-      console.log('gameType received:', gameType, 'expected:', GameType.TWOPLAYER, 'match:', gameType === GameType.TWOPLAYER);
       try {
         io.to(gameId).emit('gameStarting');
         setTimeout(async () => {
@@ -167,7 +178,6 @@ function registerSocketHandlers(io, socket, services) {
       }
     }
 
-    // Send latest code state from Redis if present so the joiner syncs
     try {
       const latestCode = await gameService.getLatestCode(teamId);
       if (latestCode != null) {
@@ -196,7 +206,6 @@ function registerSocketHandlers(io, socket, services) {
       socket.emit('error', { e, message: 'Failed to save code update.' });
     }
 
-    // Broadcast the updated code to everyone else in the same room (except the sender)
     socket.to(teamId).emit('receiveCodeUpdate', code);
   });
 
@@ -216,7 +225,6 @@ function registerSocketHandlers(io, socket, services) {
       socket.emit('error', { e, message: 'Failed to send chat message.' });
     }
 
-    // Broadcast the chat message to everyone else in the same room (except the sender)
     socket.to(teamId).emit('receiveChat', message);
   });
 
@@ -279,25 +287,17 @@ function registerSocketHandlers(io, socket, services) {
     const { roomId, code } = payload;
 
     if (!roomId) return;
-    
-    // TODO: Store submission
-    //Broadcast to both players to redirect to results
 
     try {
-      // Post results to the code executor
       fetch("http://fake-backend.lol:6969/execute", {
         method: "POST",
-        body: {
-          roomId,
-          code
-        }
+        body: { roomId, code }
       });
     } catch (error) {
       console.error("Error POSTing to code executor:", error);
     } finally {
       io.to(roomId).emit('gameEnded');
     }
-
   });
 
   /**
@@ -311,13 +311,7 @@ function registerSocketHandlers(io, socket, services) {
    * @see GameTestCasesContext#TestableCase
    */
   socket.on("submitTestCases", async (data) => {
-    const {
-      gameId,
-      teamId,
-      code,
-      testCases,
-      runIDs
-    } = data;
+    const { gameId, teamId, code, testCases, runIDs } = data;
 
     const res = await fetch("http://fake-backend.lol:6969/execute-tests", {
       method: "POST",
@@ -330,10 +324,6 @@ function registerSocketHandlers(io, socket, services) {
       },
     });
     const json = await res.json();
-
-    // json.testCases should realistically only modify a single property
-    // on the existing testCases object: `computedOutput`. Syncing this
-    // back to the frontend is handled over there :)
     socket.emit("receiveTestCaseSync", json.testCases);
   });
 
@@ -346,8 +336,7 @@ function registerSocketHandlers(io, socket, services) {
     const { teamId, playerCount } = payload;
 
     if (!playerCount) return;
-    io.emit('teamUpdated', { teamId, playerCount }); // TODO: fix - this emits to everyone, scope it to game room except users don't join game room until after TeamSelect, 
-    // so need to figure out a way to emit to all users in the game room including those in team select but not in the game room yet thinking another id to join off of that can be left after teamselect is done
+    io.emit('teamUpdated', { teamId, playerCount });
   });
 
   socket.on('joinQueue', async ({ userId, gameType, difficulty, partyId }) => {
@@ -356,12 +345,203 @@ function registerSocketHandlers(io, socket, services) {
   });
 
   socket.on('leaveQueue', async ({ gameType, difficulty }) => {
-      if (!socket.userId) return;
-      const result = await matchmakingService.leaveQueue(socket.userId, gameType, difficulty);
-      socket.emit('queueStatus', result);
+    if (!socket.userId) return;
+    const result = await matchmakingService.leaveQueue(socket.userId, gameType, difficulty);
+    socket.emit('queueStatus', result);
   });
 
-  // 3. Handle graceful disconnection
+  socket.on('updateQueueSelection', async ({ gameType, difficulty, partyMember }) => {
+    if (!socket.userId) return;
+    const partyMemberSocket = await gameService.getSocketId(partyMember.userId);
+    io.to(partyMemberSocket).emit('receiveQueueSelection', { gameType, difficulty });
+  });
+
+  socket.on('partySearch', async ({ partyMember, state }) => {
+    if (!socket.userId) return;
+    if (!partyMember) return;
+    const partyMemberSocket = await gameService.getSocketId(partyMember.userId);
+    io.to(partyMemberSocket).emit('partySearchUpdate', { state });
+  });
+
+  // ─── Party invite handlers ────────────────────────────────────────────────
+
+  socket.on('partyInvite', async (data) => {
+    const payload = validate(partyInviteSchema, data);
+    if (!payload) {
+      socket.emit('error', { message: 'Invalid payload for partyInvite.' });
+      return;
+    }
+    if (!socket.userId) return;
+
+    const result = await inviteService.sendPartyInvite(socket.userId, payload.toUserId);
+    if (result.error) {
+      socket.emit('error', { message: result.error });
+      return;
+    }
+
+    // Notify the invitee so their pendingInvite state updates immediately
+    const toSocketId = await gameService.getSocketId(payload.toUserId);
+    if (toSocketId) {
+      io.to(toSocketId).emit('partyInviteReceived', result.invite);
+    }
+  });
+
+  socket.on('partyInviteAccept', async () => {
+    if (!socket.userId) return;
+
+    const result = await inviteService.acceptPartyInvite(socket.userId);
+    if (result.error) {
+      socket.emit('error', { message: result.error });
+      return;
+    }
+
+    // Tell the accepter their partyJoined so InvitesTab can clear pendingInvite
+    socket.emit('partyJoined', result.partyOwner);
+
+    // Tell the owner their guest slot is now filled
+    const ownerSocketId = await gameService.getSocketId(result.partyOwner.userId);
+    if (ownerSocketId) {
+      io.to(ownerSocketId).emit('partyMemberJoined', result.member);
+    }
+  });
+
+  socket.on('partyInviteDecline', async () => {
+    if (!socket.userId) return;
+
+    const result = await inviteService.declinePartyInvite(socket.userId);
+    if (result.error) {
+      socket.emit('error', { message: result.error });
+    }
+  });
+
+  socket.on('partyKick', async () => {
+    if (!socket.userId) return;
+
+    const result = await inviteService.kickPartyMember(socket.userId);
+    if (result.error) {
+      socket.emit('error', { message: result.error });
+      return;
+    }
+
+    // Tell the kicked user their slot is cleared so their partyCode view resets
+    const kickedSocketId = await gameService.getSocketId(result.kickedUserId);
+    if (kickedSocketId) {
+      io.to(kickedSocketId).emit('joinedPartyLeft');
+    }
+  });
+
+  socket.on('partyJoinByCode', async (data) => {
+    const payload = validate(partyJoinByCodeSchema, data);
+    if (!payload) {
+      socket.emit('error', { message: 'Invalid payload for partyJoinByCode.' });
+      return;
+    }
+    if (!socket.userId) return;
+
+    const result = await inviteService.joinPartyByCode(socket.userId, payload.code);
+    if (result.error) {
+      socket.emit('error', { message: result.error });
+      return;
+    }
+
+    // Tell the joiner they're in so PartySlots can update their own view
+    socket.emit('partyJoined', result.partyOwner);
+
+    // Tell the owner their guest slot is filled with the joiner's details
+    const ownerSocketId = await gameService.getSocketId(result.partyOwner.userId);
+    if (ownerSocketId) {
+      io.to(ownerSocketId).emit('partyMemberJoined', result.member);
+    }
+  });
+
+  socket.on('partyLeave', async () => {
+    if (!socket.userId) return;
+
+    const result = await inviteService.leaveParty(socket.userId);
+    if (result.error) {
+      socket.emit('error', { message: result.error });
+      return;
+    }
+
+    const ownerSocketId = await gameService.getSocketId(result.ownerId);
+    if (ownerSocketId) {
+      io.to(ownerSocketId).emit('partyMemberLeft');
+    }
+  });
+
+  // ─── Friend request handlers ──────────────────────────────────────────────
+
+  socket.on('friendRequest', async (data) => {
+    const payload = validate(friendRequestSchema, data);
+    if (!payload) {
+      socket.emit('error', { message: 'Invalid payload for friendRequest.' });
+      return;
+    }
+    if (!socket.userId) return;
+
+    const result = await inviteService.sendFriendRequest(socket.userId, payload.friendCode);
+    if (result.error) {
+      socket.emit('error', { message: result.error });
+      return;
+    }
+
+    // Confirm to sender so their outgoing requests list updates
+    socket.emit('friendRequestSent', result.request);
+
+    // Notify the addressee so their InvitesTab updates immediately
+    const toSocketId = await gameService.getSocketId(result.addresseeId);
+    if (toSocketId) {
+      io.to(toSocketId).emit('friendRequestReceived', { ...result.request, direction: 'incoming' });
+    }
+  });
+
+  socket.on('friendRequestAccept', async (data) => {
+    const payload = validate(friendRequestRespondSchema, data);
+    if (!payload) {
+      socket.emit('error', { message: 'Invalid payload for friendRequestAccept.' });
+      return;
+    }
+    if (!socket.userId) return;
+
+    const result = await inviteService.acceptFriendRequest(socket.userId, payload.requestId);
+    if (result.error) {
+      socket.emit('error', { message: result.error });
+      return;
+    }
+
+    // Update the accepter's friends list
+    socket.emit('friendRequestAccepted', result.friend);
+
+    // Update the original requester's friends list
+    const requesterSocketId = await gameService.getSocketId(result.requesterId);
+    if (requesterSocketId) {
+      io.to(requesterSocketId).emit('friendRequestAccepted', result.requesterFriend);
+    }
+  });
+
+  socket.on('friendRequestDecline', async (data) => {
+    const payload = validate(friendRequestRespondSchema, data);
+    if (!payload) {
+      socket.emit('error', { message: 'Invalid payload for friendRequestDecline.' });
+      return;
+    }
+    if (!socket.userId) return;
+
+    const result = await inviteService.declineFriendRequest(socket.userId, payload.requestId);
+    if (result.error) {
+      socket.emit('error', { message: result.error });
+      return;
+    }
+
+    // Notify the requester their outgoing request was declined
+    const requesterSocketId = await gameService.getSocketId(result.requesterId);
+    if (requesterSocketId) {
+      io.to(requesterSocketId).emit('friendRequestDeclined', { requestId: payload.requestId });
+    }
+  });
+
+  // ─── Disconnect ───────────────────────────────────────────────────────────
+
   socket.on('disconnect', async () => {
     if (socket.gameId && socket.userId) {
       try {
@@ -373,7 +553,7 @@ function registerSocketHandlers(io, socket, services) {
       }
     }
     if (socket.userId) {
-        await matchmakingService.leaveAllQueues(socket.userId);
+      await matchmakingService.leaveAllQueues(socket.userId);
     }
   });
 }
