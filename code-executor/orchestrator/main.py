@@ -1,4 +1,4 @@
-from typing import Optional, List
+from typing import Optional, List, Tuple
 
 from fastapi import FastAPI, status
 from fastapi.responses import JSONResponse, PlainTextResponse
@@ -9,7 +9,8 @@ from contextlib import asynccontextmanager
 from fastapi_globals import g, GlobalsMiddleware
 from starlette.responses import Response
 
-# TODO: this can now create vms. still need to have the request-warm-vm endpoint ping on subsequent requests until ready, as well as deleting vms
+# TODO: this can now create vms (but needs to make new image as it won't automatically update git repo - maybe add git commands to startup?).
+# TODO: still need to have the request-warm-vm endpoint ping on subsequent requests until ready, as well as deleting vms
 
 class Status(Enum):
     STARTING = 1
@@ -30,8 +31,8 @@ class VMProvisioner:
         self.zones = zones
         self.client = compute_v1.InstancesClient()
 
-    def create_instance(self, name: str) -> bool:
-        # tries all zones and returns True on first accepted creation, False if none accepted
+    def create_instance(self, name: str) -> Tuple[bool, Optional[str]]:
+        # tries all zones and returns (True, ip) on first accepted creation, (False, None) if none accepted
         for zone in self.zones:
             try:
                 instance = compute_v1.Instance()
@@ -43,12 +44,35 @@ class VMProvisioner:
                     instance_resource=instance,
                 )
                 print(f"Instance creation requested for {name} in zone {zone}. Operation: {op.name if hasattr(op, 'name') else 'N/A'}")
-                return True
+                # Try to fetch instance details immediately to get IP (may be None if not ready yet)
+                ip: Optional[str] = None
+                try:
+                    created = self.client.get(project=self.project_id, zone=zone, instance=name)
+                    # Prefer external NAT IP if available, fallback to internal
+                    if getattr(created, 'network_interfaces', None):
+                        for nic in created.network_interfaces:
+                            # External NAT IP
+                            if getattr(nic, 'access_configs', None):
+                                for ac in nic.access_configs:
+                                    nat_ip = getattr(ac, 'nat_i_p', None) or getattr(ac, 'nat_ip', None)
+                                    if nat_ip:
+                                        ip = nat_ip
+                                        break
+                            # Internal IP (if external not found)
+                            if not ip:
+                                internal_ip = getattr(nic, 'network_i_p', None) or getattr(nic, 'network_ip', None)
+                                if internal_ip:
+                                    ip = internal_ip
+                            if ip:
+                                break
+                except Exception as ge:
+                    print(f"Instance created but unable to fetch IP for {name} in zone {zone} yet: {ge}")
+                return True, ip
             except Exception as e:
                 print(f"Unable to create instance {name} in zone {zone}: {e}")
                 continue
         print("No zones accepted the instance creation request.")
-        return False
+        return False, None
 
 class VM:
     def __init__(self, game_id):
@@ -58,13 +82,14 @@ class VM:
 
 class Pool: # we're gonna make a VM per game. based on my math, if a VM is 50$ a month, it will cost us a whopping .8 cents to keep a vm up per game
     def __init__(self, provisioner: VMProvisioner):
-        self.games = {}
+        self.games = {} # map gameid to vm
         self.provisioner = provisioner
 
     def scale(self, game_id: str): # create VM for this game if possible
         vm = VM(game_id)
-        ok = self.provisioner.create_instance(vm.game_id)
+        ok, ip = self.provisioner.create_instance(vm.game_id)
         if ok:
+            vm.ip = ip
             self.games[game_id] = vm
             return vm.game_id
         else:
@@ -81,7 +106,7 @@ app.add_middleware(GlobalsMiddleware)
 
 @app.get("/", response_class=PlainTextResponse)
 def root():
-    return "Whoever you are, if you\'re seeing this, you really shouldn\'t be here. No, seriously, how'd you end up here?"
+    return "Whoever you are, if you\'re seeing this, you really shouldn\'t be here. No, seriously, how\'d you end up here?"
 
 @app.get("/health", response_class=Response)
 def health():
@@ -103,7 +128,10 @@ def request_warm_vm(request: PrewarmRequest):
     # if vm is not made for this gameid yet, make it. otherwise, ping the vm on it's /health endpoint and see if it's ready.
     if request.gameId in g.p.games:
         print("VM for game " + request.gameId + " already made. Client pinging for status")
-        # TODO: if ip != none, ping /health on port 8000 and update status with findings and return
+        if g.p.games[request.gameId].ip is not None:
+            # TODO: if ip != none, ping /health on port 8000 and update status with findings and return. return instantly
+            pass
+
         return Response(status_code=status.HTTP_200_OK)
     chk = g.p.scale(request.gameId)
     if chk is not None:
