@@ -36,7 +36,7 @@ export default function AnalysisBox({ team1Code, team2Code, gameType = "FOURPLAY
           Solution Analysis
         </Title>
         <Text size="sm" c="dimmed" lh={1.6} className={styles.subtitle}>
-          {hasAnyCode ? "Captured final submissions for review." : "Waiting for code"}
+          {hasAnyCode ? "Captured final submissions for review." : "No code entered"}
         </Text>
 
         {/* Side-by-side code containers */}
