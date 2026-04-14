@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Head from "next/head";
 import {
   Container,
@@ -25,12 +25,11 @@ import {
 import Navbar from "@/components/Navbar";
 import { useRouter } from "next/router";
 import { authClient } from "@/lib/auth-client";
-import { usePostHog } from "posthog-js/react";
 import { GameType } from "@prisma/client";
 import styles from "@/styles/Results.module.css";
 import AnalysisBox, { type AnalysisBoxProps } from "@/components/Analysisbox";
 import ProblemBox, { type ActiveProblem } from "@/components/ProblemBox";
-import TestCaseResultsBox from "@/components/TestCaseResultsBox";
+import TestCaseResultsBox, { type TestResultsSummary } from "@/components/TestCaseResultsBox";
 
 // Mock data - replace with actual data from backend
 interface TeamResult {
@@ -117,7 +116,6 @@ export function Results() {
   const router = useRouter();
   const gameId = router.query.gameID as string;
   const { data: session } = authClient.useSession();
-  const posthog = usePostHog();
   const [problem, setProblem] = useState<ActiveProblem | null>(null);
   const [analysisProps, setAnalysisProps] = useState<AnalysisBoxProps | null>(null);
   const [userTeamNumber, setUserTeamNumber] = useState<1 | 2>(1);
@@ -126,10 +124,22 @@ export function Results() {
 
   const [gameType, setGameType] = useState<GameType>(GameType.FOURPLAYER);
   const [isGameDataLoading, setIsGameDataLoading] = useState(true);
+  const [testResultsSummary, setTestResultsSummary] = useState<TestResultsSummary | null>(null);
 
-  useEffect(() => {
-    posthog.capture("results_viewed");
-  }, [posthog]);
+  const handleSummaryChange = useCallback((summary: TestResultsSummary) => {
+    setTestResultsSummary((previous) => {
+      if (
+        previous &&
+        previous.yourPassedCount === summary.yourPassedCount &&
+        previous.otherTeamPassedCount === summary.otherTeamPassedCount &&
+        previous.totalTests === summary.totalTests
+      ) {
+        return previous;
+      }
+
+      return summary;
+    });
+  }, []);
 
   useEffect(() => {
     if (!router.isReady || !session?.user.id || !gameId) return;
@@ -198,10 +208,33 @@ export function Results() {
   const secondaryTeam = isCoOp ? null : redTeam;
 
   const winner = secondaryTeam ? (primaryTeam.isWinner ? primaryTeam : secondaryTeam) : primaryTeam;
+  const hasRealTestSummary = testResultsSummary !== null && testResultsSummary.totalTests > 0;
+  const testsPassedForMetric = hasRealTestSummary
+    ? testResultsSummary.yourPassedCount
+    : winner.testsPassed;
+  const totalTestsForMetric = hasRealTestSummary
+    ? testResultsSummary.totalTests
+    : winner.totalTests;
+
+  const primaryTeamTestsPassed = hasRealTestSummary && !isCoOp
+    ? userTeamNumber === 1
+      ? testResultsSummary.yourPassedCount
+      : testResultsSummary.otherTeamPassedCount
+    : primaryTeam.testsPassed;
+
+  const secondaryTeamTestsPassed = hasRealTestSummary && !isCoOp
+    ? userTeamNumber === 1
+      ? testResultsSummary.otherTeamPassedCount
+      : testResultsSummary.yourPassedCount
+    : (secondaryTeam?.testsPassed ?? 0);
+
+  const comparisonTotalTests = hasRealTestSummary
+    ? testResultsSummary.totalTests
+    : primaryTeam.totalTests;
 
   // Animated counters
   const animatedScore = useCounter(winner.score, 2000, 200);
-  const animatedTests = useCounter(winner.testsPassed, 1500, 400);
+  const animatedTests = useCounter(testsPassedForMetric, 1500, 400);
   const animatedTime = useCounter(winner.time, 1800, 600);
 
   if (!session) return null;
@@ -268,7 +301,7 @@ export function Results() {
                 Tests Passed
               </div>
               <div className={styles.metricValue}>
-                {animatedTests}/{winner.totalTests}
+                {animatedTests}/{totalTestsForMetric}
               </div>
               <IconCode size={64} className={styles.metricIcon} />
             </div>
@@ -339,12 +372,12 @@ export function Results() {
                   </div>
 
                   <div className={styles.comparisonRow}>
-                    <div className={`${styles.statValue} ${primaryTeam.testsPassed >= secondaryTeam.testsPassed ? styles.statValueWinner : styles.statValueLoser}`}>
-                      {primaryTeam.testsPassed}/{primaryTeam.totalTests}
+                    <div className={`${styles.statValue} ${primaryTeamTestsPassed >= secondaryTeamTestsPassed ? styles.statValueWinner : styles.statValueLoser}`}>
+                      {primaryTeamTestsPassed}/{comparisonTotalTests}
                     </div>
                     <div className={styles.statLabel}>Tests Passed</div>
-                    <div className={`${styles.statValue} ${secondaryTeam.testsPassed >= primaryTeam.testsPassed ? styles.statValueWinner : styles.statValueLoser}`}>
-                      {secondaryTeam.testsPassed}/{secondaryTeam.totalTests}
+                    <div className={`${styles.statValue} ${secondaryTeamTestsPassed >= primaryTeamTestsPassed ? styles.statValueWinner : styles.statValueLoser}`}>
+                      {secondaryTeamTestsPassed}/{comparisonTotalTests}
                     </div>
                   </div>
 
@@ -418,6 +451,7 @@ export function Results() {
                   showOtherTeamColumn={!isCoOp}
                   gameType={gameType as "TWOPLAYER" | "FOURPLAYER"}
                   userTeamNumber={userTeamNumber}
+                  onSummaryChange={handleSummaryChange}
                 />
               </Stack>
             </Flex>

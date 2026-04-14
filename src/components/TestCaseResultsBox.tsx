@@ -4,10 +4,31 @@ import { ParameterType } from "@/lib/ProblemInputOutput";
 import { IconCheck, IconX } from "@tabler/icons-react";
 import styles from '@/styles/comps/TestCaseResultsBox.module.css';
 
+export interface TestResultsSummary {
+  yourPassedCount: number;
+  otherTeamPassedCount: number;
+  totalTests: number;
+}
+
 interface TestCase {
   id: string;
   input: ParameterType[];
   expected: ParameterType[];
+}
+
+interface TestsApiResponse {
+  tests: TestCase[];
+  team1Results?: unknown[];
+  team2Results?: unknown[];
+  team1PassedCount?: number;
+  team2PassedCount?: number;
+  totalTests?: number;
+}
+
+interface TeamSummaryCounts {
+  team1PassedCount: number;
+  team2PassedCount: number;
+  totalTests: number;
 }
 
 interface TestCaseResultsBoxProps {
@@ -17,36 +38,77 @@ interface TestCaseResultsBoxProps {
   showOtherTeamColumn?: boolean;
   gameType?: "TWOPLAYER" | "FOURPLAYER";
   userTeamNumber?: 1 | 2;
+  onSummaryChange?: (summary: TestResultsSummary) => void;
 }
 
-export default function TestCaseResultsBox({ gameId, team1Results, team2Results, showOtherTeamColumn = true, gameType = "FOURPLAYER", userTeamNumber = 1 }: TestCaseResultsBoxProps) {
+export default function TestCaseResultsBox({ gameId, team1Results, team2Results, showOtherTeamColumn = true, gameType = "FOURPLAYER", userTeamNumber = 1, onSummaryChange }: TestCaseResultsBoxProps) {
   const [testCases, setTestCases] = useState<TestCase[]>([]);
   const [loading, setLoading] = useState(false);
+  const [fetchedTeam1Results, setFetchedTeam1Results] = useState<unknown[]>([]);
+  const [fetchedTeam2Results, setFetchedTeam2Results] = useState<unknown[]>([]);
+  const [summaryCounts, setSummaryCounts] = useState<TeamSummaryCounts>({
+    team1PassedCount: 0,
+    team2PassedCount: 0,
+    totalTests: 0,
+  });
 
   //const team1TestResults = team1Results || ["[1,2]", "[1,2,3]", "[1,2,3,4,5]"];
   //const team2TestResults = team2Results || ["[1,2,2]", "[1,2,2,3]", "[1,2,2,3,4,5]"];
-  const team1TestResults = team1Results;
-  const team2TestResults = team2Results;
+  const team1TestResults = team1Results ?? fetchedTeam1Results;
+  const team2TestResults = team2Results ?? fetchedTeam2Results;
 
   useEffect(() => {
     if (!gameId) return;
+
+    let cancelled = false;
 
     const fetchTests = async () => {
       setLoading(true);
       try {
         const response = await fetch(`/api/rooms/tests?gameId=${gameId}`);
         if (!response.ok) return;
-        const data = (await response.json()) as { tests: TestCase[] };
+        const data = (await response.json()) as TestsApiResponse;
+        if (cancelled) return;
+
         setTestCases(data.tests);
+        setFetchedTeam1Results(data.team1Results ?? []);
+        setFetchedTeam2Results(data.team2Results ?? []);
+        setSummaryCounts({
+          team1PassedCount: data.team1PassedCount ?? 0,
+          team2PassedCount: data.team2PassedCount ?? 0,
+          totalTests: data.totalTests ?? data.tests.length,
+        });
       } catch (error) {
         console.error("Failed to fetch tests", error);
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     };
 
     fetchTests();
+
+    return () => {
+      cancelled = true;
+    };
   }, [gameId]);
+
+  useEffect(() => {
+    if (!onSummaryChange) return;
+
+    onSummaryChange({
+      yourPassedCount: userTeamNumber === 2 ? summaryCounts.team2PassedCount : summaryCounts.team1PassedCount,
+      otherTeamPassedCount: userTeamNumber === 2 ? summaryCounts.team1PassedCount : summaryCounts.team2PassedCount,
+      totalTests: summaryCounts.totalTests,
+    });
+  }, [
+    onSummaryChange,
+    userTeamNumber,
+    summaryCounts.team1PassedCount,
+    summaryCounts.team2PassedCount,
+    summaryCounts.totalTests,
+  ]);
 
 
   const formatValue = (value: ParameterType[] | unknown): string => {
