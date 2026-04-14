@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { Role, GameType, ProblemDifficulty } from "@prisma/client";
+import { Role, GameType, ProblemDifficulty, GameStatus } from "@prisma/client";
 import { TeamCount } from "@/components/TeamSelect";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -19,6 +19,7 @@ interface RoomDetailsResponse {
   };
   teams: TeamCount[];
   gameType: GameType;
+  status: GameStatus;
   teamId: string | null; // Allows user to choose team if not already assigned
   role: Role | null; // Allows user to choose role if not already assigned
 }
@@ -60,6 +61,7 @@ export default async function handler(
         id: gameId,
       },
       select: {
+        status: true,
         problem: {
           select: {
             id: true,
@@ -92,7 +94,7 @@ export default async function handler(
     const teams = room.teams.map(t => ({
       teamId: t.id,
       playerCount: t.players.filter(p => p.role !== Role.SPECTATOR).length
-    }))
+    }));
 
 
     // Find which team this user is on
@@ -110,6 +112,7 @@ export default async function handler(
         topics: room.problem.topics,
       },
       gameType: room.gameType,
+      status: room.status,
       teams,
       teamId,
       role
