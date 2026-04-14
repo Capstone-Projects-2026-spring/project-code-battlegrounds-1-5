@@ -1,159 +1,231 @@
-/* Login Page - Green Hacker Theme */
-
 .loginPage {
-  position: relative;
   min-height: 100vh;
   display: flex;
-  justify-content: center;
   align-items: center;
-  padding: 2rem;
+  justify-content: center;
+  background: #f8faf8;
+}
+
+.gradient {
+  display: none; /* replace with split layout */
+}
+
+.layout {
+  display: flex;
+  width: 100%;
+  max-width: 960px;
+  min-height: 560px;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid #d4e8d4;
+  box-shadow: 0 8px 40px rgba(60, 109, 17, 0.08);
+  background: #fff;
+}
+
+/* ── Left panel ── */
+.leftPanel {
+  flex: 1;
+  background: #0d150d;
+  padding: 48px 44px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
   overflow: hidden;
 }
 
-.formCard {
-  min-width: 400px;
-  /* max-width: 500px; */
-  /* width: 100%; */
-  animation: fadeInUp 0.6s ease-out;
+.gridBg {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(#1a2e1a 1px, transparent 1px),
+    linear-gradient(90deg, #1a2e1a 1px, transparent 1px);
+  background-size: 36px 36px;
+  opacity: 0.5;
+}
+
+.leftContent {
   position: relative;
   z-index: 1;
-  background: light-dark(
-    rgba(255, 255, 255, 0.95),
-    rgba(26, 27, 30, 0.95)
-  );
-  backdrop-filter: blur(10px);
-  border: 1px solid light-dark(
-    var(--mantine-color-gray-3),
-    var(--mantine-color-dark-4)
-  );
-  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
-/* 
-.formCard:hover {
-  box-shadow: 0 4px 20px light-dark(rgba(49, 176, 0, 0.3), rgba(113, 211, 73, 0.4));
-  border-color: var(--mantine-color-console-4);
-} */
 
-.brand {
-  animation: fadeInUp 0.6s ease-out 0.1s both;
+.liveTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  color: #639922;
+  letter-spacing: 0.12em;
+  margin-bottom: 28px;
+}
+
+.liveDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #97c459;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.bigTitle {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 38px;
+  color: #97c459;
+  line-height: 1.1;
+  margin: 0 0 16px;
+}
+
+.bigTitle span {
+  color: #639922;
+}
+
+.leftSubtitle {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 12px;
+  color: #3b6d11;
+  line-height: 1.8;
+  margin-bottom: 36px;
+}
+
+.statsRow {
+  display: flex;
+  gap: 28px;
+}
+
+.stat {}
+
+.statVal {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 22px;
+  color: #97c459;
+}
+
+.statLabel {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  color: #3b6d11;
+  letter-spacing: 0.12em;
+}
+
+.ticker {
+  position: relative;
+  z-index: 1;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  color: #2a4a2a;
+  border-top: 1px solid #1a2e1a;
+  padding-top: 14px;
+}
+
+.ticker span {
+  color: #3b6d11;
+}
+
+/* ── Right panel (form) ── */
+.rightPanel {
+  width: 400px;
+  padding: 52px 44px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  background: #fff;
+}
+
+.formCard {
+  /* keep for mobile fallback — no border/shadow when inside layout */
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  width: 100%;
+}
+
+/* ── Brand Marquee ── */
+.brandContainer {
+  width: 100%;
+  overflow: hidden;
+  margin-bottom: 12px;
+  mask-image: linear-gradient(to right, transparent, black 15%, black 85%, transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, black 15%, black 85%, transparent);
+}
+
+.brandTrack {
+  display: flex;
+  width: max-content;
+  animation: brandMarquee 10s linear infinite;
+}
+
+.brandGroup {
+  display: flex;
+  gap: 2rem; 
+  padding-right: 2rem; 
+}
+
+@keyframes brandMarquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
 }
 
 .heading {
-  font-size: 1.75rem;
-  font-weight: 800;
-  margin-bottom: 1rem;
-  animation: fadeInUp 0.6s ease-out 0.15s both;
+  font-size: 20px !important;
+  font-weight: 500 !important;
+  color: #27500a !important;
+  margin-bottom: 4px;
 }
 
 .inputGroup {
-  animation: fadeInUp 0.6s ease-out 0.2s both;
+  width: 100%;
 }
 
 .input {
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-.input:focus-within {
-  border-color: var(--mantine-color-console-4);
-  box-shadow: 0 0 0 2px light-dark(rgba(49, 176, 0, 0.1), rgba(113, 211, 73, 0.15)),
-              0 4px 20px light-dark(rgba(49, 176, 0, 0.2), rgba(113, 211, 73, 0.3));
+  /* Mantine overrides for a cleaner light look */
 }
 
 .button {
-  animation: fadeInUp 0.6s ease-out 0.3s both;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-  font-weight: 600;
-}
-
-.button:hover {
-  transform: scale(1.02);
-  box-shadow: 0 4px 20px light-dark(rgba(49, 176, 0, 0.3), rgba(113, 211, 73, 0.4));
-}
-
-.button:active {
-  transform: scale(0.98);
+  margin-top: 4px;
 }
 
 .link {
-  animation: fadeInUp 0.6s ease-out 0.35s both;
-  color: var(--mantine-color-console-5);
-  text-decoration: none;
-  transition: color 0.2s ease;
+  font-size: 13px;
 }
 
-.link:hover {
-  color: var(--mantine-color-console-4);
-  text-decoration: underline;
-}
+/* ── Mobile: collapse to single column ── */
+@media (max-width: 700px) {
+  .layout {
+    flex-direction: column;
+    border-radius: 0;
+    min-height: 100vh;
+  }
 
-/* Animated gradient background */
-.gradient {
-  position: fixed;
-  inset: 0;
-  background: 
-    radial-gradient(
-      circle at 30% 40%,
-      light-dark(rgba(49, 176, 0, 0.08), rgba(113, 211, 73, 0.12)) 0%,
-      transparent 50%
-    ),
-    radial-gradient(
-      circle at 70% 70%,
-      light-dark(rgba(0, 142, 0, 0.06), rgba(162, 235, 137, 0.1)) 0%,
-      transparent 50%
-    );
-  animation: gradientShift 8s ease-in-out infinite;
-  z-index: 0;
-  pointer-events: none;
-}
+  .leftPanel {
+    padding: 32px 28px;
+    min-height: auto;
+  }
 
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(30px);
+  .bigTitle {
+    font-size: 28px;
+    overflow: hidden;         
+    white-space: nowrap;
   }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
 
-@keyframes gradientShift {
-  0%, 100% {
-    opacity: 1;
+  .rightPanel {
+    width: 100%;
+    padding: 36px 28px;
   }
-  50% {
-    opacity: 0.7;
-  }
-}
 
-@media (max-width: 640px) {
-  .formCard {
-    min-width: 100%;
+  .scrollingText {
+    display: inline-block;
+    animation: marquee 6s linear infinite;
   }
+
   
-  .loginPage {
-    padding: 1rem;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .loginPage,
-  .formCard,
-  .brand,
-  .heading,
-  .inputGroup,
-  .button,
-  .link,
-  .gradient {
-    animation: none;
-  }
-  
-  .formCard:hover,
-  .button:hover {
-    transform: none;
-  }
-  
-  .input:focus-within {
-    box-shadow: 0 0 0 2px light-dark(rgba(49, 176, 0, 0.1), rgba(113, 211, 73, 0.15));
+  @keyframes marquee {
+    0%   { transform: translateX(0%); }
+    100% { transform: translateX(-50%); }
   }
 }
