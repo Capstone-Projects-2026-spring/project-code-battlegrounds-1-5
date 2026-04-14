@@ -2,6 +2,7 @@ import { Badge, Button, Center, Group, Stack, Text, Title } from "@mantine/core"
 import { Role } from "@prisma/client";
 import { usePostHog } from "posthog-js/react";
 import { useState } from "react";
+import styles from '@/styles/comps/TeamSelect.module.css';
 
 export interface TeamCount {
     teamId: string;
@@ -35,31 +36,48 @@ export default function TeamSelect({ userId, teams, gameRoomId, onJoined }: Team
     };
 
     return (
-        <Center h="100vh">
-            <Stack align="center" gap="xl">
-                <Title order={3}>Choose a team</Title>
-                <Text size="md" fw={600}>Room ID: {gameRoomId}</Text>
-                <Group gap="md">
+        <Center className={styles.container}>
+            <Stack align="center" gap="xl" className={styles.content}>
+                <Title order={3} className={styles.title}>Choose a team</Title>
+                <Text className={styles.roomId}>Room ID: {gameRoomId}</Text>
+                <Group className={styles.teamsGroup}>
                     {teams.map((team, i) => {
                         const isFull = team.playerCount >= 2;
                         return (
-                            <Stack key={team.teamId} align="center" gap="xs">
+                            <div key={team.teamId} className={`${styles.teamCard} ${isFull ? styles.disabled : ''}`}>
                                 <Button
                                     data-testid={`team-${i + 1}-button`}
-                                    variant="default"
+                                    variant="light"
+                                    color="console"
+                                    size="lg"
                                     disabled={isFull}
                                     loading={loading === team.teamId}
                                     onClick={() => handleJoin(team.teamId)}
+                                    className={styles.teamButton}
                                 >
                                     Team {i + 1}
                                 </Button>
-                                <Text data-testid={`team-${i + 1}-count`} size="sm" c="dimmed">{team.playerCount} / 2</Text>
-                                {isFull && <Badge data-testid={`team-${i + 1}-full`} color="red" size="sm">Full</Badge>}
-                            </Stack>
+                                <Text data-testid={`team-${i + 1}-count`} className={styles.playerCount}>
+                                    {team.playerCount} / 2
+                                </Text>
+                                {isFull && (
+                                    <Badge 
+                                        data-testid={`team-${i + 1}-full`} 
+                                        color="red" 
+                                        size="sm"
+                                        className={styles.fullBadge}
+                                    >
+                                        Full
+                                    </Badge>
+                                )}
+                            </div>
                         );
                     })}
                     <Button
                         data-testid="spectator-button"
+                        size="lg"
+                        variant="outline"
+                        className={styles.spectatorButton}
                         onClick={() => { 
                             posthog.capture("spectator_joined", {
                                 gameId: gameRoomId

@@ -13,6 +13,7 @@ import { useForm } from "@mantine/form";
 export interface GameTestCaseProps {
   testableCase: TestableCase,
   onTestCaseChange: (test: TestableCase) => void;
+  onExpectedOutputTypeChange: (type: ParameterPrimitiveType) => void;
   onTestCaseDelete: (testId: TestableCase["id"]) => void;
 
   onParameterDelete: (parameter: ParameterType) => void;
@@ -140,14 +141,7 @@ export default function GameTestCase(props: GameTestCaseProps) {
 
                 <ChangeParameterTypeButton
                   onTypeChanged={(type) => {
-                    props.onTestCaseChange({
-                      ...testableCase,
-                      expectedOutput: {
-                        ...testableCase.expectedOutput,
-                        value: null,
-                        type
-                      }
-                    });
+                    props.onExpectedOutputTypeChange(type);
                   }}
                 />
               </Group>
@@ -158,7 +152,7 @@ export default function GameTestCase(props: GameTestCaseProps) {
 
       <Group align="flex-start" gap="sm">
         {props.showDelete && <Button
-          color="red"
+          color="red.5"
           rightSection={<IconTrash />}
           onClick={() => {
             props.onTestCaseDelete(testableCase.id);
@@ -172,7 +166,6 @@ export default function GameTestCase(props: GameTestCaseProps) {
           Delete
         </Button>}
         <Button
-          color="green"
           rightSection={<IconPlayerPlay />}
           onClick={runTest}
           disabled={running || props.disabled}

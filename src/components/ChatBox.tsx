@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ScrollArea, TextInput, ActionIcon, Paper, Text, Stack, Box } from '@mantine/core';
 import { IconSend2 } from '@tabler/icons-react';
 import type { Socket } from 'socket.io-client';
 import { usePostHog } from 'posthog-js/react';
 import { Role } from '@prisma/client';
+import styles from '@/styles/comps/ChatBox.module.css';
 
 export interface Message {
   id: string;
@@ -24,9 +25,20 @@ export default function ChatBox({ socket, roomId, userName, isSpectator = false,
 
   const posthog = usePostHog();
   const [messages, setMessages] = useState<Message[]>([]);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   // State for the text currently being typed in the input box
   const [currentText, setCurrentText] = useState('');
+
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    if (scrollAreaRef.current) {
+      const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
+      if (viewport) {
+        viewport.scrollTop = viewport.scrollHeight;
+      }
+    }
+  }, [messages]);
 
   // 3. Listen for INCOMING messages from the server
   useEffect(() => {
@@ -76,46 +88,60 @@ export default function ChatBox({ socket, roomId, userName, isSpectator = false,
     setCurrentText('');
   };
 
-  return (
-    <Paper shadow="xs" p="md" withBorder h="100%" display="flex" style={{ flexDirection: 'column' }}>
-      <Text fw={700} mb="xs">Match Chat</Text>
+  const formatTimestamp = (timestamp: number) => {
+    const date = new Date(timestamp);
+    return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  };
 
-      <ScrollArea style={{ flex: 1 }} mb="md">
-        <Stack gap="xs">
-          {messages.map((msg) => (
-            <Box key={msg.id}>
-              <Text size="xs" fw={500} tt="capitalize">
-                {msg.userName}
-              </Text>
-              <Paper withBorder p="xs" radius="sm">
-                <Text size="sm">
-                  {msg.text}
+  return (
+    <Paper shadow="xs" p="md" withBorder h="100%" className={styles.chatContainer}>
+      <Text mb="xs" className={styles.header}>Match Chat</Text>
+
+      <ScrollArea className={styles.scrollArea} mb="md" ref={scrollAreaRef}>
+        <Stack className={styles.messagesStack}>
+          {messages.map((msg) => {
+            const isOwnMessage = msg.userName === userName;
+            return (
+              <Box key={msg.id} className={`${styles.messageContainer} ${isOwnMessage ? styles.ownMessage : ''}`}>
+                <Text className={styles.messageAuthor}>
+                  {msg.userName}
                 </Text>
-              </Paper>
-            </Box>
-          ))}
+                <Paper withBorder className={styles.messageBubble}>
+                  <Text className={styles.messageText}>
+                    {msg.text}
+                  </Text>
+                  <Text className={styles.timestamp}>
+                    {formatTimestamp(msg.timestamp)}
+                  </Text>
+                </Paper>
+              </Box>
+            );
+          })}
         </Stack>
       </ScrollArea>
 
-      <TextInput
-        disabled={isSpectator}
-        placeholder="Type a message..."
-        value={currentText}
-        onChange={(event) => setCurrentText(event.currentTarget.value)}
-        onKeyDown={(event) => {
-          if (event.key === 'Enter') handleSendMessage(); // Allow sending with Enter key
-        }}
-        rightSection={
-          <ActionIcon
-            variant="subtle"
-            color="blue"
-            onClick={handleSendMessage}
-            disabled={isSpectator}
-          >
-            <IconSend2 size={16} />
-          </ActionIcon>
-        }
-      />
+      <Box className={styles.inputSection}>
+        <TextInput
+          disabled={isSpectator}
+          placeholder="Type a message..."
+          value={currentText}
+          onChange={(event) => setCurrentText(event.currentTarget.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') handleSendMessage(); // Allow sending with Enter key
+          }}
+          rightSection={
+            <ActionIcon
+              variant="subtle"
+              color="console"
+              onClick={handleSendMessage}
+              disabled={isSpectator}
+              className={styles.sendButton}
+            >
+              <IconSend2 size={16} />
+            </ActionIcon>
+          }
+        />
+      </Box>
     </Paper>
   );
 }

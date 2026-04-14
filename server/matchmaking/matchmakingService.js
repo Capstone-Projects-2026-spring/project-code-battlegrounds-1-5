@@ -15,11 +15,6 @@ const POP_AND_MATCH_SCRIPT = readFileSync(src).toString();
 
 function createMatchmakingService(stateRedis, io) {
     return {
-        
-        // SOCKET REGISTRATION (needed for matchmaking and used in middleware)
-        async registerSocketToUser(userId, socketId) {
-            await stateRedis.set(`socket:${userId}`, socketId); // link userId
-        },
 
         // QUEUE MANAGEMENT SECTION
 

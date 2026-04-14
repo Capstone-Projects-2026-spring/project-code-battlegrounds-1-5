@@ -38,7 +38,7 @@ function initSocket(httpServer, redis) {
             console.log(`Authenticated socket connection for user ${session.user.name} (ID: ${session.user.id})`);
 
             socket.userId = session.user.id;
-            await matchmakingService.registerSocketToUser(session.user.id, socket.id);
+            await gameService.registerSocketToUser(session.user.id, socket.id);
             next();
         } catch (e) {
             console.error('Socket authentication error:', e);

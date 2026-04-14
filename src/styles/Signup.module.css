@@ -1,0 +1,171 @@
+/* Signup Page - Green Hacker Theme */
+
+.signupPage {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 2rem;
+  overflow: hidden;
+}
+
+.formCard {
+  min-width: 400px;
+  /* max-width: 500px; */
+  /* width: 100%; */
+  animation: fadeInUp 0.6s ease-out;
+  position: relative;
+  z-index: 1;
+  background: light-dark(
+    rgba(255, 255, 255, 0.95),
+    rgba(26, 27, 30, 0.95)
+  );
+  backdrop-filter: blur(10px);
+  border: 1px solid light-dark(
+    var(--mantine-color-gray-3),
+    var(--mantine-color-dark-4)
+  );
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+/* 
+.formCard:hover {
+  box-shadow: 0 4px 20px light-dark(rgba(49, 176, 0, 0.3), rgba(113, 211, 73, 0.4));
+  border-color: var(--mantine-color-console-4);
+} */
+
+.brand {
+  animation: fadeInUp 0.6s ease-out 0.1s both;
+}
+
+.heading {
+  font-size: 1.75rem;
+  font-weight: 800;
+  margin-bottom: 1rem;
+  animation: fadeInUp 0.6s ease-out 0.15s both;
+}
+
+.inputGroup {
+  animation: fadeInUp 0.6s ease-out 0.2s both;
+}
+
+.input {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* .input:focus-within {
+  border-color: var(--mantine-color-console-4);
+  box-shadow: 0 0 0 2px light-dark(rgba(49, 176, 0, 0.1), rgba(113, 211, 73, 0.15)),
+              0 4px 20px light-dark(rgba(49, 176, 0, 0.2), rgba(113, 211, 73, 0.3));
+} */
+
+.button {
+  animation: fadeInUp 0.6s ease-out 0.3s both;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  font-weight: 600;
+}
+
+.button:hover {
+  transform: scale(1.02);
+  box-shadow: 0 4px 20px light-dark(rgba(49, 176, 0, 0.3), rgba(113, 211, 73, 0.4));
+}
+
+.button:active {
+  transform: scale(0.98);
+}
+
+.link {
+  animation: fadeInUp 0.6s ease-out 0.35s both;
+  color: var(--mantine-color-console-5);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.link:hover {
+  color: var(--mantine-color-console-4);
+  text-decoration: underline;
+}
+
+.validationSuccess {
+  color: var(--mantine-color-console-5);
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+}
+
+.validationError {
+  color: var(--mantine-color-red-6);
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+}
+
+/* Animated gradient background */
+.gradient {
+  position: fixed;
+  inset: 0;
+  background: 
+    radial-gradient(
+      circle at 30% 40%,
+      light-dark(rgba(49, 176, 0, 0.08), rgba(113, 211, 73, 0.12)) 0%,
+      transparent 50%
+    ),
+    radial-gradient(
+      circle at 70% 70%,
+      light-dark(rgba(0, 142, 0, 0.06), rgba(162, 235, 137, 0.1)) 0%,
+      transparent 50%
+    );
+  animation: gradientShift 8s ease-in-out infinite;
+  z-index: 0;
+  pointer-events: none;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes gradientShift {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+@media (max-width: 640px) {
+  .formCard {
+    min-width: 100%;
+  }
+  
+  .signupPage {
+    padding: 1rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .signupPage,
+  .formCard,
+  .brand,
+  .heading,
+  .inputGroup,
+  .button,
+  .link,
+  .gradient {
+    animation: none;
+  }
+  
+  .formCard:hover,
+  .button:hover {
+    transform: none;
+  }
+  
+  .input:focus-within {
+    box-shadow: 0 0 0 2px light-dark(rgba(49, 176, 0, 0.1), rgba(113, 211, 73, 0.15));
+  }
+}

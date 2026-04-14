@@ -66,9 +66,9 @@ test.describe('Matchmaking', () => {
             const page = pages[0];
             await page.getByRole('button', { name: /find match/i }).click();
 
-            await expect(page.getByText(/searching for a match/i)).toBeVisible();
+            await expect(page.getByText(/Searching for opponents.../i)).toBeVisible();
 
-            await page.getByRole('button', { name: /cancel/i }).click();
+            await page.getByRole('button', { name: /cancel search/i }).click();
 
             // Should return to idle state
             await expect(page.getByRole('button', { name: /find match/i })).toBeVisible({ timeout: 10000 });
@@ -81,12 +81,18 @@ test.describe('Matchmaking', () => {
         test('four solo players match and land in the same game room', async () => {
             // All select FOURPLAYER
             for (const u of pages) {
-                u.locator('[data-testid="mode-control"]').getByText('2v2').click();
+                await u.locator('[data-testid="mode-control"]').getByText('2v2').click();
                 await u.getByRole('button', { name: /find match/i }).click();
             }
 
+            await Promise.all(
+                pages.map(u => u.waitForURL(/\/game\/+/, { timeout: 15000 }))
+            );
+
             // All should land on the same game room
             const gameUrls = pages.map(u => u.url());
+            expect(gameUrls.every(url => url.includes('/game/'))).toBeTruthy();
+            console.log("Game URLs:", gameUrls);
             expect(new Set(gameUrls).size).toBe(1);
 
         });

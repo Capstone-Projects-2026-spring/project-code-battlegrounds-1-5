@@ -1,0 +1,239 @@
+.matchmakingPage {
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+  padding: 2rem 0;
+}
+
+.matchmakingPage::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: 
+    linear-gradient(light-dark(rgba(49, 176, 0, 0.02), rgba(113, 211, 73, 0.03)) 1px, transparent 1px),
+    linear-gradient(90deg, light-dark(rgba(49, 176, 0, 0.02), rgba(113, 211, 73, 0.03)) 1px, transparent 1px);
+  background-size: 50px 50px;
+  opacity: 0.3;
+  z-index: 0;
+  pointer-events: none;
+  animation: gridPulse 4s ease-in-out infinite;
+}
+
+.header {
+  animation: fadeInUp 0.6s ease-out;
+  position: relative;
+  z-index: 1;
+}
+
+.title {
+  font-size: clamp(2rem, 5vw, 2.5rem);
+  font-weight: 800;
+  background: linear-gradient(135deg, var(--mantine-color-console-5), var(--mantine-color-console-3));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: 0 0 20px light-dark(rgba(49, 176, 0, 0.1), rgba(113, 211, 73, 0.2));
+}
+
+.modeTab {
+  font-weight: 600;
+}
+
+.mainCard {
+  animation: fadeInUp 250ms ease-out 0.1s both;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  background: light-dark(
+    rgba(255, 255, 255, 0.95),
+    rgba(26, 27, 30, 0.95)
+  );
+  backdrop-filter: blur(10px);
+  position: relative;
+  z-index: 1;
+  border-color: light-dark(
+    var(--mantine-color-gray-3),
+    var(--mantine-color-dark-4)
+  );
+}
+
+.segmentedControl {
+  background: light-dark(
+    var(--mantine-color-gray-0),
+    var(--mantine-color-dark-6)
+  );
+}
+
+.statusCard {
+  background: light-dark(
+    rgba(49, 176, 0, 0.05),
+    rgba(113, 211, 73, 0.08)
+  );
+  border-color: light-dark(
+    var(--mantine-color-console-3),
+    var(--mantine-color-console-4)
+  );
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.successCard {
+  background: light-dark(
+    rgba(49, 176, 0, 0.08),
+    rgba(113, 211, 73, 0.1)
+  );
+  border-color: light-dark(
+    var(--mantine-color-console-4),
+    var(--mantine-color-console-3)
+  );
+  animation: fadeInScale 0.4s ease-out;
+}
+
+.errorCard {
+  background: light-dark(
+    var(--mantine-color-red-0),
+    rgba(239, 68, 68, 0.1)
+  );
+  border-color: var(--mantine-color-red-3);
+}
+
+.primaryButton {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  font-weight: 600;
+}
+
+.primaryButton:hover {
+  transform: scale(1.02);
+  box-shadow: 0 4px 20px light-dark(rgba(49, 176, 0, 0.3), rgba(113, 211, 73, 0.4));
+}
+
+.primaryButton:active {
+  transform: scale(0.98);
+}
+
+.cancelButton {
+  transition: transform 0.2s ease;
+  font-weight: 600;
+}
+
+.cancelButton:hover:not(:disabled) {
+  transform: scale(1.02);
+}
+
+.cancelButton:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+/* Animated gradient background with green vibe */
+.gradient {
+  position: fixed;
+  inset: 0;
+  background: 
+    radial-gradient(
+      circle at 30% 40%,
+      light-dark(rgba(49, 176, 0, 0.08), rgba(113, 211, 73, 0.12)) 0%,
+      transparent 50%
+    ),
+    radial-gradient(
+      circle at 70% 70%,
+      light-dark(rgba(0, 142, 0, 0.06), rgba(162, 235, 137, 0.1)) 0%,
+      transparent 50%
+    );
+  animation: gradientShift 8s ease-in-out infinite;
+  z-index: 0;
+  pointer-events: none;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInScale {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.95;
+  }
+}
+
+@keyframes gradientShift {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+@keyframes gridPulse {
+  0%, 100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@media (max-width: 768px) {
+  .matchmakingPage {
+    padding: 1rem 0;
+  }
+
+  .title {
+    font-size: 1.75rem;
+  }
+
+  .mainCard {
+    margin: 0 1rem;
+  }
+
+  .tabsList {
+    margin: 0 1rem;
+  }
+
+  .instantCard {
+    margin: 0 1rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .header,
+  .mainCard,
+  .instantCard,
+  .statusCard,
+  .successCard,
+  .primaryButton,
+  .cancelButton,
+  .gradient,
+  .matchmakingPage::before {
+    animation: none;
+    transition: none;
+  }
+  
+  .mainCard:hover,
+  .primaryButton:hover,
+  .cancelButton:hover {
+    transform: none;
+    box-shadow: none;
+  }
+  
+  .title {
+    text-shadow: none;
+  }
+}

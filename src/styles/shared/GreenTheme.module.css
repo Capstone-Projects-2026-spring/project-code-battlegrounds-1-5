@@ -1,0 +1,225 @@
+/* 
+ * Green Hacker Theme - Shared CSS Utilities
+ * Reusable patterns for Matrix-style effects across Code Battlegrounds
+ */
+
+/* ========================================
+   Grid Background Patterns
+   ======================================== */
+
+.gridBg {
+  position: relative;
+  overflow: hidden;
+}
+
+.gridBg::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: 
+    linear-gradient(light-dark(rgba(49, 176, 0, 0.02), rgba(113, 211, 73, 0.03)) 1px, transparent 1px),
+    linear-gradient(90deg, light-dark(rgba(49, 176, 0, 0.02), rgba(113, 211, 73, 0.03)) 1px, transparent 1px);
+  background-size: 50px 50px;
+  opacity: 0.3;
+  z-index: 0;
+  pointer-events: none;
+  animation: gridPulse 4s ease-in-out infinite;
+}
+
+.gridBgFixed {
+  position: relative;
+  overflow: hidden;
+}
+
+.gridBgFixed::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: 
+    linear-gradient(light-dark(rgba(49, 176, 0, 0.02), rgba(113, 211, 73, 0.03)) 1px, transparent 1px),
+    linear-gradient(90deg, light-dark(rgba(49, 176, 0, 0.02), rgba(113, 211, 73, 0.03)) 1px, transparent 1px);
+  background-size: 50px 50px;
+  opacity: 0.3;
+  z-index: 0;
+  pointer-events: none;
+  animation: gridPulse 4s ease-in-out infinite;
+}
+
+.gridBgSubtle {
+  position: relative;
+  overflow: hidden;
+}
+
+.gridBgSubtle::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: 
+    linear-gradient(light-dark(rgba(49, 176, 0, 0.01), rgba(113, 211, 73, 0.015)) 1px, transparent 1px),
+    linear-gradient(90deg, light-dark(rgba(49, 176, 0, 0.01), rgba(113, 211, 73, 0.015)) 1px, transparent 1px);
+  background-size: 50px 50px;
+  opacity: 0.2;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* ========================================
+   Gradient Text Effects
+   ======================================== */
+
+.gradientText {
+  background: linear-gradient(135deg, var(--mantine-color-console-5), var(--mantine-color-console-3));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.gradientTextVertical {
+  background: linear-gradient(180deg, var(--mantine-color-console-5), var(--mantine-color-console-3));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.gradientTextBright {
+  background: linear-gradient(135deg, var(--mantine-color-console-4), var(--mantine-color-console-2));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ========================================
+   Glow Effects
+   ======================================== */
+
+.glowGreen {
+  box-shadow: 0 4px 20px light-dark(rgba(49, 176, 0, 0.2), rgba(113, 211, 73, 0.3));
+}
+
+.glowGreenHover {
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.glowGreenHover:hover {
+  box-shadow: 0 4px 20px light-dark(rgba(49, 176, 0, 0.3), rgba(113, 211, 73, 0.4));
+  border-color: var(--mantine-color-console-4);
+}
+
+.glowGreenStrong {
+  box-shadow: 0 8px 30px light-dark(rgba(49, 176, 0, 0.4), rgba(113, 211, 73, 0.5));
+}
+
+.textGlow {
+  text-shadow: 0 0 20px light-dark(rgba(49, 176, 0, 0.2), rgba(113, 211, 73, 0.3));
+}
+
+.textGlowStrong {
+  text-shadow: 0 0 30px light-dark(rgba(49, 176, 0, 0.3), rgba(113, 211, 73, 0.4));
+}
+
+/* ========================================
+   Card Styles
+   ======================================== */
+
+.card {
+  background: light-dark(
+    rgba(255, 255, 255, 0.95),
+    rgba(26, 27, 30, 0.95)
+  );
+  backdrop-filter: blur(10px);
+  border-radius: var(--mantine-radius-md);
+  border: 1px solid light-dark(
+    var(--mantine-color-gray-3),
+    var(--mantine-color-dark-4)
+  );
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.cardHover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px light-dark(rgba(49, 176, 0, 0.15), rgba(113, 211, 73, 0.25));
+  border-color: var(--mantine-color-console-4);
+}
+
+.cardGlow {
+  background: light-dark(
+    rgba(255, 255, 255, 0.95),
+    rgba(26, 27, 30, 0.95)
+  );
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--mantine-color-console-4);
+  box-shadow: 0 4px 20px light-dark(rgba(49, 176, 0, 0.2), rgba(113, 211, 73, 0.3));
+}
+
+/* ========================================
+   Keyframe Definitions
+   ======================================== */
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInScale {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes gridPulse {
+  0%, 100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes gradientShift {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.95;
+  }
+}
+
+/* ========================================
+   Reduced Motion Support
+   ======================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .gridBg::before,
+  .gridBgFixed::before {
+    animation: none;
+  }
+  
+  .cardHover:hover {
+    transform: none;
+  }
+  
+  .textGlow,
+  .textGlowStrong {
+    text-shadow: none;
+  }
+}

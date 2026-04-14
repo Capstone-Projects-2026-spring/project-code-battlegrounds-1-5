@@ -1,0 +1,127 @@
+.hero {
+  position: relative;
+  min-height: 85vh;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  padding: 4rem 0;
+}
+
+.heroInner {
+  position: relative;
+  z-index: 2;
+}
+
+.title {
+  font-size: clamp(2.5rem, 5vw, 4rem);
+  font-weight: 900;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  animation: fadeInUp 0.6s ease-out;
+  text-shadow: 0 0 20px light-dark(rgba(49, 176, 0, 0.2), rgba(113, 211, 73, 0.3));
+}
+
+.description {
+  animation: fadeInUp 0.6s ease-out 0.1s both;
+}
+
+.primaryButton,
+.secondaryButton {
+  animation: fadeInUp 0.6s ease-out 0.2s both;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.primaryButton:hover,
+.secondaryButton:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px light-dark(rgba(49, 176, 0, 0.3), rgba(113, 211, 73, 0.4));
+}
+
+.primaryButton:active,
+.secondaryButton:active {
+  transform: translateY(0);
+}
+
+/* Animated gradient background with green hacker vibe */
+.gradient {
+  position: absolute;
+  inset: 0;
+  background: 
+    radial-gradient(
+      circle at 20% 50%,
+      light-dark(rgba(49, 176, 0, 0.08), rgba(113, 211, 73, 0.12)) 0%,
+      transparent 50%
+    ),
+    radial-gradient(
+      circle at 80% 80%,
+      light-dark(rgba(0, 142, 0, 0.06), rgba(162, 235, 137, 0.1)) 0%,
+      transparent 50%
+    );
+  animation: gradientShift 8s ease-in-out infinite;
+  z-index: 0;
+}
+
+/* Matrix-like grid pattern */
+.hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: 
+    linear-gradient(light-dark(rgba(49, 176, 0, 0.03), rgba(113, 211, 73, 0.05)) 1px, transparent 1px),
+    linear-gradient(90deg, light-dark(rgba(49, 176, 0, 0.03), rgba(113, 211, 73, 0.05)) 1px, transparent 1px);
+  background-size: 50px 50px;
+  z-index: 0;
+  opacity: 0.3;
+  animation: gridPulse 4s ease-in-out infinite;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes gradientShift {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+@keyframes gridPulse {
+  0%, 100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@media (max-width: 768px) {
+  .hero {
+    min-height: 70vh;
+    padding: 2rem 0;
+  }
+
+  .title {
+    font-size: 2rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .title {
+    text-shadow: none;
+  }
+  
+  .gradient,
+  .hero::before {
+    animation: none;
+  }
+}

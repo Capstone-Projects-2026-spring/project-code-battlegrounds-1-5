@@ -1,4 +1,5 @@
 import { Paper, Text, Group, Box, Badge, Title, Divider, Code } from "@mantine/core";
+import styles from "@/styles/comps/AnalysisBox.module.css";
 
 export interface AnalysisBoxProps {
   team1Code: string;
@@ -6,40 +7,47 @@ export interface AnalysisBoxProps {
   gameType?: "TWOPLAYER" | "FOURPLAYER";
   userTeamNumber?: 1 | 2;
 }
+
 export default function AnalysisBox({ team1Code, team2Code, gameType = "FOURPLAYER", userTeamNumber = 1 }: AnalysisBoxProps) {
   const hasAnyCode = Boolean(team1Code || team2Code);
 
-  return (
-    <Paper shadow="sm" radius="md" p="lg" withBorder style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+  const primaryCodeLabel =
+    gameType === "TWOPLAYER"
+      ? "Your Code"
+      : userTeamNumber === 1
+        ? "Your Code (Team 1)"
+        : "Team 1";
 
-      <Box style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-        <Title order={4} mb="sm" c="blue.7">Solution Analysis</Title>
-        <Text size="sm" c="dimmed" lh={1.6}>
-          {hasAnyCode ?'' : 'Waiting for code'}
+  const secondaryCodeLabel =
+    gameType === "TWOPLAYER" ? "Your Code" : "Your Code (Team 2)";
+
+  const primaryMetricsLabel =
+    gameType === "TWOPLAYER"
+      ? "Your Metrics"
+      : userTeamNumber === 1
+        ? "Your Metrics (Team 1)"
+        : "Team 1 Metrics";
+
+  return (
+    <Paper shadow="sm" radius="md" p="lg" withBorder className={styles.container}>
+
+      <Box className={styles.content}>
+        <Title order={4} mb="sm" className={styles.title}>
+          Solution Analysis
+        </Title>
+        <Text size="sm" c="dimmed" lh={1.6} className={styles.subtitle}>
+          {hasAnyCode ? "Captured final submissions for review." : "No code entered"}
         </Text>
 
         {/* Side-by-side code containers */}
-        <Box style={{ marginTop: '0.75rem', flex: 1, minHeight: 0, display: 'flex', gap: '1rem' }}>
+        <Box className={styles.codeGrid}>
           {userTeamNumber === 2 && team2Code && (
-            <Box style={{
-              flex: 1,
-              minHeight: 0,
-              minWidth: 0,
-              display: 'flex',
-              flexDirection: 'column',
-              border: '1px solid #e0e0e0',
-              borderRadius: '4px',
-              padding: '0.75rem'
-            }}>
-              <Text size="xs" fw={600} mb="xs" c="blue.6">{gameType === "TWOPLAYER" ? "Your Code" : "Your Code (Team 2)"}</Text>
-              <Box style={{
-                flex: 1,
-                minHeight: 0,
-                overflowY: 'auto',
-                overflowX: 'auto',
-                paddingRight: '0.25rem'
-              }}>
-                <Code block mt={0} ff="monospace" style={{ background: 'transparent', padding: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+            <Box className={styles.codePanel}>
+              <Text size="xs" fw={600} mb="xs" className={styles.panelLabel}>
+                {secondaryCodeLabel}
+              </Text>
+              <Box className={styles.codeScroll}>
+                <Code block mt={0} ff="monospace" className={styles.codeBlock}>
                   {team2Code}
                 </Code>
               </Box>
@@ -48,25 +56,12 @@ export default function AnalysisBox({ team1Code, team2Code, gameType = "FOURPLAY
 
           {/* Team 1 Code */}
           {team1Code && (
-            <Box style={{
-              flex: 1,
-              minHeight: 0,
-              minWidth: 0,
-              display: 'flex',
-              flexDirection: 'column',
-              border: '1px solid #e0e0e0',
-              borderRadius: '4px',
-              padding: '0.75rem'
-            }}>
-              <Text size="xs" fw={600} mb="xs" c="blue.6">{gameType === "TWOPLAYER" ? "Your Code" : userTeamNumber === 1 ? "Your Code (Team 1)" : "Team 1"}</Text>
-              <Box style={{
-                flex: 1,
-                minHeight: 0,
-                overflowY: 'auto',
-                overflowX: 'auto',
-                paddingRight: '0.25rem'
-              }}>
-                <Code block mt={0} ff="monospace" style={{ background: 'transparent', padding: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+            <Box className={styles.codePanel}>
+              <Text size="xs" fw={600} mb="xs" className={styles.panelLabel}>
+                {primaryCodeLabel}
+              </Text>
+              <Box className={styles.codeScroll}>
+                <Code block mt={0} ff="monospace" className={styles.codeBlock}>
                   {team1Code}
                 </Code>
               </Box>
@@ -74,25 +69,12 @@ export default function AnalysisBox({ team1Code, team2Code, gameType = "FOURPLAY
           )}
 
           {userTeamNumber === 1 && team2Code && (
-            <Box style={{
-              flex: 1,
-              minHeight: 0,
-              minWidth: 0,
-              display: 'flex',
-              flexDirection: 'column',
-              border: '1px solid #e0e0e0',
-              borderRadius: '4px',
-              padding: '0.75rem'
-            }}>
-              <Text size="xs" fw={600} mb="xs" c="blue.6">Team 2</Text>
-              <Box style={{
-                flex: 1,
-                minHeight: 0,
-                overflowY: 'auto',
-                overflowX: 'auto',
-                paddingRight: '0.25rem'
-              }}>
-                <Code block mt={0} ff="monospace" style={{ background: 'transparent', padding: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+            <Box className={styles.codePanel}>
+              <Text size="xs" fw={600} mb="xs" className={styles.panelLabel}>
+                Team 2
+              </Text>
+              <Box className={styles.codeScroll}>
+                <Code block mt={0} ff="monospace" className={styles.codeBlock}>
                   {team2Code}
                 </Code>
               </Box>
@@ -101,59 +83,66 @@ export default function AnalysisBox({ team1Code, team2Code, gameType = "FOURPLAY
         </Box>
       </Box>
 
-      <Divider my="md" />
+      <Divider my="md" className={styles.divider} />
 
       {/* Performance Metrics - Horizontal layout */}
-      <Group grow align="flex-start" gap="md">
+      <Box className={styles.metricsGrid}>
         {userTeamNumber === 2 && team2Code && (
-          <Box>
-            <Text size="xs" fw={600} mb="xs">Your Metrics (Team 2)</Text>
-            <Group gap="xs">
-              <Badge color="teal" variant="light" size="md" radius="sm">
+          <Box className={styles.metricCard}>
+            <Text size="xs" fw={600} mb="xs" className={styles.metricTitle}>
+              Your Metrics (Team 2)
+            </Text>
+            <Group gap="xs" className={styles.badgeGroup}>
+              <Badge color="teal" variant="light" size="md" radius="sm" className={`${styles.metricBadge} ${styles.runtimeBadge}`}>
                 Runtime: A
               </Badge>
-              <Badge color="yellow" variant="light" size="md" radius="sm">
+              <Badge color="yellow" variant="light" size="md" radius="sm" className={`${styles.metricBadge} ${styles.spaceBadge}`}>
                 Space: B
               </Badge>
-              <Badge color="orange" variant="light" size="md" radius="sm">
+              <Badge color="orange" variant="light" size="md" radius="sm" className={`${styles.metricBadge} ${styles.timeBadge}`}>
                 Time: C
               </Badge>
             </Group>
           </Box>
         )}
 
-        <Box>
-          <Text size="xs" fw={600} mb="xs">{gameType === "TWOPLAYER" ? "Your Metrics" : userTeamNumber === 1 ? "Your Metrics (Team 1)" : "Team 1 Metrics"}</Text>
-          <Group gap="xs">
-            <Badge color="teal" variant="light" size="md" radius="sm">
+        <Box className={styles.metricCard}>
+          <Text size="xs" fw={600} mb="xs" className={styles.metricTitle}>
+            {primaryMetricsLabel}
+          </Text>
+          <Group gap="xs" className={styles.badgeGroup}>
+            <Badge color="teal" variant="light" size="md" radius="sm" className={`${styles.metricBadge} ${styles.runtimeBadge}`}>
               Runtime: A
             </Badge>
-            <Badge color="yellow" variant="light" size="md" radius="sm">
+            <Badge color="yellow" variant="light" size="md" radius="sm" className={`${styles.metricBadge} ${styles.spaceBadge}`}>
               Space: B
             </Badge>
-            <Badge color="orange" variant="light" size="md" radius="sm">
+            <Badge color="orange" variant="light" size="md" radius="sm" className={`${styles.metricBadge} ${styles.timeBadge}`}>
               Time: C
             </Badge>
           </Group>
         </Box>
 
         {userTeamNumber === 1 && team2Code && (
-          <Box>
-            <Text size="xs" fw={600} mb="xs">Team 2 Metrics</Text>
-            <Group gap="xs">
-              <Badge color="teal" variant="light" size="md" radius="sm">
+          <Box className={styles.metricCard}>
+            <Text size="xs" fw={600} mb="xs" className={styles.metricTitle}>
+              Team 2 Metrics
+            </Text>
+            <Group gap="xs" className={styles.badgeGroup}>
+              <Badge color="teal" variant="light" size="md" radius="sm" className={`${styles.metricBadge} ${styles.runtimeBadge}`}>
                 Runtime: A
               </Badge>
-              <Badge color="yellow" variant="light" size="md" radius="sm">
+              <Badge color="yellow" variant="light" size="md" radius="sm" className={`${styles.metricBadge} ${styles.spaceBadge}`}>
                 Space: B
               </Badge>
-              <Badge color="orange" variant="light" size="md" radius="sm">
+              <Badge color="orange" variant="light" size="md" radius="sm" className={`${styles.metricBadge} ${styles.timeBadge}`}>
                 Time: C
               </Badge>
             </Group>
           </Box>
         )}
-      </Group>
+
+      </Box>
 
     </Paper>
   );

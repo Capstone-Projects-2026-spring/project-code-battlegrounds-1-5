@@ -8,6 +8,10 @@ function createGameService(stateRedis) {
   return {
     GAME_DURATION_MS,
 
+    async registerSocketToUser(userId, socketId) {
+      await stateRedis.set(`socket:${userId}`, socketId); // link userId
+    },
+    
     async startGameIfNeeded(gameId) {
       const key = `game:${gameId}:expires`;
       // try to set key only if it doesnt exist (to avoid potential race condition)
