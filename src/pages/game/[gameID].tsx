@@ -60,6 +60,7 @@ import styles from "@/styles/GameRoom.module.css";
 interface RoomDetailsResponse {
   problem: ActiveProblem;
   gameType: GameType;
+  status: GameStatus;
   teams: TeamCount[];
   teamId: string | null;
   role: Role | null;
@@ -149,13 +150,19 @@ function PlayGameRoom() {
     const loadRoomDetails = async () => {
       try {
         const response = await fetch(`/api/rooms/${gameId}/${session.user.id}`);
-        // attempt to join the room
         if (!response.ok) {
           // Game room doesn't exist or user isn't authorized — send them home
           router.replace("/");
           return;
         }
         const data = (await response.json()) as RoomDetailsResponse;
+
+        // If the game is already finished, send straight to results
+        if (data.status === GameStatus.FINISHED) {
+          router.replace(`/results/${gameId}`);
+          return;
+        }
+
         setProblem(data.problem as ActiveProblem);
         setGameType(data.gameType as GameType);
         setTeams(data.teams as TeamCount[]);
@@ -194,7 +201,6 @@ function PlayGameRoom() {
       }
     };
     loadRoomDetails();
-    setLoading(false);
 
     // 3. Initialize the connection to our custom server.js backend
     const socketInstance = io();
@@ -209,8 +215,8 @@ function PlayGameRoom() {
       );
     });
 
-    // redirect to root page if they joined an invalid game room
     socketInstance.on("invalidGame", () => {
+      // Backend rejected this game room as illegitimate — redirect home
       router.replace("/");
     });
 
