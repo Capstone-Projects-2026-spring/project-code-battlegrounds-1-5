@@ -51,6 +51,8 @@ import {
   useGameState,
 } from "@/components/contexts/GameStateContext";
 
+import styles from "@/styles/GameRoom.module.css";
+
 interface RoomDetailsResponse {
   problem: ActiveProblem;
   gameType: GameType;
