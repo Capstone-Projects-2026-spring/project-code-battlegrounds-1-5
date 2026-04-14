@@ -44,6 +44,7 @@ interface TestCaseResultsBoxProps {
 export default function TestCaseResultsBox({ gameId, team1Results, team2Results, showOtherTeamColumn = true, gameType = "FOURPLAYER", userTeamNumber = 1, onSummaryChange }: TestCaseResultsBoxProps) {
   const [testCases, setTestCases] = useState<TestCase[]>([]);
   const [loading, setLoading] = useState(false);
+  const [hasFetchedSummary, setHasFetchedSummary] = useState(false);
   const [fetchedTeam1Results, setFetchedTeam1Results] = useState<unknown[]>([]);
   const [fetchedTeam2Results, setFetchedTeam2Results] = useState<unknown[]>([]);
   const [summaryCounts, setSummaryCounts] = useState<TeamSummaryCounts>({
@@ -61,6 +62,7 @@ export default function TestCaseResultsBox({ gameId, team1Results, team2Results,
     if (!gameId) return;
 
     let cancelled = false;
+    setHasFetchedSummary(false);
 
     const fetchTests = async () => {
       setLoading(true);
@@ -83,6 +85,7 @@ export default function TestCaseResultsBox({ gameId, team1Results, team2Results,
       } finally {
         if (!cancelled) {
           setLoading(false);
+          setHasFetchedSummary(true);
         }
       }
     };
@@ -95,7 +98,7 @@ export default function TestCaseResultsBox({ gameId, team1Results, team2Results,
   }, [gameId]);
 
   useEffect(() => {
-    if (!onSummaryChange) return;
+    if (!onSummaryChange || !hasFetchedSummary) return;
 
     onSummaryChange({
       yourPassedCount: userTeamNumber === 2 ? summaryCounts.team2PassedCount : summaryCounts.team1PassedCount,
@@ -104,6 +107,7 @@ export default function TestCaseResultsBox({ gameId, team1Results, team2Results,
     });
   }, [
     onSummaryChange,
+    hasFetchedSummary,
     userTeamNumber,
     summaryCounts.team1PassedCount,
     summaryCounts.team2PassedCount,

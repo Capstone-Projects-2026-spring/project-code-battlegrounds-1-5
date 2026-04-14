@@ -126,6 +126,10 @@ export function Results() {
   const [isGameDataLoading, setIsGameDataLoading] = useState(true);
   const [testResultsSummary, setTestResultsSummary] = useState<TestResultsSummary | null>(null);
 
+  useEffect(() => {
+    setTestResultsSummary(null);
+  }, [gameId]);
+
   const handleSummaryChange = useCallback((summary: TestResultsSummary) => {
     setTestResultsSummary((previous) => {
       if (
@@ -208,33 +212,27 @@ export function Results() {
   const secondaryTeam = isCoOp ? null : redTeam;
 
   const winner = secondaryTeam ? (primaryTeam.isWinner ? primaryTeam : secondaryTeam) : primaryTeam;
-  const hasRealTestSummary = testResultsSummary !== null && testResultsSummary.totalTests > 0;
-  const testsPassedForMetric = hasRealTestSummary
-    ? testResultsSummary.yourPassedCount
-    : winner.testsPassed;
-  const totalTestsForMetric = hasRealTestSummary
-    ? testResultsSummary.totalTests
-    : winner.totalTests;
+  const areTestResultsLoading = testResultsSummary === null;
+  const testsPassedForMetric = testResultsSummary?.yourPassedCount ?? 0;
+  const totalTestsForMetric = testResultsSummary?.totalTests ?? 0;
 
-  const primaryTeamTestsPassed = hasRealTestSummary && !isCoOp
+  const primaryTeamTestsPassed = !areTestResultsLoading && !isCoOp
     ? userTeamNumber === 1
-      ? testResultsSummary.yourPassedCount
-      : testResultsSummary.otherTeamPassedCount
-    : primaryTeam.testsPassed;
+      ? (testResultsSummary?.yourPassedCount ?? 0)
+      : (testResultsSummary?.otherTeamPassedCount ?? 0)
+    : 0;
 
-  const secondaryTeamTestsPassed = hasRealTestSummary && !isCoOp
+  const secondaryTeamTestsPassed = !areTestResultsLoading && !isCoOp
     ? userTeamNumber === 1
-      ? testResultsSummary.otherTeamPassedCount
-      : testResultsSummary.yourPassedCount
-    : (secondaryTeam?.testsPassed ?? 0);
+      ? (testResultsSummary?.otherTeamPassedCount ?? 0)
+      : (testResultsSummary?.yourPassedCount ?? 0)
+    : 0;
 
-  const comparisonTotalTests = hasRealTestSummary
-    ? testResultsSummary.totalTests
-    : primaryTeam.totalTests;
+  const comparisonTotalTests = testResultsSummary?.totalTests ?? 0;
 
   // Animated counters
   const animatedScore = useCounter(winner.score, 2000, 200);
-  const animatedTests = useCounter(testsPassedForMetric, 1500, 400);
+  const animatedTests = useCounter(areTestResultsLoading ? 0 : testsPassedForMetric, 1500, 400);
   const animatedTime = useCounter(winner.time, 1800, 600);
 
   if (!session) return null;
@@ -301,7 +299,8 @@ export function Results() {
                 Tests Passed
               </div>
               <div className={styles.metricValue}>
-                {animatedTests}/{totalTestsForMetric}
+                {!areTestResultsLoading && `${animatedTests}/${totalTestsForMetric}`}
+                {areTestResultsLoading && (<Loader />)}
               </div>
               <IconCode size={64} className={styles.metricIcon} />
             </div>
@@ -372,13 +371,23 @@ export function Results() {
                   </div>
 
                   <div className={styles.comparisonRow}>
-                    <div className={`${styles.statValue} ${primaryTeamTestsPassed >= secondaryTeamTestsPassed ? styles.statValueWinner : styles.statValueLoser}`}>
-                      {primaryTeamTestsPassed}/{comparisonTotalTests}
-                    </div>
-                    <div className={styles.statLabel}>Tests Passed</div>
-                    <div className={`${styles.statValue} ${secondaryTeamTestsPassed >= primaryTeamTestsPassed ? styles.statValueWinner : styles.statValueLoser}`}>
-                      {secondaryTeamTestsPassed}/{comparisonTotalTests}
-                    </div>
+                    {areTestResultsLoading ? (
+                      <>
+                        <div className={`${styles.statValue} ${styles.statValueLoser}`}>Loading...</div>
+                        <div className={styles.statLabel}>Tests Passed</div>
+                        <div className={`${styles.statValue} ${styles.statValueLoser}`}>Loading...</div>
+                      </>
+                    ) : (
+                      <>
+                        <div className={`${styles.statValue} ${primaryTeamTestsPassed >= secondaryTeamTestsPassed ? styles.statValueWinner : styles.statValueLoser}`}>
+                          {primaryTeamTestsPassed}/{comparisonTotalTests}
+                        </div>
+                        <div className={styles.statLabel}>Tests Passed</div>
+                        <div className={`${styles.statValue} ${secondaryTeamTestsPassed >= primaryTeamTestsPassed ? styles.statValueWinner : styles.statValueLoser}`}>
+                          {secondaryTeamTestsPassed}/{comparisonTotalTests}
+                        </div>
+                      </>
+                    )}
                   </div>
 
                   <div className={styles.comparisonRow}>
