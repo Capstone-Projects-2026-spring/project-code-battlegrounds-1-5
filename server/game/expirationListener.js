@@ -86,6 +86,10 @@ function startExpirationListener(io, pubClient) {
 
       if (!acquired) return; // another instance already handling
 
+      await getPrisma().gameRoom.update({
+        where: { id: gameId },
+        data: { status: 'FINISHED' },
+      });
       io.to(gameId).emit('gameEnded');
     }
 
