@@ -472,10 +472,10 @@ function PlayGameRoom() {
       prev.map((parameter) =>
         parameter.isOutputParameter
           ? {
-              ...parameter,
-              type,
-              value: null,
-            }
+            ...parameter,
+            type,
+            value: null,
+          }
           : parameter,
       ),
     );
@@ -705,14 +705,7 @@ function PlayGameRoom() {
 
               {isProblemVisible && (
                 <PanelResizeHandle
-                  style={{
-                    width: '4px',
-                    backgroundColor: '#ddd',
-                    cursor: 'col-resize',
-                    transition: 'background-color 0.2s',
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#999'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ddd'}
+                  className={styles.panelResizeHandleCol}
                 />
               )}
 
@@ -727,10 +720,7 @@ function PlayGameRoom() {
                   }}
                 >
                   {/* Toolbar */}
-                  <Group
-                    p="xs"
-                    style={{ borderBottom: "1px solid #ddd", flexShrink: 0 }}
-                  >
+                  <Group p="xs">
                     <Select
                       size="xs"
                       data={["Javascript"]}
@@ -773,7 +763,7 @@ function PlayGameRoom() {
                         <PanelGroup orientation="horizontal">
                           {/* Code Editor */}
                           <Panel defaultSize={70} minSize={40}>
-                            <Box style={{ height: '100%', borderRight: "1px solid #ddd" }}>
+                            <Box style={{ height: '100%' }}>
                               <Editor
                                 height="100%"
                                 theme="vs-dark"
@@ -789,14 +779,8 @@ function PlayGameRoom() {
                             </Box>
                           </Panel>
 
-                          <PanelResizeHandle style={{
-                            width: '4px',
-                            backgroundColor: '#ddd',
-                            cursor: 'col-resize',
-                            transition: 'background-color 0.2s',
-                          }}
-                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#999'}
-                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ddd'}
+                          <PanelResizeHandle
+                            className={styles.panelResizeHandleCol}
                           />
 
                           {/* Chat Box */}
@@ -814,14 +798,8 @@ function PlayGameRoom() {
                         </PanelGroup>
                       </Panel>
 
-                      <PanelResizeHandle style={{
-                        height: '4px',
-                        backgroundColor: '#333',
-                        cursor: 'row-resize',
-                        transition: 'background-color 0.2s',
-                      }}
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#666'}
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#333'}
+                      <PanelResizeHandle
+                        className={styles.panelResizeHandleRow}
                       />
 
                       {/* Bottom Section: Test Cases / Console */}
@@ -904,6 +882,7 @@ function PlayGameRoom() {
                                       onTestCaseDelete={removeTest}
                                       showDelete={testCaseCtx.cases.length !== 1}
                                       disabled={runningAllTests}
+                                      onExpectedOutputTypeChange={handleExpectedOutputTypeChange}
                                     />
                                   ) : null;
                                 })()}

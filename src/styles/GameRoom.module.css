@@ -203,6 +203,20 @@
   border-bottom-color: light-dark(var(--mantine-color-console-5), var(--mantine-color-console-3));
 }
 
+.panelResizeHandleCol {
+  width: 2px;
+  background-color: light-dark(var(--mantine-color-console-6), var(--mantine-color-console-6));
+  cursor: col-resize;
+  transition: background-color 0.2s;
+}
+
+.panelResizeHandleRow {
+  height: 2px;
+  background-color: light-dark(var(--mantine-color-console-6), var(--mantine-color-console-6));
+  cursor: row-resize;
+  transition: background-color 0.2s;
+}
+
 /* ========================================
    Reduced Motion Support
    ======================================== */
