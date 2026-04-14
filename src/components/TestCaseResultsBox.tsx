@@ -87,7 +87,8 @@ export default function TestCaseResultsBox({ gameId, team1Results, team2Results,
     if (isExecutorResult(result)) {
       if (result.stderr) {
         // Show error badge with tooltip
-        const errorLines = result.stderr.split('\n').slice(0, 3).join('\n');
+        // Replace /tmp/[random code] with "function solution"
+        result.stderr = result.stderr.replace(/\/tmp\/\S+(?=\s|$)/g, "function solution.js").replace(/\(node:internal\/module[\s\S]*$/, "").trim();
         return (
           <Tooltip label={result.stderr} multiline>
             <Badge color="red" variant="filled">Error</Badge>

@@ -341,8 +341,8 @@ function registerSocketHandlers(io, socket, services) {
 
         // Extract and store full results (including errors)
         const results = json.results || [];
-        // Sum up execution times from all results
-        const totalTime = results.reduce((sum, r) => sum + (r.execution_time_ms || 0), 0);
+        // Calculate average execution time from all results
+        const totalTime = results.length > 0 ? results.reduce((sum, r) => sum + (r.execution_time_ms || 0), 0) / results.length : 0;
 
         console.log('Extracted results:', JSON.stringify(results, null, 2));
         console.log('Total time:', totalTime, 'ms');
@@ -472,8 +472,8 @@ function registerSocketHandlers(io, socket, services) {
           // Extract full results with error information
           const team1Results = json1.results || [];
           const team2Results = json2.results || [];
-          const team1Time = team1Results.reduce((sum, r) => sum + (r.execution_time_ms || 0), 0);
-          const team2Time = team2Results.reduce((sum, r) => sum + (r.execution_time_ms || 0), 0);
+          const team1Time = team1Results.length > 0 ? team1Results.reduce((sum, r) => sum + (r.execution_time_ms || 0), 0) / team1Results.length : 0;
+          const team2Time = team2Results.length > 0 ? team2Results.reduce((sum, r) => sum + (r.execution_time_ms || 0), 0) / team2Results.length : 0;
 
           console.log('Extracted team1Results:', JSON.stringify(team1Results, null, 2));
           console.log('Extracted team2Results:', JSON.stringify(team2Results, null, 2));
