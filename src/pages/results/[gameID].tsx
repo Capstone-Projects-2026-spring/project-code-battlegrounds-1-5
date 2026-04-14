@@ -19,7 +19,7 @@ import {
   IconTarget,
   IconBolt,
   IconArrowRight,
-  IconHome,
+  // IconHome,
   IconEye,
 } from "@tabler/icons-react";
 import Navbar from "@/components/Navbar";
@@ -436,7 +436,7 @@ export function Results() {
               Play Again
             </Button>
 
-            <Button
+            {/* <Button
               size="lg"
               variant="outline"
               color="console"
@@ -445,7 +445,7 @@ export function Results() {
               onClick={() => router.push('/dashboard')}
             >
               Back to Dashboard
-            </Button>
+            </Button> */}
           </div>
         </Container>
       </div>
