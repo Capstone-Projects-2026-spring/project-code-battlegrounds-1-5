@@ -337,6 +337,10 @@ function registerSocketHandlers(io, socket, services) {
       } catch (error) {
         console.error("Error POSTing to code executor:", error);
       } finally {
+        await prisma.gameRoom.update({
+          where: { id: roomId },
+          data: { status: 'FINISHED' },
+        });
         io.to(roomId).emit('gameEnded');
       }
     }
@@ -396,6 +400,10 @@ function registerSocketHandlers(io, socket, services) {
         } catch (error) {
           console.error("Error POSTing to code executor:", error);
         } finally {
+          await prisma.gameRoom.update({
+            where: { id: roomId },
+            data: { status: 'FINISHED' },
+          });
           io.to(roomId).emit('gameEnded');
           await gameService.deleteGameData(submissionKey);
         }
