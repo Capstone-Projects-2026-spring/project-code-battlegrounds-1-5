@@ -1,18 +1,26 @@
 import { useState, useEffect, useRef } from "react";
 import Head from "next/head";
-import { Container, Box, Button, Center, Loader } from "@mantine/core";
+import {
+  Container,
+  Box,
+  Button,
+  Center,
+  Loader,
+  Stack,
+  Flex,
+  ActionIcon,
+  Tooltip,
+} from "@mantine/core";
 import {
   IconTrophy,
   IconClock,
   IconCode,
   IconMedal,
-  IconCheck,
-  IconX,
-  IconFlame,
   IconTarget,
   IconBolt,
   IconArrowRight,
-  IconHome
+  IconHome,
+  IconEye,
 } from "@tabler/icons-react";
 import Navbar from "@/components/Navbar";
 import { useRouter } from "next/router";
@@ -20,7 +28,9 @@ import { authClient } from "@/lib/auth-client";
 import { usePostHog } from "posthog-js/react";
 import { GameType } from "@prisma/client";
 import styles from "@/styles/Results.module.css";
-import { ActiveProblem } from "@/components/ProblemBox";
+import AnalysisBox, { type AnalysisBoxProps } from "@/components/Analysisbox";
+import ProblemBox, { type ActiveProblem } from "@/components/ProblemBox";
+import TestCaseResultsBox from "@/components/TestCaseResultsBox";
 
 // Mock data - replace with actual data from backend
 interface TeamResult {
@@ -32,17 +42,12 @@ interface TeamResult {
   isWinner: boolean;
 }
 
-interface TestResult {
-  id: number;
-  name: string;
-  passed: boolean;
-  input: string;
-  expected: string;
-  actual: string;
-}
-
 interface RoomDetailsResponse {
+  problem: ActiveProblem;
   gameType: GameType;
+  team1Code: string | null;
+  team2Code: string | null;
+  userTeamNumber: 1 | 2;
 }
 
 // Animated counter hook
@@ -110,41 +115,54 @@ export default function Page() {
 export function Results() {
   //grab id from url
   const router = useRouter();
-  const { gameID } = router.query;
+  const gameId = router.query.gameID as string;
   const { data: session } = authClient.useSession();
-  const [problem, setProblem] = useState<ActiveProblem | null>(null);
   const posthog = usePostHog();
+  const [problem, setProblem] = useState<ActiveProblem | null>(null);
+  const [analysisProps, setAnalysisProps] = useState<AnalysisBoxProps | null>(null);
+  const [userTeamNumber, setUserTeamNumber] = useState<1 | 2>(1);
+  const [isProblemVisible, setIsProblemVisible] = useState(true);
+  const toggleProblemVisibility = () => setIsProblemVisible((prev) => !prev);
+
   const [gameType, setGameType] = useState<GameType>(GameType.FOURPLAYER);
-  const [isGameTypeLoading, setIsGameTypeLoading] = useState(true);
+  const [isGameDataLoading, setIsGameDataLoading] = useState(true);
 
   useEffect(() => {
     posthog.capture("results_viewed");
   }, [posthog]);
 
   useEffect(() => {
-    if (!router.isReady || !session?.user.id) return;
+    if (!router.isReady || !session?.user.id || !gameId) return;
 
-    if (typeof gameID !== "string") {
-      setIsGameTypeLoading(false);
-      return;
-    }
-
-    const loadGameType = async () => {
+    const loadGameData = async () => {
       try {
-        const response = await fetch(`/api/rooms/${gameID}/${session.user.id}`);
+        const response = await fetch(`/api/rooms/${gameId}`);
         if (!response.ok) return;
 
         const roomDetails = (await response.json()) as RoomDetailsResponse;
+        setProblem(roomDetails.problem);
         setGameType(roomDetails.gameType);
+        setUserTeamNumber(roomDetails.userTeamNumber);
+
+        if (roomDetails.team1Code || roomDetails.team2Code) {
+          setAnalysisProps({
+            team1Code: roomDetails.team1Code ?? "",
+            team2Code: roomDetails.team2Code ?? undefined,
+            gameType: roomDetails.gameType,
+            userTeamNumber: roomDetails.userTeamNumber,
+          });
+        } else {
+          setAnalysisProps(null);
+        }
       } catch (error) {
         console.error("Failed to load room details for results page", error);
       } finally {
-        setIsGameTypeLoading(false);
+        setIsGameDataLoading(false);
       }
     };
 
-    loadGameType();
-  }, [gameID, router.isReady, session?.user.id]);
+    loadGameData();
+  }, [gameId, router.isReady, session?.user.id]);
 
   const isCoOp = gameType === GameType.TWOPLAYER;
 
@@ -179,14 +197,6 @@ export function Results() {
   const primaryTeam = isCoOp ? coOpTeam : greenTeam;
   const secondaryTeam = isCoOp ? null : redTeam;
 
-  const testResults: TestResult[] = [
-    { id: 1, name: "Basic Input", passed: true, input: "[1,2,3]", expected: "6", actual: "6" },
-    { id: 2, name: "Edge Case - Empty", passed: true, input: "[]", expected: "0", actual: "0" },
-    { id: 3, name: "Large Numbers", passed: true, input: "[100,200,300]", expected: "600", actual: "600" },
-    { id: 4, name: "Negative Values", passed: false, input: "[-1,-2,-3]", expected: "-6", actual: "Error" },
-    { id: 5, name: "Mixed Values", passed: true, input: "[1,-1,2,-2]", expected: "0", actual: "0" },
-  ];
-
   const winner = secondaryTeam ? (primaryTeam.isWinner ? primaryTeam : secondaryTeam) : primaryTeam;
 
   // Animated counters
@@ -196,7 +206,7 @@ export function Results() {
 
   if (!session) return null;
 
-  if (isGameTypeLoading) {
+  if (isGameDataLoading) {
     return (
       <div className={styles.resultsPage}>
         <div className={styles.gradient} />
@@ -235,7 +245,7 @@ export function Results() {
             </h1>
             <p className={styles.victorySubtitle}>
               <span className={styles.winnerTeamName}>{winner.name}</span>{" "}
-              {isCoOp ? "cleared the co-op challenge" : "dominated the battlefield"}
+              {isCoOp ? "made it out of the battleground!" : "dominated the battlefield"}
             </p>
           </Box>
 
@@ -352,85 +362,65 @@ export function Results() {
             </div>
           )}
 
-          {/* Performance Cards */}
-          <div className={styles.performanceSection}>
-            <h2 className={styles.sectionTitle}>{isCoOp ? "Co-Op Performance" : "Performance Breakdown"}</h2>
-
-            <div className={styles.performanceGrid}>
-              <div className={styles.performanceCard}>
-                <div className={styles.performanceHeader}>
-                  <div className={styles.performanceTitle}>Accuracy</div>
-                  <IconTarget size={24} className={styles.performanceIcon} />
-                </div>
-                <div className={styles.performanceScore}>
-                  {Math.round((primaryTeam.testsPassed / primaryTeam.totalTests) * 100)}%
-                </div>
-                <div className={styles.performanceDescription}>
-                  Excellent test coverage with {primaryTeam.testsPassed} out of {primaryTeam.totalTests} tests passing
-                </div>
-              </div>
-
-              <div className={styles.performanceCard}>
-                <div className={styles.performanceHeader}>
-                  <div className={styles.performanceTitle}>Speed</div>
-                  <IconBolt size={24} className={styles.performanceIcon} />
-                </div>
-                <div className={styles.performanceScore}>
-                  A+
-                </div>
-                <div className={styles.performanceDescription}>
-                  {isCoOp
-                    ? `Completed in ${formatTime(primaryTeam.time)} with strong coordination and pace`
-                    : `Completed in ${formatTime(primaryTeam.time)} - faster than ${primaryTeam.time < secondaryTeam!.time ? "80%" : "60%"} of teams`}
-                </div>
-              </div>
-
-              <div className={styles.performanceCard}>
-                <div className={styles.performanceHeader}>
-                  <div className={styles.performanceTitle}>Efficiency</div>
-                  <IconFlame size={24} className={styles.performanceIcon} />
-                </div>
-                <div className={styles.performanceScore}>
-                  {primaryTeam.score}
-                </div>
-                <div className={styles.performanceDescription}>
-                  {isCoOp
-                    ? "Outstanding co-op execution balancing speed, quality, and collaboration"
-                    : "Outstanding score combining speed, accuracy, and code quality"}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Test Results */}
+          {/* Code + Test Breakdown */}
           <div className={styles.testResultsSection}>
-            <h2 className={styles.sectionTitle}>{isCoOp ? "Co-Op Test Case Results" : "Test Case Results"}</h2>
+            <h2 className={styles.sectionTitle}>
+              {isCoOp ? "Co-Op Code & Test Breakdown" : "Match Code & Test Breakdown"}
+            </h2>
 
-            <div className={styles.testResultsCard}>
-              <div className={styles.testResultsHeader}>
-                <div className={styles.testResultsTitle}>
-                  All Test Cases
-                </div>
-              </div>
+            <Flex gap="md" align="stretch" wrap="wrap">
+              <Box
+                style={{
+                  width: isProblemVisible ? "30%" : "52px",
+                  minWidth: isProblemVisible ? "260px" : "52px",
+                  color: "white",
+                  backgroundColor: "#333",
+                  padding: "0",
+                  overflowY: "auto",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: isProblemVisible ? "flex-start" : "center",
+                  flexShrink: 0,
+                  transition: "width 0.2s ease, min-width 0.2s ease",
+                  borderRadius: "8px",
+                }}
+              >
+                {isProblemVisible ? (
+                  <Box style={{ width: "100%", flex: 1, minHeight: 0, padding: "1rem" }}>
+                    <ProblemBox problem={problem} onToggleVisibility={toggleProblemVisibility} />
+                  </Box>
+                ) : (
+                  <Tooltip label="Show Problem">
+                    <ActionIcon
+                      variant="transparent"
+                      color="gray"
+                      size="xl"
+                      onClick={toggleProblemVisibility}
+                      title="Show Problem"
+                    >
+                      <IconEye size={24} />
+                    </ActionIcon>
+                  </Tooltip>
+                )}
+              </Box>
 
-              <div className={styles.testResultsBody}>
-                {testResults.map((test) => (
-                  <div key={test.id} className={styles.testRow}>
-                    <div className={`${styles.testStatus} ${test.passed ? styles.testStatusPass : styles.testStatusFail}`}>
-                      {test.passed ? <IconCheck size={18} /> : <IconX size={18} />}
-                    </div>
-                    <div className={styles.testInfo}>
-                      <div className={styles.testName}>
-                        Test {test.id}: {test.name}
-                      </div>
-                      <div className={styles.testDetails}>
-                        Input: {test.input} → Expected: {test.expected} | Got: {test.actual}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+              <Stack style={{ flex: 2, minWidth: "320px" }} gap="md">
+                <AnalysisBox
+                  {...(analysisProps ?? {
+                    team1Code: "",
+                    gameType: gameType as "TWOPLAYER" | "FOURPLAYER",
+                    userTeamNumber,
+                  })}
+                />
+                <TestCaseResultsBox
+                  gameId={gameId}
+                  showOtherTeamColumn={!isCoOp}
+                  gameType={gameType as "TWOPLAYER" | "FOURPLAYER"}
+                  userTeamNumber={userTeamNumber}
+                />
+              </Stack>
+            </Flex>
           </div>
 
           {/* Action Buttons */}

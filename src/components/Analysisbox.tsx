@@ -13,7 +13,7 @@ export default function AnalysisBox({ team1Code, team2Code, gameType = "FOURPLAY
     <Paper shadow="sm" radius="md" p="lg" withBorder style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
 
       <Box style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-        <Title order={4} mb="sm" c="blue.7">Solution Analysis</Title>
+        <Title order={4} mb="sm">Solution Analysis</Title>
         <Text size="sm" c="dimmed" lh={1.6}>
           {hasAnyCode ?'' : 'Waiting for code'}
         </Text>

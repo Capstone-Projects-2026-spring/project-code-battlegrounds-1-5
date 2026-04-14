@@ -2,17 +2,17 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
-interface TestCase {
+export interface TestCase {
   id: string;
   input: unknown;
   expected: unknown;
 }
 
-interface TestsResponse {
+export interface TestsResponse {
   tests: TestCase[];
 }
 
-interface ErrorResponse {
+export interface ErrorResponse {
   message: string;
 }
 
