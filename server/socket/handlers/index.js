@@ -10,7 +10,7 @@ function registerSocketHandlers(io, socket, services) {
   registerGameHandlers(io, socket, gameService);
   registerExecutionHandlers(io, socket, gameService);
   registerMatchmakingHandlers(io, socket, matchmakingService);
-  registerInviteHandlers(io, socket, inviteService);
+  registerInviteHandlers(io, socket, inviteService, gameService);
 
   socket.on('disconnect', async () => {
     if (socket.gameId && socket.userId) {

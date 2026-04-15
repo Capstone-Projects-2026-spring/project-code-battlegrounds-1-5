@@ -18,7 +18,7 @@ const friendRequestRespondSchema = z.object({
 });
 
 
-function registerInviteHandlers(io, socket, inviteService) {
+function registerInviteHandlers(io, socket, inviteService, gameService) {
 
     socket.on('partyInvite', async (data) => {
         const payload = validate(partyInviteSchema, data);

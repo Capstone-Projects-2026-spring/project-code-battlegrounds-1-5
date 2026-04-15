@@ -109,7 +109,6 @@ export default function QueuePage() {
         <title>Find a Match - Code Battlegrounds</title>
         <meta name="description" content="Find opponents through matchmaking or create an instant room by difficulty" />
       </Head>
-      {socket && <div data-testid="socket-ready">hello</div>}
 
       <Box className={classes.matchmakingPage}>
         <Container

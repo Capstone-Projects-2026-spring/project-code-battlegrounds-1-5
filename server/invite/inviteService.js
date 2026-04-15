@@ -7,7 +7,7 @@ function createInviteService(stateRedis) {
 
     return {
 
-        // ─── Party ────────────────────────────────────────────────────────────
+        // PARTY
 
         async sendPartyInvite(fromUserId, toUserId) {
             const prisma = getPrisma();
@@ -177,7 +177,7 @@ function createInviteService(stateRedis) {
             return { status: 'joined', member, partyOwner: owner };
         },
 
-        // ─── Friends ──────────────────────────────────────────────────────────
+        // FRIENDS
 
         async sendFriendRequest(fromUserId, friendCode) {
             const prisma = getPrisma();
@@ -268,7 +268,7 @@ function createInviteService(stateRedis) {
                 username: friendship.requester.name,
                 displayName: friendship.requester.name,
                 avatarUrl: friendship.requester.image ?? null,
-                status: 'offline',
+                status: 'online',
             };
 
             // Full Friend shape for the requester (the accepter is now their friend)
