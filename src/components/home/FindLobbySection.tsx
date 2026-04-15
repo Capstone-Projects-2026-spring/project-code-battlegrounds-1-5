@@ -14,6 +14,9 @@ import {
 import { IconTrophy, IconUser, IconUsers } from "@tabler/icons-react";
 import { GameType, ProblemDifficulty } from "@prisma/client";
 import classes from "@/styles/Matchmaking.module.css";
+import { useParty } from "@/contexts/PartyContext";
+import { useMatchmaking } from "@/contexts/MatchmakingContext";
+import { useSocket } from "@/contexts/SocketContext";
 
 type QueueStatus = "idle" | "queued" | "matched" | "error";
 
@@ -21,7 +24,7 @@ type FindLobbySectionProps = {
   gameType: GameType;
   difficulty: ProblemDifficulty;
   status: QueueStatus;
-  partyId: string | null;
+  inParty: boolean;
   difficultyLabels: Record<ProblemDifficulty, string>;
   onGameTypeChange: (gameType: GameType) => void;
   onDifficultyChange: (difficulty: ProblemDifficulty) => void;
@@ -33,13 +36,16 @@ export default function FindLobbySection({
   gameType,
   difficulty,
   status,
-  partyId,
+  inParty,
   difficultyLabels,
   onGameTypeChange,
   onDifficultyChange,
   onJoinQueue,
   onLeaveQueue,
 }: FindLobbySectionProps) {
+  const { partyMember, joinedParty } = useParty();
+  const { gameId } = useMatchmaking();
+  const { socket } = useSocket();
   return (
     <Card
       withBorder
@@ -58,8 +64,11 @@ export default function FindLobbySection({
             fullWidth
             size="md"
             value={gameType}
-            onChange={(val) => onGameTypeChange(val as GameType)}
-            disabled={status === "queued" || status === "matched"}
+            onChange={(val) => {
+              if (partyMember) socket?.emit('updateQueueSelection', { gameType: val as GameType, difficulty, partyMember }); 
+              onGameTypeChange(val as GameType);
+            }}
+            disabled={status === "queued" || status === "matched" || joinedParty !== null}
             data={[
               {
                 label: (
@@ -93,7 +102,10 @@ export default function FindLobbySection({
             fullWidth
             size="md"
             value={difficulty}
-            onChange={(val) => onDifficultyChange(val as ProblemDifficulty)}
+            onChange={(val) => {
+               if (partyMember) socket?.emit('updateQueueSelection', { gameType: val as GameType, difficulty, partyMember }); 
+              onDifficultyChange(val as ProblemDifficulty);
+            }}
             disabled={status === "queued" || status === "matched"}
             data={Object.values(ProblemDifficulty).map((value) => ({
               label: difficultyLabels[value],
@@ -104,7 +116,7 @@ export default function FindLobbySection({
         </Box>
 
         {/* Party ID Badge */}
-        {partyId && (
+        {inParty && (
           <Badge
             size="lg"
             variant="light"
@@ -136,7 +148,7 @@ export default function FindLobbySection({
                 <IconTrophy size={24} />
               </ThemeIcon>
               <Text fw={600} size="lg" c="green">Match Found!</Text>
-              <Text size="sm" c="dimmed">Preparing your battle arena...</Text>
+              <Text size="sm" c="dimmed">Preparing your battle arena for Game Room: ${gameId}</Text>
               <Loader size="sm" color="green" />
             </Stack>
           </Card>
@@ -158,8 +170,9 @@ export default function FindLobbySection({
             radius="md"
             onClick={onJoinQueue}
             className={classes.primaryButton}
+            disabled={joinedParty !== null}
           >
-            {partyId ? "Queue with Lobby" : "Find Match"}
+            {inParty ? "Queue with Lobby" : "Find Match"}
           </Button>
         ) : (
           <Button
