@@ -8,6 +8,7 @@ import {
   type SetStateAction,
 } from "react";
 import { useSocket } from "./SocketContext";
+import { showFriendRequestNotification } from "@/components/notifications";
 
 export type PresenceStatus = "online" | "away" | "offline";
 
@@ -77,6 +78,19 @@ export const FriendshipProvider = ({ children }: { children: ReactNode }) => {
         if (prev.some((r) => r.id === request.id)) return prev;
         return [...prev, { ...request, direction: "incoming" }];
       });
+
+      showFriendRequestNotification(
+        request.displayName,
+        request.id,
+        () => {
+          socket.emit("friendRequestAccept", { requestId: request.id });
+          setFriendRequests((prev) => prev.filter((r) => r.id !== request.id));
+        },
+        () => {
+          socket.emit("friendRequestDecline", { requestId: request.id });
+          setFriendRequests((prev) => prev.filter((r) => r.id !== request.id));
+        },
+      );
     };
 
     const onFriendRequestAccepted = (friend: Friend) => {

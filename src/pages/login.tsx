@@ -5,6 +5,7 @@ import { useForm } from "@mantine/form";
 import { Button, Card, Flex, PasswordInput, TextInput, Title, Text, Anchor } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { usePostHog } from "posthog-js/react";
+import { showErrorNotification } from "@/components/notifications";
 import Brand from "@/components/Brand";
 import greenTheme from "@/styles/shared/GreenTheme.module.css";
 import styles from "@/styles/Login.module.css";
@@ -39,7 +40,7 @@ export default function LoginPage() {
 
     if (error) {
       posthog.capture("user_login_failure");
-      alert(error.message);
+      showErrorNotification(error.message, 'Login Failed');
       setLoading(false);
       return;
     }
