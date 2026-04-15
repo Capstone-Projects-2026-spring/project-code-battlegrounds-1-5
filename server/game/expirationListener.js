@@ -86,10 +86,14 @@ function startExpirationListener(io, pubClient) {
 
       if (!acquired) return; // another instance already handling
 
+      const gameActive = await pubClient.sismember('activeGames', gameId);
+      if (!gameActive) return; // game already ended via submitCode
+
       await getPrisma().gameRoom.update({
         where: { id: gameId },
         data: { status: 'FINISHED' },
       });
+      await pubClient.srem('activeGames', gameId);
       io.to(gameId).emit('gameEnded');
     }
 
