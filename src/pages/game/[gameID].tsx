@@ -1,7 +1,7 @@
 import { ActionIcon, Box, Button, Center, Group, Loader, Modal, Select, Stack, Tabs, Text, Tooltip } from '@mantine/core';
 import { Editor } from '@monaco-editor/react';
 import { useRouter } from 'next/router';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { IconEye, IconPlayerPlay, IconPlayerTrackNextFilled, IconPlus } from '@tabler/icons-react';
 import { usePostHog } from 'posthog-js/react';
@@ -110,6 +110,34 @@ function PlayGameRoom() {
   const socketRef = useRef<Socket | null>(null);
 
   const isSpectator = role === Role.SPECTATOR;
+
+  const handleTimerExpire = useCallback(() => {
+    if (!socket || !gameType || !teamSelected) return;
+    const team = getTeamLabel();
+    setIsWaitingForOtherTeam(true);
+    const indexes = Array.from(
+      { length: testCaseCtx.cases.length }, (_, i) => i);
+
+    const codeToSubmit = gameStateCtx.code || liveCode || "";
+
+    console.log("Timer expired - submitting code:", {
+      liveCode,
+      gameStateCtxCode: gameStateCtx.code,
+      codeToSubmit,
+      teamSelected,
+      gameId,
+    });
+
+    socket.emit("submitCode", {
+      roomId: gameId,
+      code: codeToSubmit,
+      type: gameType,
+      team,
+      teamId: teamSelected,
+      testCases: testCaseCtx.cases,
+      runIDs: indexes,
+    });
+  }, [socket, gameType, teamSelected, gameId, gameStateCtx, testCaseCtx.cases, liveCode]);
 
   useEffect(() => {
     if (router.query.teamId && router.query.role) {
@@ -686,8 +714,10 @@ function PlayGameRoom() {
                 >
                   {(gameState === GameStatus.ACTIVE || gameState === GameStatus.FLIPPING) && (
                     <Box mb="md" p="1rem" pb={isProblemVisible ? "md" : "1rem"}>
-                      <GameTimer endTime={endTime}
-                        onExpire={() => { if (role === Role.CODER) socket.emit("submitCode", { roomId: gameId, code: liveCode }); }} />
+                      <GameTimer
+                        endTime={endTime}
+                        onExpire={handleTimerExpire}
+                      />
                     </Box>
                   )}
                   {isProblemVisible ? (

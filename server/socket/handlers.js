@@ -69,7 +69,7 @@ const requestTeamUpdateSchema = z.object({
 
 const submitCodeSchema = z.object({
   roomId: z.string(),
-  code: z.string().max(10000).optional(), // Adjust max length as needed
+  code: z.string().min(1).max(10000), // Required, must have at least 1 character
   type: z.enum([GameType.TWOPLAYER, GameType.FOURPLAYER]),
   team: z.enum(["team1", "team2"]).nullable().optional(),
   teamId: z.string().optional(),
