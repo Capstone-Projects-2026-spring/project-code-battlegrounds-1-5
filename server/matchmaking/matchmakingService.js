@@ -139,7 +139,7 @@ function createMatchmakingService(stateRedis, io) {
             return { status: 'matched', gameId: gameRoom.id };
         },
 
-        async _formLobbyGame(partyId, gameType, difficulty) {
+        async _formPartyGame(partyId, gameType, difficulty) {
             const party = await getPrisma().party.findUnique({
                 where: { id: partyId },
                 include: { owner: true, member: true },

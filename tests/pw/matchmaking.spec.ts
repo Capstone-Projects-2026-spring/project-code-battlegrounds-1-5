@@ -9,12 +9,12 @@ test.describe('Matchmaking', () => {
 
     test.beforeAll(async () => {
         browsers = await Promise.all([...Array(4)].map(() => chromium.launch()));
+        const contexts = await Promise.all(browsers.map(b => b.newContext()));
+        pages = await Promise.all(contexts.map(ctx => ctx.newPage()));
 
-        for (let i = 0; i < 4; i++) {
-            const ctx = await browsers[i].newContext();
-            const page = await ctx.newPage();
-            await loginAs(page, players[i], 'password123');
-            pages.push(page);
+        // Switch back to sequential for stability
+        for (let i = 0; i < pages.length; i++) {
+            await loginAs(pages[i], players[i], 'password123');
         }
     });
 
@@ -92,7 +92,6 @@ test.describe('Matchmaking', () => {
             // All should land on the same game room
             const gameUrls = pages.map(u => u.url());
             expect(gameUrls.every(url => url.includes('/game/'))).toBeTruthy();
-            console.log("Game URLs:", gameUrls);
             expect(new Set(gameUrls).size).toBe(1);
 
         });

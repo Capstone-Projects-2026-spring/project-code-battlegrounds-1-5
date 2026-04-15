@@ -14,7 +14,7 @@ test.describe('Auth flow', () => {
 
     await page.click("button[data-testid='signup-button']");
 
-    await expect(page).toHaveURL("/", {
+    await expect(page).toHaveURL("/matchmaking", {
       timeout: 15000,
     });
   });
@@ -27,12 +27,12 @@ test.describe('Auth flow', () => {
 
     await page.click("button[data-testid='login-button']");
 
-    await expect(page).toHaveURL("/", {
+    await expect(page).toHaveURL("/matchmaking", {
       timeout: 15000,
     });
   });
 
-  test("logout blocks landingpage", async ({ page }) => {
+  test("logout blocks dashboard", async ({ page }) => {
     await page.goto("/login");
 
     await page.fill('[data-testid="email-login"]', "alice@test.com");
@@ -40,7 +40,7 @@ test.describe('Auth flow', () => {
 
     await page.click("button[data-testid='login-button']");
 
-    await page.waitForURL('**/');
+    await page.waitForURL('**/matchmaking');
 
     await page.goto("/dashboard");
 
@@ -52,13 +52,7 @@ test.describe('Auth flow', () => {
 
     await expect(page).toHaveURL("/login");
 
-    await page.goto("/");
-
-    await expect(page).toHaveURL("/login");
-  });
-
-  test("landingpage requires auth", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/dashboard");
 
     await expect(page).toHaveURL("/login");
   });

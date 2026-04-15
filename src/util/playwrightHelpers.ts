@@ -5,12 +5,8 @@ export async function loginAs(page: Page, email: string, password: string) {
     await page.fill('[data-testid=email-login]', email);
     await page.fill('[data-testid=password-login]', password);
     await page.click('[data-testid=login-button]');
-    await page.waitForURL('**/');
-}
-
-export async function goToMatchmaking(page: Page) {
-    await page.click('[data-testid="matchmaking-link"]');
-    await page.waitForURL('**/matchmaking');
+    await page.waitForURL('**/matchmaking', { timeout: 25000 });
+    await page.waitForSelector('[data-testid="socket-ready"]', { timeout: 15000 });
 }
 
 export async function setupGame4(pages: Page[], difficulty: 'easy' | 'medium' | 'hard'): Promise<string> {
@@ -51,7 +47,6 @@ export async function setupGame2(pages: Page[], difficulty: 'easy' | 'medium' | 
 }
 
 export async function createGame2(page: Page, difficulty: 'easy' | 'medium' | 'hard'): Promise<string> {
-    await page.goto('/matchmaking');
     await page.click('[data-testid="create-game-tab"]');
     const navigationPromise = page.waitForURL(/\/game\/.+/, { timeout: 10000 });
     await page.click(`[data-testid="co-op-create-room-button-${difficulty}"]`);
@@ -60,7 +55,6 @@ export async function createGame2(page: Page, difficulty: 'easy' | 'medium' | 'h
 }
 
 export async function createGame4(page: Page, difficulty: 'easy' | 'medium' | 'hard'): Promise<string> {
-    await page.goto('/matchmaking');
     await page.click('[data-testid="create-game-tab"]');
     // wait to confirm it's selected
     await page.waitForTimeout(300);

@@ -103,7 +103,7 @@ export default function FindLobbySection({
             size="md"
             value={difficulty}
             onChange={(val) => {
-               if (partyMember) socket?.emit('updateQueueSelection', { gameType: val as GameType, difficulty, partyMember }); 
+               if (partyMember) socket?.emit('updateQueueSelection', { gameType, difficulty: val as ProblemDifficulty, partyMember }); 
               onDifficultyChange(val as ProblemDifficulty);
             }}
             disabled={status === "queued" || status === "matched"}
@@ -148,7 +148,7 @@ export default function FindLobbySection({
                 <IconTrophy size={24} />
               </ThemeIcon>
               <Text fw={600} size="lg" c="green">Match Found!</Text>
-              <Text size="sm" c="dimmed">Preparing your battle arena for Game Room: ${gameId}</Text>
+              <Text size="sm" c="dimmed">Preparing your battle arena for Game Room: {gameId}</Text>
               <Loader size="sm" color="green" />
             </Stack>
           </Card>
@@ -182,7 +182,7 @@ export default function FindLobbySection({
             color="red"
             variant="outline"
             onClick={onLeaveQueue}
-            disabled={status === "matched"}
+            disabled={status === "matched" || joinedParty !== null}
             className={classes.cancelButton}
           >
             Cancel Search

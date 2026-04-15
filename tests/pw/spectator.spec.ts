@@ -8,17 +8,21 @@ test.describe('Spectator flow', () => {
 
     test.beforeAll(async () => {
         browsers = await Promise.all([...Array(5)].map(() => chromium.launch()));
+        const contexts = await Promise.all(browsers.map(b => b.newContext()));
+        pages = await Promise.all(contexts.map(ctx => ctx.newPage()));
 
-        for (let i = 0; i < 5; i++) {
-            const ctx = await browsers[i].newContext();
-            const page = await ctx.newPage();
-            await loginAs(page, players[i], 'password123');
-            pages.push(page);
+        // Switch back to sequential for stability
+        for (let i = 0; i < pages.length; i++) {
+            await loginAs(pages[i], players[i], 'password123');
         }
     });
 
+    test.beforeEach(async () => {
+        await Promise.all(pages.map(page => page.goto('/matchmaking')));
+    });
+
     test.afterAll(async () => {
-        await Promise.all(browsers.map(b => b.close().catch(() => {})));
+        await Promise.all(browsers.map(b => b.close().catch(() => { })));
         browsers = [];
         pages = [];
     });

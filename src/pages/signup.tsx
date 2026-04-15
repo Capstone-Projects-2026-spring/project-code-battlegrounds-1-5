@@ -43,7 +43,7 @@ export default function SignUpPage() {
       onSuccess: (ctx) => {
         posthog.capture("user_signup_success");
         //redirect to the dashboard or sign in page
-        router.push("/");
+        router.push("/matchmaking");
       },
       onError: (ctx) => {
         posthog.capture("user_signup_failure");

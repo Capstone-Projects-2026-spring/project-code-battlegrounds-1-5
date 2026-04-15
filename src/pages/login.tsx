@@ -33,7 +33,7 @@ export default function LoginPage() {
     const { data, error } = await authClient.signIn.email({
       email,
       password,
-      callbackURL: "/",
+      callbackURL: "/matchmaking",
       rememberMe: true
     });
 
@@ -47,7 +47,7 @@ export default function LoginPage() {
     posthog.capture("user_login_success");
     posthog.identify(data.user.id);
     setLoading(false);
-    router.push("/");
+    router.push("/matchmaking");
   };
 
   return (
