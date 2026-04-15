@@ -94,11 +94,10 @@ function createGameService(stateRedis) {
       // potential future cleanup: code, submissions, etc.
     },
 
-<<<<<<< HEAD
     async getSocketId(userId) {
       return stateRedis.get(`socket:${userId}`);
-    }
-=======
+    },
+    
     async saveGameData(key, value) {
       return stateRedis.set(key, value);
     },
@@ -111,7 +110,6 @@ function createGameService(stateRedis) {
     async deleteGameData(key) {
       return stateRedis.del(key);
     },
->>>>>>> main
   };
 }
 
