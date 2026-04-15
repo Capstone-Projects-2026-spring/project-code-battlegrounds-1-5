@@ -1,30 +1,40 @@
-import { ActionIcon, Box, Button, Center, Group, Loader, Select, Stack, Tabs, Text, Tooltip } from '@mantine/core';
+import { ActionIcon, Box, Button, Center, Group, Loader, Modal, Select, Stack, Tabs, Text, Tooltip } from '@mantine/core';
 import { Editor } from '@monaco-editor/react';
 import { useRouter } from 'next/router';
 import { useEffect, useState, useRef } from 'react';
 import { Socket } from 'socket.io-client';
 import { IconEye, IconPlayerPlay, IconPlayerTrackNextFilled, IconPlus } from '@tabler/icons-react';
 import { usePostHog } from 'posthog-js/react';
+import { Panel, Group as PanelGroup, Separator as PanelResizeHandle } from 'react-resizable-panels';
 
 import ChatBox from '@/components/ChatBox';
 import GameTimer from '@/components/GameTimer';
 import TeamSelect from "@/components/TeamSelect";
 import { TeamCount } from "@/components/TeamSelect";
-import type { ActiveProblem } from '@/components/ProblemBox';
-import ProblemBox from '@/components/ProblemBox';
-import RoleFlipPopup from '@/components/RoleFlipPopup';
-import { showRoleSwapWarning } from '@/components/notifications';
+import type { ActiveProblem } from "@/components/ProblemBox";
+import ProblemBox from "@/components/ProblemBox";
+import RoleFlipPopup from "@/components/RoleFlipPopup";
+import { showRoleSwapWarning } from "@/components/notifications";
 
 import { Role, GameStatus, GameType } from "@prisma/client";
 import { authClient } from "@/lib/auth-client";
-import GameTestCase from '@/components/gameTests/GameTestCase';
-import { GameTestCasesProvider, TestableCase, useTestCases } from "@/contexts/GameTestCasesContext";
-import { ParameterType } from '@/lib/ProblemInputOutput';
-import NewParameterButton from '@/components/gameTests/NewParameterButton';
-import { GameStateProvider, useGameState } from '@/contexts/GameStateContext';
+import GameTestCase from "@/components/gameTests/GameTestCase";
+import {
+  DEFAULT_TEST_CASES,
+  GameTestCasesProvider,
+  TestableCase,
+  useTestCases,
+} from "@/contexts/GameTestCasesContext";
+import { ParameterType } from "@/lib/ProblemInputOutput";
+import NewParameterButton from "@/components/gameTests/NewParameterButton";
+import {
+  GameStateProvider,
+  useGameState,
+} from "@/contexts/GameStateContext";
 import { useSocket } from '@/contexts/SocketContext';
 import { useMatchmaking } from '@/contexts/MatchmakingContext';
-import styles from '@/styles/GameRoom.module.css';
+
+import styles from "@/styles/GameRoom.module.css";
 
 interface RoomDetailsResponse {
   problem: ActiveProblem;
@@ -47,7 +57,7 @@ export default function Page() {
   // if we aren't even logged in
   useEffect(() => {
     if (!isPending && !session) {
-      router.replace("/auth");
+      router.replace("/login");
     }
   }, [isPending, session, router]);
 
@@ -81,6 +91,7 @@ function PlayGameRoom() {
   const [liveCode, setLiveCode] = useState<string>("function solution(a, b) { \n\treturn a + b;\n}");
   const [activeTestId, setActiveTestId] = useState<number>(0);
   const [gameType, setGameType] = useState<GameType | null>(null);
+  const [isWaitingForOtherTeam, setIsWaitingForOtherTeam] = useState(false);
 
   const [runningAllTests, setRunningAllTests] = useState<boolean>(false);
 
@@ -100,6 +111,13 @@ function PlayGameRoom() {
 
   const isSpectator = role === Role.SPECTATOR;
 
+  useEffect(() => {
+    if (router.query.teamId && router.query.role) {
+      setTeamSelected(router.query.teamId as string);
+      setRole(router.query.role as Role);
+    }
+  }, [router.query.teamId, router.query.role]);
+
   // ONLY HAPPENS ON PAGE LAUNCH
   useEffect(() => {
     if (!session?.user.id || !gameId || !socket) return;
@@ -118,14 +136,22 @@ function PlayGameRoom() {
         if (data.role) setRole(data.role as Role);
         console.log("Fetched room details:", data);
 
-        if (data.gameType === GameType.TWOPLAYER && !data.teamId && !data.role) {
+        if (
+          data.gameType === GameType.TWOPLAYER &&
+          !data.teamId &&
+          !data.role
+        ) {
           // Auto-join team if it's a 2 player game and the user isn't assigned to a team yet
           const teamId = data.teams[0]?.teamId;
           if (teamId) {
             const res = await fetch(`/api/team/join`, {
               method: "POST",
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ userId: session.user.id, teamId, gameRoomId: gameId })
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                userId: session.user.id,
+                teamId,
+                gameRoomId: gameId,
+              }),
             });
             if (res.ok) {
               const joined = await res.json();
@@ -134,9 +160,9 @@ function PlayGameRoom() {
             }
           }
         }
-
+        setLoading(false);
       } catch (error) {
-        console.error('Failed to load room problem', error);
+        console.error("Failed to load room problem", error);
       }
     };
     loadRoomDetails();
@@ -166,6 +192,18 @@ function PlayGameRoom() {
   }, [gameId, session?.user.id]);
 
   useEffect(() => {
+    if (!socket || !teamSelected) return;
+    // Emit the default test cases ONCE to the socket
+    // so that they're at least synced and ready to go should somebody
+    // hit the run button or attempt to make a new case.
+    console.log("Syncing default test cases :3");
+    socket.emit("updateTestCases", {
+      teamId: teamSelected,
+      testCases: DEFAULT_TEST_CASES
+    });
+  }, [socket, teamSelected]);
+
+  useEffect(() => {
     // Runs after team gets selected - join rooms first, then set up room-specific listeners
     if (!socket || !teamSelected || !gameId || !gameType) return;
     socket.emit("joinGame", { gameId, teamId: teamSelected, gameType });
@@ -189,6 +227,7 @@ function PlayGameRoom() {
 
     const handleGameEnded = () => {
       posthog.capture("game_ended", { gameId });
+      setIsWaitingForOtherTeam(false);
       setGameState(GameStatus.FINISHED);
       setStatus("idle"); // reset matchmaking status so players can queue again from results page
       router.push(`/results/${gameId}`);
@@ -198,7 +237,7 @@ function PlayGameRoom() {
       if (role) {
         showRoleSwapWarning(role);
       } else {
-        showRoleSwapWarning(Role.CODER);
+        showRoleSwapWarning(Role.SPECTATOR);
       }
     };
 
@@ -208,7 +247,17 @@ function PlayGameRoom() {
 
     const handleRoleSwap = () => {
       setGameState(GameStatus.ACTIVE);
-      setRole((prev) => (prev === Role.SPECTATOR ? Role.SPECTATOR : prev === Role.CODER ? Role.TESTER : Role.CODER));
+      setRole((prev) =>
+        prev === Role.SPECTATOR
+          ? Role.SPECTATOR
+          : prev === Role.CODER
+            ? Role.TESTER
+            : Role.CODER,
+      );
+    };
+
+    const handleWaitingForOtherTeam = () => {
+      setIsWaitingForOtherTeam(true);
     };
 
     socket.on("gameStarting", handleGameStarting);
@@ -217,6 +266,7 @@ function PlayGameRoom() {
     socket.on("roleSwapWarning", handleRoleSwapWarning);
     socket.on("roleSwapping", handleRoleSwapping);
     socket.on("roleSwap", handleRoleSwap);
+    socket.on("waitingForOtherTeam", handleWaitingForOtherTeam);
 
     return () => {
       socket.off("gameStarting", handleGameStarting);
@@ -225,6 +275,7 @@ function PlayGameRoom() {
       socket.off("roleSwapWarning", handleRoleSwapWarning);
       socket.off("roleSwapping", handleRoleSwapping);
       socket.off("roleSwap", handleRoleSwap);
+      socket.off("waitingForOtherTeam", handleWaitingForOtherTeam);
     };
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -232,17 +283,25 @@ function PlayGameRoom() {
 
   useEffect(() => {
     if (!socket || !role || !teamSelected) return;
-    socket.emit('requestCodeSync', { teamId: teamSelected });
-    socket.emit('requestTestCaseSync', { teamId: teamSelected });
+    socket.emit("requestCodeSync", { teamId: teamSelected });
+    socket.emit("requestTestCaseSync", { teamId: teamSelected });
 
-    const testHandler = (cases: TestableCase[]) => {
+    const testHandler = (cases: TestableCase[] | null) => {
       console.log("Receiving test case sync!", cases);
-      testCaseCtx.setCases(cases);
+      if (Array.isArray(cases)) {
+        testCaseCtx.setCases(cases);
+      } else {
+        console.warn("Ignoring invalid test case payload from server:", cases);
+      }
       setRunningAllTests(false);
     };
-    socket.on('receiveTestCaseSync', testHandler);
+    socket.on("receiveTestCaseSync", testHandler);
 
-    const handler = (newCode: string) => setLiveCode(newCode);
+    const handler = (newCode: string) => {
+      setLiveCode(newCode);
+      // must also set code in game state otherwise coder cant run their test cases
+      gameStateCtx.setCode(newCode);
+    };
     socket.on("receiveCodeUpdate", handler);
 
     return () => {
@@ -259,109 +318,193 @@ function PlayGameRoom() {
       gameStateCtx.setCode(value);
     }
   };
-
+  const getTeamLabel = () => {
+    if (!teamSelected) return null;
+    const teamIndex = teams.findIndex((team) => team.teamId === teamSelected);
+    if (teamIndex === 0) return "team1";
+    if (teamIndex === 1) return "team2";
+    return null;
+  };
 
   const submitFinalCode = () => {
     //Send bother Coder and Tester to the results page
-    //TODO Store submission and evaluate results on the backend, then fetch and display here
+    //Store submission and evaluate results on the backend
     //server broadcasts the event to both player
-    if (!socket) return; //make sure the socket is connected before emitting
-    socket.emit("submitCode", { roomId: teamSelected, code: liveCode });
+    if (!socket || !gameType || !teamSelected) return; //make sure the socket is connected before emitting
+    const team = getTeamLabel();
+    setIsWaitingForOtherTeam(true);
+    const indexes = Array.from(
+      { length: testCaseCtx.cases.length },
+      (_, i) => i
+    );
+
+    socket.emit("submitCode", {
+      roomId: gameId,
+      code: gameStateCtx.code,
+      type: gameType,
+      team,
+      teamId: teamSelected,
+      testCases: testCaseCtx.cases,
+      runIDs: indexes,
+    });
   };
 
   const addNewTest = () => {
     if (testCaseCtx.cases.length >= 5) return;
 
     // const newId = testCaseCtx.cases.length; // zero-based index
-    const newId = testCaseCtx.cases
-      .map(c => c.id)
-      .reduce((prev, acc) => Math.max(prev, acc))
-      + 1;
+    const newId =
+      testCaseCtx.cases
+        .map((c) => c.id)
+        .reduce((prev, acc) => Math.max(prev, acc)) + 1;
     console.log("creating new test with id", newId);
     const newCase: TestableCase = {
       id: newId,
       functionInput: testCaseCtx.parameters
-        .filter(p => !p.isOutputParameter)
-        .map(c => ({
+        .filter((p) => !p.isOutputParameter)
+        .map((c) => ({
           ...c,
-          value: null
+          value: null,
         })),
       expectedOutput: {
-        ...testCaseCtx.parameters
-          .find(p => p.isOutputParameter)!,
-        value: null
+        ...testCaseCtx.parameters.find((p) => p.isOutputParameter)!,
+        value: null,
       },
     };
     testCaseCtx.addCase(newCase);
 
     setActiveTestId(newId);
     console.log("emitting new test cases", [...testCaseCtx.cases, newCase]);
-    socket?.emit("updateTestCases", { teamId: teamSelected, testCases: [...testCaseCtx.cases, newCase] });
+    socket?.emit("updateTestCases", {
+      teamId: teamSelected,
+      testCases: [...testCaseCtx.cases, newCase],
+    });
   };
 
   const removeTest = (testId: TestableCase["id"]) => {
-    if (testCaseCtx.cases.length === 1) return;
+    if (testCaseCtx.cases.length === 1 || isWaitingForOtherTeam) return;
 
     const newId = testCaseCtx.cases
-      .map(c => c.id)
+      .map((c) => c.id)
       .reduce((prev, acc) => Math.min(prev, acc));
     console.log(`removing test with id ${testId}`, `min id ${newId}`);
     testCaseCtx.removeCase(testId);
 
     setActiveTestId(newId);
-    console.log("emitting new test cases", [...testCaseCtx.cases.filter(c => c.id !== testId)]);
-    socket?.emit("updateTestCases", { teamId: teamSelected, testCases: [...testCaseCtx.cases.filter(c => c.id !== testId)] });
+    console.log("emitting new test cases", [
+      ...testCaseCtx.cases.filter((c) => c.id !== testId),
+    ]);
+    socket?.emit("updateTestCases", {
+      teamId: teamSelected,
+      testCases: [...testCaseCtx.cases.filter((c) => c.id !== testId)],
+    });
   };
 
   const handleNewParameter = (parameter: ParameterType) => {
+    if (isWaitingForOtherTeam) return;
+
     const cases = testCaseCtx.cases;
-    const newCases = cases.map(c => ({
+    const newCases = cases.map((c) => ({
       ...c,
-      functionInput: [
-        ...c.functionInput,
-        parameter
-      ]
+      functionInput: [...c.functionInput, parameter],
     }));
     console.log("emitting new test cases", newCases);
-    testCaseCtx.setParameters(prev => [...prev, parameter]);
+    testCaseCtx.setParameters((prev) => [...prev, parameter]);
     testCaseCtx.setCases(newCases);
-    socket?.emit("updateTestCases", { teamId: teamSelected, testCases: newCases });
+    socket?.emit("updateTestCases", {
+      teamId: teamSelected,
+      testCases: newCases,
+    });
 
     posthog.capture("parameter_created", {
       gameId: gameStateCtx.gameId,
-      parameter
+      parameter,
     });
   };
 
   const handleParameterDelete = (parameter: ParameterType) => {
+    if (isWaitingForOtherTeam) return;
+
     const cases = testCaseCtx.cases;
-    const newCases = cases.map(c => ({
+    const newCases = cases.map((c) => ({
       ...c,
-      functionInput: c.functionInput.filter(i => i.name !== parameter.name)
+      functionInput: c.functionInput.filter((i) => i.name !== parameter.name),
     }));
     console.log("emitting new test cases", newCases);
-    testCaseCtx.setParameters(prev => prev.filter(p => p.name !== parameter.name));
+    testCaseCtx.setParameters((prev) =>
+      prev.filter((p) => p.name !== parameter.name),
+    );
     testCaseCtx.setCases(newCases);
-    socket?.emit("updateTestCases", { teamId: teamSelected, testCases: newCases });
+    socket?.emit("updateTestCases", {
+      teamId: teamSelected,
+      testCases: newCases,
+    });
   };
 
   const handleTestBoxChange = (testCase: TestableCase) => {
-    if (role !== Role.TESTER || !socket) return;
-    const updated = testCaseCtx.cases.map(t => t.id === activeTestId ? testCase : t);
+    if (role !== Role.TESTER || !socket || isWaitingForOtherTeam) return;
+    const updated = testCaseCtx.cases.map((t) =>
+      t.id === activeTestId ? testCase : t,
+    );
     testCaseCtx.setCases(updated);
-    socket.emit('updateTestCases', { teamId: teamSelected, testCases: updated });
+    socket.emit("updateTestCases", {
+      teamId: teamSelected,
+      testCases: updated,
+    });
+  };
+
+  const handleExpectedOutputTypeChange = (type: ParameterType["type"]) => {
+    if (
+      role !== Role.TESTER ||
+      !socket ||
+      !teamSelected ||
+      isWaitingForOtherTeam
+    ) {
+      return;
+    }
+
+    const currentOutputType = testCaseCtx.parameters.find(
+      (parameter) => parameter.isOutputParameter,
+    )?.type;
+    if (currentOutputType === type) return;
+
+    testCaseCtx.setParameters((prev) =>
+      prev.map((parameter) =>
+        parameter.isOutputParameter
+          ? {
+            ...parameter,
+            type,
+            value: null,
+          }
+          : parameter,
+      ),
+    );
+
+    const updatedCases = testCaseCtx.cases.map((testCase) => ({
+      ...testCase,
+      expectedOutput: {
+        ...testCase.expectedOutput,
+        type,
+        value: null,
+      },
+      computedOutput: null,
+    }));
+
+    testCaseCtx.setCases(updatedCases);
+    socket.emit("updateTestCases", {
+      teamId: teamSelected,
+      testCases: updatedCases,
+    });
   };
 
   const handleRunAllTests = () => {
-    if (role !== Role.TESTER || !socket) return;
+    if (role !== Role.TESTER || !socket || isWaitingForOtherTeam) return;
 
     setRunningAllTests(true);
     socket.emit("submitTestCases", {
-      gameId,
-      teamId: teamSelected,
       code: liveCode,
       testCases: testCaseCtx.cases,
-      runIDs: testCaseCtx.cases.map(t => t.id) // all of em!
+      runIDs: testCaseCtx.cases.map((t) => t.id), // all of em!
     });
   };
 
@@ -383,7 +526,7 @@ function PlayGameRoom() {
           if (role === Role.SPECTATOR) {
             setGameState(GameStatus.ACTIVE);
           }
-          socket.emit('requestTeamUpdate', { teamId, playerCount });
+          socket.emit("requestTeamUpdate", { teamId, playerCount });
         }}
       />
     );
@@ -393,8 +536,12 @@ function PlayGameRoom() {
     return (
       <Center h="100vh">
         <Group align="center">
-          <Text size="xl" c="dimmed" data-testid="waiting-for-second">Starting in 3...2...1...Battle!</Text>
-          <Text size="md" fw={600}>Room ID: {gameId}</Text>
+          <Text size="xl" c="dimmed" data-testid="waiting-for-second">
+            Starting in 3...2...1...Battle!
+          </Text>
+          <Text size="md" fw={600}>
+            Room ID: {gameId}
+          </Text>
         </Group>
       </Center>
     );
@@ -404,37 +551,72 @@ function PlayGameRoom() {
     return (
       <Center h="100vh">
         <Group align="center">
-          <Text size="xl" c="dimmed" data-testid="waiting-for-second">Waiting for another player to join...</Text>
-          <Text size="md" fw={600}>Room ID: {gameId}</Text>
+          <Text size="xl" c="dimmed" data-testid="waiting-for-second">
+            Waiting for another player to join...
+          </Text>
+          <Text size="md" fw={600}>
+            Room ID: {gameId}
+          </Text>
         </Group>
       </Center>
     );
   }
 
   // Determine effective view role for rendering
-  const effectiveRole = isSpectator && spectatorView !== Role.SPECTATOR ? spectatorView : role;
+  const effectiveRole =
+    isSpectator && spectatorView !== Role.SPECTATOR ? spectatorView : role;
   const showGameUI = !isSpectator || spectatorView !== Role.SPECTATOR;
 
   return (
-    <Box className={styles.gameRoomContainer}>
+    <Box style={{ position: "relative", height: "100vh" }}>
+      {/* Waiting Modal */}
+      <Modal
+        opened={isWaitingForOtherTeam}
+        onClose={() => { }}
+        centered
+        withCloseButton={false}
+        closeOnEscape={false}
+        closeOnClickOutside={false}
+      >
+        <Center>
+          <Stack align="center" gap="md">
+            <Loader size="lg" />
+            <Text size="lg" fw={500}>
+              Waiting for other team to submit...
+            </Text>
+          </Stack>
+        </Center>
+      </Modal>
+
       {/* Spectator view switcher buttons */}
       {/* spectator view bug for 4PLAYER (Teams ordered wrong?) */}
       {isSpectator && (
-        <Box data-testid="spectating-box" className={styles.spectatorControls}>
+        <Box
+          data-testid="spectating-box"
+          style={{ position: "absolute", top: 12, left: 12, zIndex: 20 }}
+        >
           {teams.map((team, i) => (
             <Group key={team.teamId} gap="xs">
-              <Button className={styles.spectatorButton} data-testid={`team-${i + 1}-coder`} size="sm" onClick={() => {
-                setTeamSelected(team.teamId);
-                setSpectatorView(Role.CODER);
-                console.log("Effective role: ", effectiveRole);
-              }}>
+              <Button
+                data-testid={`team-${i + 1}-coder`}
+                size="sm"
+                onClick={() => {
+                  setTeamSelected(team.teamId);
+                  setSpectatorView(Role.CODER);
+                  console.log("Effective role: ", effectiveRole);
+                }}
+              >
                 Team {i + 1} Coder
               </Button>
-              <Button className={styles.spectatorButton} data-testid={`team-${i + 1}-tester`} size="sm" onClick={() => {
-                setTeamSelected(team.teamId);
-                setSpectatorView(Role.TESTER);
-                console.log("Effective role: ", effectiveRole);
-              }}>
+              <Button
+                data-testid={`team-${i + 1}-tester`}
+                size="sm"
+                onClick={() => {
+                  setTeamSelected(team.teamId);
+                  setSpectatorView(Role.TESTER);
+                  console.log("Effective role: ", effectiveRole);
+                }}
+              >
                 Team {i + 1} Tester
               </Button>
             </Group>
@@ -456,222 +638,258 @@ function PlayGameRoom() {
       {/* Spectator waiting message */}
       {isSpectator && spectatorView === Role.SPECTATOR && (
         <Center h="100vh">
-          <Text data-testid="spectating-words" size="xl" c="dimmed">The room is full. You are spectating.</Text>
+          <Text data-testid="spectating-words" size="xl" c="dimmed">
+            The room is full. You are spectating.
+          </Text>
         </Center>
       )}
 
       {/* Main game UI */}
       {showGameUI && (
-        <Box data-testid={(effectiveRole === Role.CODER) ? "coder-pov" : "tester-pov"} h="100vh" style={{ display: "flex", flexDirection: "column" }}>
+        <Box
+          data-testid={
+            effectiveRole === Role.CODER ? "coder-pov" : "tester-pov"
+          }
+          h="100vh"
+          style={{ display: "flex", flexDirection: "column" }}
+        >
           <RoleFlipPopup gameState={gameState} />
 
           <Box style={{ flex: 1, display: "flex", overflow: "hidden" }}>
-            {/* Left Sidebar */}
-            <Box
-              className={`${styles.leftSidebar} ${!isProblemVisible ? styles.leftSidebarCollapsed : ''}`}
-            >
-              {(gameState === GameStatus.ACTIVE || gameState === GameStatus.FLIPPING) && (
-                <Box mb="md" p="1rem" pb={isProblemVisible ? "md" : "1rem"}>
-                  <GameTimer endTime={endTime}
-                    onExpire={() => { if (role === Role.CODER) socket.emit("submitCode", { roomId: gameId, code: liveCode }); }} />
-                </Box>
-              )}
-              {/* Conditionally render either the ProblemBox or the "Show" icon */}
-              {isProblemVisible ? (
-                <Box style={{ width: '100%', flex: 1, minHeight: 0, padding: '0 1rem 1rem 1rem' }}>
-                  <ProblemBox problem={problem} onToggleVisibility={toggleProblemVisibility} />
-                </Box>
-              ) : (
-                <Tooltip label="Show Problem">
-                  <ActionIcon variant="transparent" color="gray" size="xl" onClick={toggleProblemVisibility} title="Show Problem">
-                    <IconEye size={24} />
-                  </ActionIcon>
-                </Tooltip>
-
-              )}
-            </Box>
-
-            {/* Main Workspace */}
-            <Box
-              style={{
-                flex: 1,
-                display: "flex",
-                flexDirection: "column",
-                minWidth: 0,
-              }}
-            >
-              {/* Toolbar */}
-              <Group
-                className={styles.toolbarContainer}
+            <PanelGroup orientation="horizontal">
+              {/* Left Sidebar - Problem Box */}
+              <Panel
+                defaultSize={isProblemVisible ? 300 : 70}
+                minSize={isProblemVisible ? 15 : 70}
+                maxSize={isProblemVisible ? undefined : 70}
+                collapsible={false}
               >
-                <Select
-                  size="xs"
-                  data={["Javascript"]}
-                  defaultValue="Javascript"
-                  disabled={isSpectator || role !== Role.CODER}
-                />
-                {(effectiveRole === Role.CODER) && (
-                  <>
-                    <Button
-                      className={styles.runButton}
-                      size="xs"
-                      color="cyan"
-                      disabled={isSpectator} onClick={() => posthog.capture("code_run_triggered", { gameId })}
-                      rightSection={<IconPlayerPlay size={"var(--mantine-font-size-md)"} />}
-                    >
-                      RUN
-                    </Button>
-                    <Button className={styles.submitButton} size="xs" color="green" onClick={submitFinalCode} disabled={isSpectator}>
-                      Submit Final Code
-                    </Button>
-                  </>
-                )}
-              </Group>
-
-              {/* Middle Row: Editor & Chat */}
-              <Box
-                style={{
-                  display: "flex",
-                  flex: "1 1 45%",
-                  borderBottom: "2px solid #333",
-                  minHeight: 0,
-                }}
-              >
-                <Box 
-                  className={`${styles.editorContainer} ${editorFocused ? styles.editorContainerActive : ''}`}
-                  onFocus={() => setEditorFocused(true)}
-                  onBlur={() => setEditorFocused(false)}
+                <Box
+                  style={{
+                    height: '100%',
+                    backgroundColor: "#333",
+                    color: "white",
+                    padding: "0",
+                    overflowY: "auto",
+                    display: "flex",
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: isProblemVisible ? 'flex-start' : 'center',
+                  }}
                 >
-                  <Editor
-                    height="100%"
-                    theme="vs-dark"
-                    defaultLanguage="javascript"
-                    value={liveCode}
-                    onChange={!isSpectator ? handleEditorChange : undefined}
-                    options={{
-                      readOnly: isSpectator || role !== Role.CODER,
-                      domReadOnly: isSpectator || role !== Role.CODER,
-                      minimap: { enabled: false }
-                    }}
-                  />
+                  {(gameState === GameStatus.ACTIVE || gameState === GameStatus.FLIPPING) && (
+                    <Box mb="md" p="1rem" pb={isProblemVisible ? "md" : "1rem"}>
+                      <GameTimer endTime={endTime}
+                        onExpire={() => { if (role === Role.CODER) socket.emit("submitCode", { roomId: gameId, code: liveCode }); }} />
+                    </Box>
+                  )}
+                  {isProblemVisible ? (
+                    <Box style={{ width: '100%', flex: 1, minHeight: 0, padding: '0 1rem 1rem 1rem' }}>
+                      <ProblemBox problem={problem} onToggleVisibility={toggleProblemVisibility} />
+                    </Box>
+                  ) : (
+                    <Tooltip label="Show Problem">
+                      <ActionIcon variant="transparent" color="gray" size="xl" onClick={toggleProblemVisibility} title="Show Problem">
+                        <IconEye size={24} />
+                      </ActionIcon>
+                    </Tooltip>
+                  )}
                 </Box>
-                <Box style={{ width: "30%", minWidth: "200px" }}>
-                  <ChatBox
-                    socket={socket as Socket}
-                    roomId={teamSelected as string}
-                    userName={session?.user.name as string}
-                    isSpectator={isSpectator}
-                    role={role}
-                  />
-                </Box>
-              </Box>
+              </Panel>
 
-              {/* Bottom Row: Console / Test Cases */}
-              <Box
-                style={{
-                  flex: "1 1 35%",
-                  display: "flex",
-                  flexDirection: "column",
-                  minHeight: 0,
-                }}
-              >
-                {effectiveRole === Role.TESTER && (
-                  <Box p="xs" className={styles.testConsoleContainer}>
-                    <Stack style={{ minHeight: 0, flex: 1 }}>
-                      <Group justify="space-between">
-                        <Tabs
-                          className={styles.testTabs}
-                          value={String(activeTestId)}
-                          onChange={val => {
-                            setActiveTestId(+(val ?? 0));
-                          }}
-                          variant="outline"
-                        >
-                          <Tabs.List className={styles.testTabsList}>
-                            {testCaseCtx.cases.map((test, idx) => (
-                              <Tabs.Tab
-                                className={styles.testTab}
-                                key={idx}
-                                value={String(test.id)}
-                              >
-                                Test {idx + 1}
-                              </Tabs.Tab>
-                            ))}
+              {isProblemVisible && (
+                <PanelResizeHandle
+                  className={styles.panelResizeHandleCol}
+                />
+              )}
 
-                            {testCaseCtx.cases.length < 5 && !isSpectator && (
-                              <Tooltip label="New Test">
-                                <ActionIcon
-                                  variant="subtle"
-                                  color="gray"
-                                  onClick={addNewTest}
-                                  size="sm"
-                                  style={{ alignSelf: "center" }}
-                                  ml="xs"
-                                >
-                                  <IconPlus />
-                                </ActionIcon>
-                              </Tooltip>
-                            )}
-                          </Tabs.List>
-                        </Tabs>
-
-                        <Group gap="xs">
-                          <NewParameterButton
-                            onNewParameter={handleNewParameter}
-                          />
-                          <Button
-                            size="compact-sm"
-                            variant="filled"
-                            disabled={isSpectator || runningAllTests}
-                            loading={runningAllTests}
-                            onClick={handleRunAllTests}
-                            rightSection={
-                              <IconPlayerTrackNextFilled
-                                size="var(--mantine-font-size-lg)"
-                              />
-                            }
-                          >
-                            Run All
-                          </Button>
-                        </Group>
-                      </Group>
-
-                      {(() => {
-                        const currentTestCase = testCaseCtx.cases.find(t => t.id === activeTestId);
-                        return currentTestCase ? (
-                          <GameTestCase
-                            testableCase={currentTestCase}
-                            onTestCaseChange={handleTestBoxChange}
-                            onParameterDelete={handleParameterDelete}
-
-                            onTestCaseDelete={removeTest}
-                            showDelete={testCaseCtx.cases.length !== 1}
-
-                            disabled={runningAllTests}
-                          />
-                        ) : null;
-                      })()}
-                    </Stack>
-                  </Box>
-                )}
-
-                {effectiveRole === Role.CODER && (
-                  <Box style={{ flex: 1 }}>
-                    <Editor
-                      height="100%"
-                      theme="vs-dark"
-                      defaultLanguage="javascript"
-                      // value={""}
-                      // onChange={handleTestBoxChange}
-                      options={{
-                        readOnly: role !== Role.TESTER,
-                        minimap: { enabled: false }
-                      }}
+              {/* Main Workspace */}
+              <Panel minSize={30}>
+                <Box
+                  style={{
+                    height: '100%',
+                    display: "flex",
+                    flexDirection: "column",
+                    minWidth: 0,
+                  }}
+                >
+                  {/* Toolbar */}
+                  <Group p="xs">
+                    <Select
+                      size="xs"
+                      data={["Javascript"]}
+                      defaultValue="Javascript"
+                      disabled={isSpectator || role !== Role.CODER}
                     />
+                    {effectiveRole === Role.CODER && (
+                      <>
+                        <Button
+                          size="xs"
+                          color="cyan"
+                          disabled={isSpectator || isWaitingForOtherTeam}
+                          className={styles.runButton}
+                          onClick={() =>
+                            posthog.capture("code_run_triggered", { gameId })
+                          }
+                          rightSection={
+                            <IconPlayerPlay size={"var(--mantine-font-size-md)"} />
+                          }
+                        >
+                          RUN
+                        </Button>
+                        <Button
+                          size="xs"
+                          color="green"
+                          onClick={submitFinalCode}
+                          disabled={isSpectator || isWaitingForOtherTeam}
+                        >
+                          {isWaitingForOtherTeam ? "Waiting for other team..." : "Submit Final Code"}
+                        </Button>
+                      </>
+                    )}
+                  </Group>
+
+                  {/* Vertical split: (Editor + Chat) and (Test Cases) */}
+                  <Box style={{ flex: 1, minHeight: 0 }}>
+                    <PanelGroup orientation="vertical">
+                      {/* Top Section: Editor & Chat */}
+                      <Panel defaultSize={55} minSize={25}>
+                        <PanelGroup orientation="horizontal">
+                          {/* Code Editor */}
+                          <Panel defaultSize={70} minSize={40}>
+                            <Box style={{ height: '100%' }}>
+                              <Editor
+                                height="100%"
+                                theme="vs-dark"
+                                defaultLanguage="javascript"
+                                value={liveCode}
+                                onChange={!isSpectator ? handleEditorChange : undefined}
+                                options={{
+                                  readOnly: isSpectator || role !== Role.CODER,
+                                  domReadOnly: isSpectator || role !== Role.CODER,
+                                  minimap: { enabled: false }
+                                }}
+                              />
+                            </Box>
+                          </Panel>
+
+                          <PanelResizeHandle
+                            className={styles.panelResizeHandleCol}
+                          />
+
+                          {/* Chat Box */}
+                          <Panel defaultSize={30} minSize={15}>
+                            <Box style={{ height: '100%' }}>
+                              <ChatBox
+                                socket={socket as Socket}
+                                roomId={teamSelected as string}
+                                userName={session?.user.name as string}
+                                isSpectator={isSpectator}
+                                role={role}
+                              />
+                            </Box>
+                          </Panel>
+                        </PanelGroup>
+                      </Panel>
+
+                      <PanelResizeHandle
+                        className={styles.panelResizeHandleRow}
+                      />
+
+                      {/* Bottom Section: Test Cases / Console */}
+                      {effectiveRole === Role.TESTER && (
+                        <Panel defaultSize={25} minSize={20}>
+                          <Box
+                            style={{
+                              height: '100%',
+                              display: "flex",
+                              flexDirection: "column",
+                              minHeight: 0,
+                            }}
+                          >
+                            <Box p="xs" style={{ display: "flex", flexDirection: "column", minHeight: 0, flex: 1 }}>
+                              <Stack style={{ minHeight: 0, flex: 1 }}>
+                                <Group justify="space-between">
+                                  <Tabs
+                                    value={String(activeTestId)}
+                                    onChange={val => {
+                                      setActiveTestId(+(val ?? 0));
+                                    }}
+                                    variant="outline"
+                                  >
+                                    <Tabs.List>
+                                      {testCaseCtx.cases.map((test, idx) => (
+                                        <Tabs.Tab
+                                          key={idx}
+                                          value={String(test.id)}
+                                        >
+                                          Test {idx + 1}
+                                        </Tabs.Tab>
+                                      ))}
+
+                                      {testCaseCtx.cases.length < 5 && !isSpectator && (
+                                        <Tooltip label="New Test">
+                                          <ActionIcon
+                                            variant="subtle"
+                                            color="gray"
+                                            onClick={addNewTest}
+                                            size="sm"
+                                            style={{ alignSelf: "center" }}
+                                            ml="xs"
+                                            disabled={isWaitingForOtherTeam}
+                                          >
+                                            <IconPlus />
+                                          </ActionIcon>
+                                        </Tooltip>
+                                      )}
+                                    </Tabs.List>
+                                  </Tabs>
+
+                                  <Group gap="xs">
+                                    <NewParameterButton
+                                      onNewParameter={handleNewParameter}
+                                    />
+                                    <Button
+                                      size="compact-sm"
+                                      variant="filled"
+                                      disabled={isSpectator || runningAllTests || isWaitingForOtherTeam}
+                                      loading={runningAllTests}
+                                      onClick={handleRunAllTests}
+                                      rightSection={
+                                        <IconPlayerTrackNextFilled size="var(--mantine-font-size-lg)" />
+                                      }
+                                    >
+                                      Run All
+                                    </Button>
+                                  </Group>
+                                </Group>
+
+                                {(() => {
+                                  const currentTestCase = testCaseCtx.cases.find(
+                                    (t) => t.id === activeTestId,
+                                  );
+                                  return currentTestCase ? (
+                                    <GameTestCase
+                                      testableCase={currentTestCase}
+                                      onTestCaseChange={handleTestBoxChange}
+                                      onParameterDelete={handleParameterDelete}
+                                      onTestCaseDelete={removeTest}
+                                      showDelete={testCaseCtx.cases.length !== 1}
+                                      disabled={runningAllTests}
+                                      onExpectedOutputTypeChange={handleExpectedOutputTypeChange}
+                                    />
+                                  ) : null;
+                                })()}
+                              </Stack>
+                            </Box>
+                          </Box>
+                        </Panel>
+                      )}
+                    </PanelGroup>
                   </Box>
-                )}
-              </Box>
-            </Box>
+                </Box>
+              </Panel>
+            </PanelGroup>
           </Box>
         </Box>
       )}

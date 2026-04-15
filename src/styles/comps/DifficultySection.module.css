@@ -1,0 +1,77 @@
+.mainCard {
+  animation: fadeInUp 250ms ease-out 0.1s both;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  background: light-dark(
+    rgba(255, 255, 255, 0.95),
+    rgba(26, 27, 30, 0.95)
+  );
+  backdrop-filter: blur(10px);
+  position: relative;
+  z-index: 1;
+  border-color: light-dark(
+    var(--mantine-color-gray-3),
+    var(--mantine-color-dark-4)
+  );
+}
+
+.mainCard:hover {
+  box-shadow: 0 8px 24px light-dark(rgba(49, 176, 0, 0.15), rgba(113, 211, 73, 0.2));
+  border-color: light-dark(
+    var(--mantine-color-console-3),
+    var(--mantine-color-console-4)
+  );
+}
+
+.actionButton {
+  min-width: 100px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.actionButton:hover {
+  transform: scale(1.05);
+  box-shadow: 0 2px 12px currentColor;
+}
+
+.actionButton:active {
+  transform: scale(0.98);
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 768px) {
+  .difficultyCard {
+    padding: 1rem;
+  }
+  
+  .actionButton {
+    min-width: 80px;
+    font-size: 0.875rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .difficultyCard,
+  .actionButton {
+    transition: none;
+  }
+  
+  .difficultyCard:hover,
+  .actionButton:hover,
+  .actionButton:active {
+    transform: none;
+    box-shadow: none;
+  }
+  
+  .section::before {
+    display: none;
+  }
+}

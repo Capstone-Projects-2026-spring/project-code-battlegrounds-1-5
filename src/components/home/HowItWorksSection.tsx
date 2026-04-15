@@ -1,6 +1,6 @@
 import { Container, Title, Text, SimpleGrid, Box, ThemeIcon, Stack } from "@mantine/core";
 import { IconCode, IconTestPipe, IconTrophy, IconRefresh } from "@tabler/icons-react";
-import classes from "./HowItWorksSection.module.css";
+import classes from "@/styles/comps/HowItWorksSection.module.css";
 
 interface Step {
   icon: React.ReactNode;

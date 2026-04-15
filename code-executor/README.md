@@ -3,9 +3,18 @@ Originally, we had planned to use a few Cloud Run services (one for each languag
 
 My proposed solution is to create a Cloud Run service that subscribes to execution requests. It can spin up Compute VMs which can run code in nsjail in containers with the custom Docker command. It can manage current deployed VMs and spin up more as needed, as well as destroying unused VMs to keep costs low.
 
-For now, the folder just contains an executor api and the executor image itself. it can be deployed manually. eventually, i will create the orchestrator to manage the compute engine instances and forward requests, but for now just talk directly to one.
+## executor-image
+Locally, the architecture is a whole lot simpler. The executor-image has an api which takes in an execute request with the code, the testcases, and the ids of the test cases to run. Note that all the test cases are passed in - the cases that are not run are still returned, but with null for the actual, passed, execution, time, etc. This is so they can be passed back to the backend, then to the frontend, which does the merging of results into the UI.
 
-MASSIVE TODO:
-- create orchestrator as determined above. it must handle retries as needed if its talking via API to the VMs. a lock is a good idea as well to ensure code is not run on different backends.
-- modify executor to have more languages supported
-- add deployments to terraform
+The executor runs this code in nsjail with a pivoted rootfs, with minimal dependencies. It accepts the code as a b64 string to avoid parsing issues with JSON delimiters. See the executor-image/models.py for structures.
+
+The utils.py file has the source code for how things are run in the sandbox, as well as the formatting functions (which I hold as some of the ugliest code I've ever written - sorry). We have to format the arguments and literally paste them into the params of a console.log(function(PARAMS)) statement in the file that gets run in the rootjail. We also use the formatter to format the expected output so we can compare it to the output.
+
+The image is built into an Alpine container and pushed to our Artifact Registry, so developers can run the docker-compose and avoid the environment issues around nsjail.
+
+The idea of this is to keep the addition of new languages as simple as possible. To implement a new language:
+- run `ldd $(which python)` for python or whatever language. Copy all dependencies and to the rootfs and the binary itself in the usr path.
+- update the Language class with the file extension and the command to run files.
+- write parsers for the testCase functionInput and expectedOutput. This is the meat of a new language implementation.
+- update the if statement in write_code_to_file to include your language's printing of the solution(PARAMS), with the params being formatted to be valid by the parsers.
+- update the if statement in the /execute endpoint to use your parser for the expectedOutput before comparing it to the actual output.

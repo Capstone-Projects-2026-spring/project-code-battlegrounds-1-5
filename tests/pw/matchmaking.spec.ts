@@ -66,7 +66,7 @@ test.describe('Matchmaking', () => {
             const page = pages[0];
             await page.getByRole('button', { name: /find match/i }).click();
 
-            await expect(page.getByText(/searching for opponents.../i)).toBeVisible();
+            await expect(page.getByText(/Searching for opponents.../i)).toBeVisible();
 
             await page.getByRole('button', { name: /cancel search/i }).click();
 

@@ -53,10 +53,10 @@ export default function LoginPage() {
   return (
     <div className={`${greenTheme.gridBgFixed} ${styles.loginPage}`}>
       <div className={styles.gradient} />
-      
-      <Card 
+
+      <Card
         className={styles.formCard}
-        shadow="xl" 
+        shadow="xl"
         withBorder
         padding="xl"
       >

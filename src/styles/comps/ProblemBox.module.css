@@ -20,6 +20,17 @@
   overflow: hidden;
 }
 
+.container::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--mantine-color-console-5), var(--mantine-color-console-3));
+  opacity: 0.8;
+}
+
 .container:hover {
   border-color: var(--mantine-color-console-4);
   box-shadow: 0 4px 20px light-dark(rgba(49, 176, 0, 0.2), rgba(113, 211, 73, 0.3));
@@ -61,13 +72,32 @@
   animation: titleFadeIn 0.5s ease-out;
 }
 
-.metadata {
-  font-size: 0.75rem;
-  color: var(--mantine-color-console-4);
+.metadataGroup {
+  gap: 0.45rem;
+  margin-top: -0.25rem;
+}
+
+.difficultyBadge {
+  background: light-dark(rgba(49, 176, 0, 0.14), rgba(113, 211, 73, 0.2));
+  color: var(--mantine-color-console-6);
+  border: 1px solid light-dark(rgba(49, 176, 0, 0.4), rgba(113, 211, 73, 0.45));
   font-family: var(--mantine-font-family-monospace);
-  font-weight: 600;
+  font-size: 0.68rem;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+}
+
+.topicBadge {
+  color: light-dark(var(--mantine-color-gray-7), var(--mantine-color-gray-3));
+  border-color: light-dark(var(--mantine-color-gray-4), var(--mantine-color-dark-3));
+  background: light-dark(rgba(255, 255, 255, 0.7), rgba(26, 27, 30, 0.55));
+  font-size: 0.68rem;
+}
+
+.metadataPlaceholder {
+  font-size: 0.74rem;
+  color: var(--mantine-color-dimmed);
+  font-family: var(--mantine-font-family-monospace);
   animation: fadeIn 0.5s ease-out 0.1s both;
 }
 
@@ -81,30 +111,8 @@
   animation: fadeIn 0.5s ease-out 0.2s both;
 }
 
-/* Collapsed state */
-.collapsed {
-  height: auto;
-  max-height: 60px;
-  overflow: hidden;
-}
-
-.collapsed .scrollArea {
-  height: auto;
-}
-
-.collapsed .title {
-  font-size: 1rem;
-  margin-bottom: 0;
-}
-
-.collapsed .metadata,
-.collapsed .description {
-  display: none;
-}
-
-/* Expand/collapse transition */
-.container {
-  transition: max-height 0.4s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+.descriptionPlaceholder {
+  font-style: italic;
 }
 
 /* Keyframes */
@@ -145,7 +153,7 @@
   }
   
   .title,
-  .metadata,
+  .metadataPlaceholder,
   .description {
     animation: none;
   }

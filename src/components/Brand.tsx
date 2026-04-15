@@ -11,6 +11,7 @@ const sixtyfour = Sixtyfour({
 
 export interface BrandProps {
   blink?: boolean;
+  link?: string;
 }
 
 export default function Brand(props: BrandProps) {
@@ -23,9 +24,6 @@ export default function Brand(props: BrandProps) {
   return (
     <Group
       gap="lg"
-      component={Link}
-      // @ts-expect-error // incorrect typing
-      href="/"
       className={classes.brand}
     >
       <Title
@@ -33,6 +31,11 @@ export default function Brand(props: BrandProps) {
         c={primary}
         ff={sixtyfour.style.fontFamily}
         fw={"normal"}
+        {...props.link ? {
+          component: Link,
+          href: props.link,
+          style: { cursor: "pointer" }
+        } : { style: { cursor: "default" } }}
       >
         <span>
           &gt;

@@ -1,4 +1,4 @@
-import { Box, Button, Container, Grid, Group, Image, Paper, Stack, Text, Title } from '@mantine/core';
+import { Badge, Box, Button, Container, Grid, Group, Image, Paper, Stack, Text, Title } from '@mantine/core';
 import { usePostHog } from 'posthog-js/react';
 import { useEffect, useState } from 'react';
 import styles from '@/styles/Tutorial.module.css';
@@ -40,8 +40,7 @@ export default function GameTutorial() {
         { id: 3, label: 'Ready!' }
     ];
 
-    return(<>
-        
+    return (<>
         <Box className={styles.tutorialPage}>
             <div className={styles.content}>
                 <Container fluid px={'xl'}>
@@ -49,11 +48,10 @@ export default function GameTutorial() {
                     <Paper className={styles.progressBar}>
                         <div className={styles.progressSteps}>
                             {steps.map((step, index) => (
-                                <div 
+                                <div
                                     key={step.id}
-                                    className={`${styles.progressStep} ${
-                                        activeStep === step.id ? styles.active : ''
-                                    } ${activeStep > step.id ? styles.completed : ''}`}
+                                    className={`${styles.progressStep} ${activeStep === step.id ? styles.active : ''
+                                        } ${activeStep > step.id ? styles.completed : ''}`}
                                 >
                                     <div className={styles.progressStepNumber}>
                                         {activeStep > step.id ? '✓' : step.id + 1}
@@ -73,15 +71,15 @@ export default function GameTutorial() {
                             <Title className={styles.mainTitle}>How to Play</Title>
                             <Text className={styles.intro}>
                                 Welcome to Code Battlegrounds! Before you get started
-                                on your journey to coding greatness, it's important to 
+                                on your journey to coding greatness, it's important to
                                 familiarize yourself with the game itself. Here, we'll give you
-                                an introductory guide to playing <em>Code Battlegrounds</em>, 
+                                an introductory guide to playing <em>Code Battlegrounds</em>,
                                 so you can get to battling it out without feeling lost.
                             </Text>
                         </div>
 
                         {/* Step 1: Team Roles */}
-                        <div 
+                        <div
                             className={`${styles.stepSection} ${visibleSections.has(1) ? styles.visible : ''}`}
                             data-step="1"
                         >
@@ -91,24 +89,24 @@ export default function GameTutorial() {
                             </div>
 
                             <Grid gutter={'lg'} align='center'>
-                                <Grid.Col span={{ base: 12, sm: 6}}>
+                                <Grid.Col span={{ base: 12, sm: 6 }}>
                                     <div className={styles.imageContainer}>
-                                        <Image 
+                                        <Image
                                             src={"https://imgs.search.brave.com/CaXwtdqts1HbsCkHk5P0dXRDz0FYnKZUUWlxiaF1j40/rs:fit:500:0:1:0/g:ce/aHR0cHM6Ly90aHVt/YnMuZHJlYW1zdGlt/ZS5jb20vYi9hZ2ls/ZS1wYWlyLXByb2dy/YW1taW5nLWV4dHJl/bWUtY29kaW5nLWFn/aWxlLXBhaXItcHJv/Z3JhbW1pbmctZXh0/cmVtZS1jb2Rpbmct/YnVzaW5lc3Mtc29m/dHdhcmUtMjgxOTE4/Mzg3LmpwZw"}
                                             alt='Image of pair coding'
                                         />
                                     </div>
                                 </Grid.Col>
-                                <Grid.Col span={{ base: 12, sm: 6}}>
+                                <Grid.Col span={{ base: 12, sm: 6 }}>
                                     <div className={styles.contentCard}>
                                         <Stack gap={'md'}>
                                             <Text size="lg">
                                                 Code Battlegrounds is a game where you'll team up with
-                                                a partner to take on other teams in 2v2 competitive pair 
-                                                programming. As such, it's important to familiarize yourself 
-                                                with the roles that each member plays when playing <em>Code Battlegrounds</em>. 
+                                                a partner to take on other teams in 2v2 competitive pair
+                                                programming. As such, it's important to familiarize yourself
+                                                with the roles that each member plays when playing <em>Code Battlegrounds</em>.
                                             </Text>
-                                            
+
                                             <div className={styles.roleCard}>
                                                 <div className={styles.roleTitle}>
                                                     <span className={styles.roleIcon}>💻</span>
@@ -116,8 +114,8 @@ export default function GameTutorial() {
                                                 </div>
                                                 <Text>
                                                     As the Coder, your job is to write the actual code that will be run and tested.
-                                                    You'll work alongside the Quality Tester to ensure that your code runs without issues 
-                                                    and that it successfully passes the coding challenge. You'll have to work fast though, 
+                                                    You'll work alongside the Quality Tester to ensure that your code runs without issues
+                                                    and that it successfully passes the coding challenge. You'll have to work fast though,
                                                     as the timer will count down to zero. The better you do, the more points your team will get!
                                                 </Text>
                                             </div>
@@ -128,7 +126,7 @@ export default function GameTutorial() {
                                                     The Quality Tester
                                                 </div>
                                                 <Text>
-                                                    As the Quality Tester, your job is to write tests, ensuring the Coder's 
+                                                    As the Quality Tester, your job is to write tests, ensuring the Coder's
                                                     code passes all tests and edge cases. You'll be the one hard at work checking for correctness
                                                     in the code and letting the coder know what went wrong and what to fix or improve. The less errors
                                                     in your partner's code, the more tests it will pass and the more points you'll both get!
@@ -164,7 +162,7 @@ export default function GameTutorial() {
                         </div>
 
                         {/* Step 2: Interface Features */}
-                        <div 
+                        <div
                             className={`${styles.stepSection} ${visibleSections.has(2) ? styles.visible : ''}`}
                             data-step="2"
                         >
@@ -174,7 +172,7 @@ export default function GameTutorial() {
                             </div>
 
                             <Grid gutter={'lg'} align='center'>
-                                <Grid.Col span={{base: 12, sm: 6}}>
+                                <Grid.Col span={{ base: 12, sm: 6 }}>
                                     <div className={styles.contentCard}>
                                         <Stack gap={'md'}>
                                             <Text size="lg">
@@ -235,10 +233,10 @@ export default function GameTutorial() {
                                         </Stack>
                                     </div>
                                 </Grid.Col>
-                                <Grid.Col span={{base: 12, sm: 6}}>
+                                <Grid.Col span={{ base: 12, sm: 6 }}>
                                     <div className={styles.imageContainer}>
-                                        <Image 
-                                            src={"https://imgs.search.brave.com/aRx_eA9tdZq38hW05jq564qPzDJg2nzYXCGwSZQ80CQ/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9tZWRp/YS5kYXRhY2FtcC5j/b20vbGVnYWN5L3Yx/NzE1NzM4ODM5L2lt/YWdlX2QxMmJiNWMx/NDAucG5n"} 
+                                        <Image
+                                            src={"https://imgs.search.brave.com/aRx_eA9tdZq38hW05jq564qPzDJg2nzYXCGwSZQ80CQ/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9tZWRp/YS5kYXRhY2FtcC5j/b20vbGVnYWN5L3Yx/NzE1NzM4ODM5L2lt/YWdlX2QxMmJiNWMx/NDAucG5n"}
                                             alt='Interface preview'
                                         />
                                     </div>
@@ -269,7 +267,7 @@ export default function GameTutorial() {
                         </div>
 
                         {/* Call to Action */}
-                        <div 
+                        <div
                             className={`${styles.stepSection} ${visibleSections.has(3) ? styles.visible : ''}`}
                             data-step="3"
                         >
@@ -278,12 +276,12 @@ export default function GameTutorial() {
                                     Ready to Enter the Matrix?
                                 </Title>
                                 <Text className={styles.ctaText}>
-                                    We hope that you found this guide useful in beginning your journey on 
+                                    We hope that you found this guide useful in beginning your journey on
                                     the code battlefield. Good luck, and may you rise to the occasion and become Coding Champions!
                                 </Text>
                                 <Group justify="center" gap="md">
-                                    <Button 
-                                        size="lg" 
+                                    <Button
+                                        size="lg"
                                         color="console.4"
                                         className={styles.ctaButton}
                                         component="a"
@@ -291,8 +289,8 @@ export default function GameTutorial() {
                                     >
                                         Start Playing
                                     </Button>
-                                    <Button 
-                                        size="lg" 
+                                    <Button
+                                        size="lg"
                                         variant="outline"
                                         color="console.4"
                                         className={styles.ctaButton}

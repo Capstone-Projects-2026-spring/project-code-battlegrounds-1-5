@@ -5,6 +5,9 @@
 
 .container {
   flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
   background: light-dark(
     rgba(255, 255, 255, 0.95),
     rgba(26, 27, 30, 0.95)
@@ -34,7 +37,23 @@
 }
 
 .table {
+  min-width: 620px;
   animation: fadeIn 0.5s ease-out 0.1s both;
+}
+
+.scrollRegion {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid light-dark(
+    var(--mantine-color-gray-3),
+    var(--mantine-color-dark-4)
+  );
+  border-radius: var(--mantine-radius-md);
+  background: light-dark(
+    rgba(249, 250, 251, 0.88),
+    rgba(20, 21, 24, 0.75)
+  );
 }
 
 .tableHeader {
@@ -95,6 +114,7 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  min-width: 0;
 }
 
 .passIcon {
@@ -125,6 +145,13 @@
   border-radius: 50%;
   font-size: 0.75rem;
   font-weight: bold;
+  flex-shrink: 0;
+}
+
+.statusPlaceholder {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex-shrink: 0;
 }
 
 .statusPass {
@@ -143,6 +170,16 @@
   );
   color: var(--mantine-color-red-6);
   border: 1px solid var(--mantine-color-red-5);
+}
+
+.stateText {
+  padding: 0.85rem 0;
+}
+
+@media (max-width: 768px) {
+  .table {
+    min-width: 540px;
+  }
 }
 
 /* Keyframes */

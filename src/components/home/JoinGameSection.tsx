@@ -3,8 +3,7 @@ import { TextInput, Button, Group, Text, Box, Card, Stack } from "@mantine/core"
 import { IconSearch, IconArrowRight } from "@tabler/icons-react";
 import { useRouter } from "next/router";
 import { usePostHog } from "posthog-js/react";
-import Link from "next/link";
-import classes from "./JoinGameSection.module.css";
+import classes from "@/styles/comps/JoinGameSection.module.css";
 
 export default function JoinGameSection() {
   const [gameId, setGameId] = useState("");
@@ -12,7 +11,7 @@ export default function JoinGameSection() {
   const router = useRouter();
   const posthog = usePostHog();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.SubmitEvent) => {
     e.preventDefault();
     
     const trimmedId = gameId.trim();
@@ -23,11 +22,11 @@ export default function JoinGameSection() {
     }
 
     // Basic UUID validation (optional but good UX)
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (!uuidRegex.test(trimmedId)) {
-      setError("Invalid Game ID format");
-      return;
-    }
+    // const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    // if (!uuidRegex.test(trimmedId)) {
+    //   setError("Invalid Game ID format");
+    //   return;
+    // }
 
     setError("");
     posthog?.capture("room_joined_by_id", { roomId: trimmedId });
@@ -57,7 +56,7 @@ export default function JoinGameSection() {
         <form onSubmit={handleSubmit}>
           <Group gap="md" align="flex-start">
             <TextInput
-              placeholder="Enter Game ID (e.g., 550e8400-e29b-41d4-a716-446655440000)"
+              placeholder="Enter Game ID (e.g., 550e8400)"
               size="md"
               value={gameId}
               onChange={(e) => {
@@ -79,21 +78,6 @@ export default function JoinGameSection() {
             </Button>
           </Group>
         </form>
-
-        <Group gap="xs">
-          <Text size="sm" c="dimmed">
-            Looking for a match?
-          </Text>
-          <Button
-            component={Link}
-            href="/matchmaking"
-            variant="subtle"
-            size="sm"
-            data-testid="matchmaking-link"
-          >
-            Try Quick Matchmaking
-          </Button>
-        </Group>
       </Stack>
     </Card>
   );

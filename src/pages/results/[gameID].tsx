@@ -1,23 +1,34 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Head from "next/head";
-import { Container, Box, Group, Text, Button, Stack } from "@mantine/core";
-import { 
-  IconTrophy, 
-  IconClock, 
-  IconCode, 
+import {
+  Container,
+  Box,
+  Button,
+  Center,
+  Loader,
+  Stack,
+  Flex,
+  ActionIcon,
+  Tooltip,
+} from "@mantine/core";
+import {
+  IconTrophy,
+  IconClock,
+  IconCode,
   IconMedal,
-  IconCheck,
-  IconX,
-  IconFlame,
   IconTarget,
   IconBolt,
   IconArrowRight,
-  IconHome
+  // IconHome,
+  IconEye,
 } from "@tabler/icons-react";
 import { useRouter } from "next/router";
 import { authClient } from "@/lib/auth-client";
-import { usePostHog } from "posthog-js/react";
+import { GameType } from "@prisma/client";
 import styles from "@/styles/Results.module.css";
+import AnalysisBox, { type AnalysisBoxProps } from "@/components/Analysisbox";
+import ProblemBox, { type ActiveProblem } from "@/components/ProblemBox";
+import TestCaseResultsBox, { type TestResultsSummary } from "@/components/TestCaseResultsBox";
 
 // Mock data - replace with actual data from backend
 interface TeamResult {
@@ -29,13 +40,12 @@ interface TeamResult {
   isWinner: boolean;
 }
 
-interface TestResult {
-  id: number;
-  name: string;
-  passed: boolean;
-  input: string;
-  expected: string;
-  actual: string;
+interface RoomDetailsResponse {
+  problem: ActiveProblem;
+  gameType: GameType;
+  team1Code: string | null;
+  team2Code: string | null;
+  userTeamNumber: 1 | 2;
 }
 
 // Animated counter hook
@@ -53,11 +63,11 @@ function useCounter(end: number, duration: number = 1500, delay: number = 0) {
 
         const progress = timestamp - startTimeRef.current;
         const percentage = Math.min(progress / duration, 1);
-        
+
         // Easing function for smooth animation
         const easeOutQuart = 1 - Math.pow(1 - percentage, 4);
         const current = Math.floor(easeOutQuart * end);
-        
+
         setCount(current);
 
         if (percentage < 1) {
@@ -86,19 +96,99 @@ function formatTime(seconds: number): string {
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
-export default function Results() {
+export default function Page() {
+  const { data: session, isPending } = authClient.useSession();
   const router = useRouter();
-  const { gameID } = router.query;
+
+  // Early auth check to prevent loading all the heavy stuff
+  // if we aren't even logged in
+  useEffect(() => {
+    if (!isPending && !session) {
+      router.replace("/auth");
+    }
+  }, [isPending, session, router]);
+  return <Results />;
+}
+
+export function Results() {
+  //grab id from url
+  const router = useRouter();
+  const gameId = router.query.gameID as string;
   const { data: session } = authClient.useSession();
-  const posthog = usePostHog();
+  const [problem, setProblem] = useState<ActiveProblem | null>(null);
+  const [analysisProps, setAnalysisProps] = useState<AnalysisBoxProps | null>(null);
+  const [userTeamNumber, setUserTeamNumber] = useState<1 | 2>(1);
+  const [isProblemVisible, setIsProblemVisible] = useState(true);
+  const toggleProblemVisibility = () => setIsProblemVisible((prev) => !prev);
+
+  const [gameType, setGameType] = useState<GameType>(GameType.FOURPLAYER);
+  const [isGameDataLoading, setIsGameDataLoading] = useState(true);
+  const [testResultsSummary, setTestResultsSummary] = useState<TestResultsSummary | null>(null);
 
   useEffect(() => {
-    posthog.capture("results_viewed");
-  }, [posthog]);
+    setTestResultsSummary(null);
+  }, [gameId]);
 
-  if (!session) return null;
+  const handleSummaryChange = useCallback((summary: TestResultsSummary) => {
+    setTestResultsSummary((previous) => {
+      if (
+        previous &&
+        previous.yourPassedCount === summary.yourPassedCount &&
+        previous.otherTeamPassedCount === summary.otherTeamPassedCount &&
+        previous.totalTests === summary.totalTests
+      ) {
+        return previous;
+      }
+
+      return summary;
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!router.isReady || !session?.user.id || !gameId) return;
+
+    const loadGameData = async () => {
+      try {
+        const response = await fetch(`/api/rooms/${gameId}`);
+        if (!response.ok) return;
+
+        const roomDetails = (await response.json()) as RoomDetailsResponse;
+        setProblem(roomDetails.problem);
+        setGameType(roomDetails.gameType);
+        setUserTeamNumber(roomDetails.userTeamNumber);
+
+        if (roomDetails.team1Code || roomDetails.team2Code) {
+          setAnalysisProps({
+            team1Code: roomDetails.team1Code ?? "",
+            team2Code: roomDetails.team2Code ?? undefined,
+            gameType: roomDetails.gameType,
+            userTeamNumber: roomDetails.userTeamNumber,
+          });
+        } else {
+          setAnalysisProps(null);
+        }
+      } catch (error) {
+        console.error("Failed to load room details for results page", error);
+      } finally {
+        setIsGameDataLoading(false);
+      }
+    };
+
+    loadGameData();
+  }, [gameId, router.isReady, session?.user.id]);
+
+  const isCoOp = gameType === GameType.TWOPLAYER;
 
   // Mock data - replace with actual fetched data
+  const coOpTeam: TeamResult = {
+    name: "Co-Op Crew",
+    score: 810,
+    testsPassed: 9,
+    totalTests: 10,
+    time: 236, // 3:56
+    isWinner: true
+  };
+
   const greenTeam: TeamResult = {
     name: "Green Hackers",
     score: 850,
@@ -117,20 +207,45 @@ export default function Results() {
     isWinner: false
   };
 
-  const testResults: TestResult[] = [
-    { id: 1, name: "Basic Input", passed: true, input: "[1,2,3]", expected: "6", actual: "6" },
-    { id: 2, name: "Edge Case - Empty", passed: true, input: "[]", expected: "0", actual: "0" },
-    { id: 3, name: "Large Numbers", passed: true, input: "[100,200,300]", expected: "600", actual: "600" },
-    { id: 4, name: "Negative Values", passed: false, input: "[-1,-2,-3]", expected: "-6", actual: "Error" },
-    { id: 5, name: "Mixed Values", passed: true, input: "[1,-1,2,-2]", expected: "0", actual: "0" },
-  ];
+  const primaryTeam = isCoOp ? coOpTeam : greenTeam;
+  const secondaryTeam = isCoOp ? null : redTeam;
 
-  const winner = greenTeam.isWinner ? greenTeam : redTeam;
-  
+  const winner = secondaryTeam ? (primaryTeam.isWinner ? primaryTeam : secondaryTeam) : primaryTeam;
+  const areTestResultsLoading = testResultsSummary === null;
+  const testsPassedForMetric = testResultsSummary?.yourPassedCount ?? 0;
+  const totalTestsForMetric = testResultsSummary?.totalTests ?? 0;
+
+  const primaryTeamTestsPassed = !areTestResultsLoading && !isCoOp
+    ? userTeamNumber === 1
+      ? (testResultsSummary?.yourPassedCount ?? 0)
+      : (testResultsSummary?.otherTeamPassedCount ?? 0)
+    : 0;
+
+  const secondaryTeamTestsPassed = !areTestResultsLoading && !isCoOp
+    ? userTeamNumber === 1
+      ? (testResultsSummary?.otherTeamPassedCount ?? 0)
+      : (testResultsSummary?.yourPassedCount ?? 0)
+    : 0;
+
+  const comparisonTotalTests = testResultsSummary?.totalTests ?? 0;
+
   // Animated counters
   const animatedScore = useCounter(winner.score, 2000, 200);
-  const animatedTests = useCounter(greenTeam.testsPassed, 1500, 400);
-  const animatedTime = useCounter(greenTeam.time, 1800, 600);
+  const animatedTests = useCounter(areTestResultsLoading ? 0 : testsPassedForMetric, 1500, 400);
+  const animatedTime = useCounter(winner.time, 1800, 600);
+
+  if (!session) return null;
+
+  if (isGameDataLoading) {
+    return (
+      <div className={styles.resultsPage}>
+        <div className={styles.gradient} />
+        <Center style={{ minHeight: "60vh", position: "relative", zIndex: 1 }}>
+          <Loader color="console" size="lg" />
+        </Center>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -142,7 +257,6 @@ export default function Results() {
       <div className={styles.resultsPage}>
         <div className={styles.gradient} />
 
-
         <Container className={styles.container} size="xl">
           {/* Victory Banner */}
           <Box className={styles.victoryBanner}>
@@ -151,7 +265,8 @@ export default function Results() {
               Victory!
             </h1>
             <p className={styles.victorySubtitle}>
-              <span className={styles.winnerTeamName}>{winner.name}</span> dominated the battlefield
+              <span className={styles.winnerTeamName}>{winner.name}</span>{" "}
+              {isCoOp ? "made it out of the battleground!" : "dominated the battlefield"}
             </p>
           </Box>
 
@@ -174,7 +289,8 @@ export default function Results() {
                 Tests Passed
               </div>
               <div className={styles.metricValue}>
-                {animatedTests}/{greenTeam.totalTests}
+                {!areTestResultsLoading && `${animatedTests}/${totalTestsForMetric}`}
+                {areTestResultsLoading && (<Loader />)}
               </div>
               <IconCode size={64} className={styles.metricIcon} />
             </div>
@@ -192,155 +308,152 @@ export default function Results() {
           </div>
 
           {/* Team Comparison */}
-          <div className={styles.comparisonSection}>
-            <h2 className={styles.sectionTitle}>Team Performance</h2>
-            
-            <div className={styles.comparisonCard}>
-              <div className={styles.comparisonHeader}>
-                <div className={styles.teamHeader}>
-                  <div className={`${styles.teamName} ${greenTeam.isWinner ? styles.teamNameWinner : styles.teamNameLoser}`}>
-                    {greenTeam.name}
+          {!isCoOp && secondaryTeam && (
+            <div className={styles.comparisonSection}>
+              <h2 className={styles.sectionTitle}>Team Performance</h2>
+
+              <div className={styles.comparisonCard}>
+                <div className={styles.comparisonHeader}>
+                  <div className={styles.teamHeader}>
+                    <div className={`${styles.teamName} ${primaryTeam.isWinner ? styles.teamNameWinner : styles.teamNameLoser}`}>
+                      {primaryTeam.name}
+                    </div>
+                    <div className={`${styles.teamBadge} ${primaryTeam.isWinner ? styles.winnerBadge : styles.loserBadge}`}>
+                      {primaryTeam.isWinner ? (
+                        <>
+                          <IconTrophy size={16} />
+                          Winner
+                        </>
+                      ) : (
+                        "Runner-up"
+                      )}
+                    </div>
                   </div>
-                  <div className={`${styles.teamBadge} ${greenTeam.isWinner ? styles.winnerBadge : styles.loserBadge}`}>
-                    {greenTeam.isWinner ? (
+
+                  <div className={styles.vsText}>VS</div>
+
+                  <div className={styles.teamHeader}>
+                    <div className={`${styles.teamName} ${secondaryTeam.isWinner ? styles.teamNameWinner : styles.teamNameLoser}`}>
+                      {secondaryTeam.name}
+                    </div>
+                    <div className={`${styles.teamBadge} ${secondaryTeam.isWinner ? styles.winnerBadge : styles.loserBadge}`}>
+                      {secondaryTeam.isWinner ? (
+                        <>
+                          <IconTrophy size={16} />
+                          Winner
+                        </>
+                      ) : (
+                        "Runner-up"
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className={styles.comparisonBody}>
+                  <div className={styles.comparisonRow}>
+                    <div className={`${styles.statValue} ${primaryTeam.score >= secondaryTeam.score ? styles.statValueWinner : styles.statValueLoser}`}>
+                      {primaryTeam.score}
+                    </div>
+                    <div className={styles.statLabel}>Score</div>
+                    <div className={`${styles.statValue} ${secondaryTeam.score >= primaryTeam.score ? styles.statValueWinner : styles.statValueLoser}`}>
+                      {secondaryTeam.score}
+                    </div>
+                  </div>
+
+                  <div className={styles.comparisonRow}>
+                    {areTestResultsLoading ? (
                       <>
-                        <IconTrophy size={16} />
-                        Winner
+                        <div className={`${styles.statValue} ${styles.statValueLoser}`}>Loading...</div>
+                        <div className={styles.statLabel}>Tests Passed</div>
+                        <div className={`${styles.statValue} ${styles.statValueLoser}`}>Loading...</div>
                       </>
                     ) : (
-                      'Runner-up'
-                    )}
-                  </div>
-                </div>
-
-                <div className={styles.vsText}>VS</div>
-
-                <div className={styles.teamHeader}>
-                  <div className={`${styles.teamName} ${redTeam.isWinner ? styles.teamNameWinner : styles.teamNameLoser}`}>
-                    {redTeam.name}
-                  </div>
-                  <div className={`${styles.teamBadge} ${redTeam.isWinner ? styles.winnerBadge : styles.loserBadge}`}>
-                    {redTeam.isWinner ? (
                       <>
-                        <IconTrophy size={16} />
-                        Winner
+                        <div className={`${styles.statValue} ${primaryTeamTestsPassed >= secondaryTeamTestsPassed ? styles.statValueWinner : styles.statValueLoser}`}>
+                          {primaryTeamTestsPassed}/{comparisonTotalTests}
+                        </div>
+                        <div className={styles.statLabel}>Tests Passed</div>
+                        <div className={`${styles.statValue} ${secondaryTeamTestsPassed >= primaryTeamTestsPassed ? styles.statValueWinner : styles.statValueLoser}`}>
+                          {secondaryTeamTestsPassed}/{comparisonTotalTests}
+                        </div>
                       </>
-                    ) : (
-                      'Runner-up'
                     )}
                   </div>
-                </div>
-              </div>
 
-              <div className={styles.comparisonBody}>
-                <div className={styles.comparisonRow}>
-                  <div className={`${styles.statValue} ${greenTeam.score >= redTeam.score ? styles.statValueWinner : styles.statValueLoser}`}>
-                    {greenTeam.score}
-                  </div>
-                  <div className={styles.statLabel}>Score</div>
-                  <div className={`${styles.statValue} ${redTeam.score >= greenTeam.score ? styles.statValueWinner : styles.statValueLoser}`}>
-                    {redTeam.score}
-                  </div>
-                </div>
-
-                <div className={styles.comparisonRow}>
-                  <div className={`${styles.statValue} ${greenTeam.testsPassed >= redTeam.testsPassed ? styles.statValueWinner : styles.statValueLoser}`}>
-                    {greenTeam.testsPassed}/{greenTeam.totalTests}
-                  </div>
-                  <div className={styles.statLabel}>Tests Passed</div>
-                  <div className={`${styles.statValue} ${redTeam.testsPassed >= greenTeam.testsPassed ? styles.statValueWinner : styles.statValueLoser}`}>
-                    {redTeam.testsPassed}/{redTeam.totalTests}
-                  </div>
-                </div>
-
-                <div className={styles.comparisonRow}>
-                  <div className={`${styles.statValue} ${greenTeam.time <= redTeam.time ? styles.statValueWinner : styles.statValueLoser}`}>
-                    {formatTime(greenTeam.time)}
-                  </div>
-                  <div className={styles.statLabel}>Time</div>
-                  <div className={`${styles.statValue} ${redTeam.time <= greenTeam.time ? styles.statValueWinner : styles.statValueLoser}`}>
-                    {formatTime(redTeam.time)}
+                  <div className={styles.comparisonRow}>
+                    <div className={`${styles.statValue} ${primaryTeam.time <= secondaryTeam.time ? styles.statValueWinner : styles.statValueLoser}`}>
+                      {formatTime(primaryTeam.time)}
+                    </div>
+                    <div className={styles.statLabel}>Time</div>
+                    <div className={`${styles.statValue} ${secondaryTeam.time <= primaryTeam.time ? styles.statValueWinner : styles.statValueLoser}`}>
+                      {formatTime(secondaryTeam.time)}
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
+          )}
 
-          {/* Performance Cards */}
-          <div className={styles.performanceSection}>
-            <h2 className={styles.sectionTitle}>Performance Breakdown</h2>
-            
-            <div className={styles.performanceGrid}>
-              <div className={styles.performanceCard}>
-                <div className={styles.performanceHeader}>
-                  <div className={styles.performanceTitle}>Accuracy</div>
-                  <IconTarget size={24} className={styles.performanceIcon} />
-                </div>
-                <div className={styles.performanceScore}>
-                  {Math.round((greenTeam.testsPassed / greenTeam.totalTests) * 100)}%
-                </div>
-                <div className={styles.performanceDescription}>
-                  Excellent test coverage with {greenTeam.testsPassed} out of {greenTeam.totalTests} tests passing
-                </div>
-              </div>
-
-              <div className={styles.performanceCard}>
-                <div className={styles.performanceHeader}>
-                  <div className={styles.performanceTitle}>Speed</div>
-                  <IconBolt size={24} className={styles.performanceIcon} />
-                </div>
-                <div className={styles.performanceScore}>
-                  A+
-                </div>
-                <div className={styles.performanceDescription}>
-                  Completed in {formatTime(greenTeam.time)} - faster than {greenTeam.time < redTeam.time ? '80%' : '60%'} of teams
-                </div>
-              </div>
-
-              <div className={styles.performanceCard}>
-                <div className={styles.performanceHeader}>
-                  <div className={styles.performanceTitle}>Efficiency</div>
-                  <IconFlame size={24} className={styles.performanceIcon} />
-                </div>
-                <div className={styles.performanceScore}>
-                  {greenTeam.score}
-                </div>
-                <div className={styles.performanceDescription}>
-                  Outstanding score combining speed, accuracy, and code quality
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Test Results */}
+          {/* Code + Test Breakdown */}
           <div className={styles.testResultsSection}>
-            <h2 className={styles.sectionTitle}>Test Case Results</h2>
-            
-            <div className={styles.testResultsCard}>
-              <div className={styles.testResultsHeader}>
-                <div className={styles.testResultsTitle}>
-                  All Test Cases
-                </div>
-              </div>
-              
-              <div className={styles.testResultsBody}>
-                {testResults.map((test, index) => (
-                  <div key={test.id} className={styles.testRow}>
-                    <div className={`${styles.testStatus} ${test.passed ? styles.testStatusPass : styles.testStatusFail}`}>
-                      {test.passed ? <IconCheck size={18} /> : <IconX size={18} />}
-                    </div>
-                    <div className={styles.testInfo}>
-                      <div className={styles.testName}>
-                        Test {test.id}: {test.name}
-                      </div>
-                      <div className={styles.testDetails}>
-                        Input: {test.input} → Expected: {test.expected} | Got: {test.actual}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <h2 className={styles.sectionTitle}>
+              {isCoOp ? "Co-Op Code & Test Breakdown" : "Match Code & Test Breakdown"}
+            </h2>
+
+            <Flex gap="md" align="stretch" wrap="wrap">
+              <Box
+                style={{
+                  width: isProblemVisible ? "30%" : "52px",
+                  minWidth: isProblemVisible ? "260px" : "52px",
+                  overflowY: "auto",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: isProblemVisible ? "flex-start" : "center",
+                  flexShrink: 0,
+                  transition: "width 0.2s ease, min-width 0.2s ease",
+                }}
+              >
+                {isProblemVisible ? (
+                  <Box style={{
+                    width: "100%",
+                    flex: 1,
+                    minHeight: 0,
+                  }}>
+                    <ProblemBox problem={problem} onToggleVisibility={toggleProblemVisibility} />
+                  </Box>
+                ) : (
+                  <Tooltip label="Show Problem">
+                    <ActionIcon
+                      variant="transparent"
+                      color="gray"
+                      size="xl"
+                      onClick={toggleProblemVisibility}
+                      title="Show Problem"
+                    >
+                      <IconEye size={24} />
+                    </ActionIcon>
+                  </Tooltip>
+                )}
+              </Box>
+
+              <Stack style={{ flex: 2, minWidth: "320px" }} gap="md">
+                <AnalysisBox
+                  {...(analysisProps ?? {
+                    team1Code: "",
+                    gameType: gameType as "TWOPLAYER" | "FOURPLAYER",
+                    userTeamNumber,
+                  })}
+                />
+                <TestCaseResultsBox
+                  gameId={gameId}
+                  showOtherTeamColumn={!isCoOp}
+                  gameType={gameType as "TWOPLAYER" | "FOURPLAYER"}
+                  userTeamNumber={userTeamNumber}
+                  onSummaryChange={handleSummaryChange}
+                />
+              </Stack>
+            </Flex>
           </div>
 
           {/* Action Buttons */}
@@ -355,8 +468,8 @@ export default function Results() {
             >
               Play Again
             </Button>
-            
-            <Button
+
+            {/* <Button
               size="lg"
               variant="outline"
               color="console"
@@ -365,7 +478,7 @@ export default function Results() {
               onClick={() => router.push('/dashboard')}
             >
               Back to Dashboard
-            </Button>
+            </Button> */}
           </div>
         </Container>
       </div>

@@ -61,6 +61,9 @@ if (!difficulty || !Object.values(ProblemDifficulty).includes(difficulty)) {
                     gameType: GameType.TWOPLAYER,
                     teams: {
                         create: [{}]
+                    },
+                    gameResult: {
+                        create: {}
                     }
                 }
             });
@@ -74,6 +77,9 @@ if (!difficulty || !Object.values(ProblemDifficulty).includes(difficulty)) {
                     gameType: GameType.FOURPLAYER,
                     teams: {
                         create: [{}, {}]
+                    },
+                    gameResult: {
+                        create: {}
                     }
                 }
             });

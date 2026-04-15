@@ -1,7 +1,7 @@
-import { useState } from "react";
-import { Center, Stack, Button, Text, Group, Badge, Title } from "@mantine/core";
+import { Badge, Button, Center, Group, Stack, Text, Title } from "@mantine/core";
 import { Role } from "@prisma/client";
 import { usePostHog } from "posthog-js/react";
+import { useState } from "react";
 import styles from '@/styles/comps/TeamSelect.module.css';
 
 export interface TeamCount {

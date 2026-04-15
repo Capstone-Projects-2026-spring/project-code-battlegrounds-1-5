@@ -10,7 +10,7 @@ const REQUIRED_PLAYERS = {
     [GameType.FOURPLAYER]: 4,
 };
 
-const src = join(__dirname, "./popAndMatch.lua")
+const src = join(__dirname, "./popAndMatch.lua");
 const POP_AND_MATCH_SCRIPT = readFileSync(src).toString();
 
 function createMatchmakingService(stateRedis, io) {
@@ -30,7 +30,7 @@ function createMatchmakingService(stateRedis, io) {
 
             // TWOPLAYER + party = instant game, no queue needed
             if (partyId && gameType === GameType.TWOPLAYER) {
-                return await this._formLobbyGame(partyId, gameType, difficulty);
+                return await this._formPartyGame(partyId, gameType, difficulty);
             }
 
             const entry = partyId
@@ -209,6 +209,9 @@ function createMatchmakingService(stateRedis, io) {
                                 })),
                             },
                         })),
+                    },
+                    gameResult: {
+                        create: {},
                     },
                 },
                 include: {

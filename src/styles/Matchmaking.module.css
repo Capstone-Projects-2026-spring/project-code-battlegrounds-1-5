@@ -35,8 +35,12 @@
   text-shadow: 0 0 20px light-dark(rgba(49, 176, 0, 0.1), rgba(113, 211, 73, 0.2));
 }
 
+.modeTab {
+  font-weight: 600;
+}
+
 .mainCard {
-  animation: fadeInUp 0.6s ease-out 0.1s both;
+  animation: fadeInUp 250ms ease-out 0.1s both;
   transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
   background: light-dark(
     rgba(255, 255, 255, 0.95),
@@ -48,14 +52,6 @@
   border-color: light-dark(
     var(--mantine-color-gray-3),
     var(--mantine-color-dark-4)
-  );
-}
-
-.mainCard:hover {
-  box-shadow: 0 12px 40px light-dark(rgba(49, 176, 0, 0.15), rgba(113, 211, 73, 0.2));
-  border-color: light-dark(
-    var(--mantine-color-console-3),
-    var(--mantine-color-console-4)
   );
 }
 
@@ -148,7 +144,7 @@
 @keyframes fadeInUp {
   from {
     opacity: 0;
-    transform: translateY(30px);
+    transform: translateY(10px);
   }
   to {
     opacity: 1;
@@ -206,11 +202,20 @@
   .mainCard {
     margin: 0 1rem;
   }
+
+  .tabsList {
+    margin: 0 1rem;
+  }
+
+  .instantCard {
+    margin: 0 1rem;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .header,
   .mainCard,
+  .instantCard,
   .statusCard,
   .successCard,
   .primaryButton,

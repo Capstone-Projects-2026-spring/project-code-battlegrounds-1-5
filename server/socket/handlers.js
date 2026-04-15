@@ -1,5 +1,6 @@
 const { GameType } = require("@prisma/client");
 const { z } = require("zod");
+const { getPrisma } = require("../prisma");
 
 const ParameterPrimitive = z.union([
   z.literal("string"),
@@ -19,7 +20,7 @@ const Parameter = z.object({
 });
 
 const registerSchema = z.object({
-  userId: z.string(),
+  userId: z.string()
 });
 
 const joinGameSchema = z.object({
@@ -68,7 +69,10 @@ const requestTeamUpdateSchema = z.object({
 
 const submitCodeSchema = z.object({
   roomId: z.string(),
-  code: z.string().max(10000)
+  code: z.string().max(10000).optional(), // Adjust max length as needed
+  type: z.enum([GameType.TWOPLAYER, GameType.FOURPLAYER]),
+  team: z.enum(["team1", "team2"]).nullable().optional(),
+  teamId: z.string().optional(),
 });
 
 // ─── Social schemas ───────────────────────────────────────────────────────────
@@ -93,10 +97,11 @@ const friendRequestRespondSchema = z.object({
 
 function registerSocketHandlers(io, socket, services) {
   const { gameService, matchmakingService, inviteService } = services;
+  const prisma = getPrisma();
 
   console.log(`New connection: ${socket.id}`);
 
-  socket.on('register', async (data) => {
+  socket.on('register', async (data) => { // might not be needed anymore but keeping in case it breaks main
     const payload = validate(registerSchema, data);
     if (!payload) {
       socket.emit('error', { message: 'Invalid payload for register.' });
@@ -284,19 +289,111 @@ function registerSocketHandlers(io, socket, services) {
       socket.emit('error', { message: 'Invalid payload for submitCode.' });
       return;
     }
-    const { roomId, code } = payload;
+    const { roomId, code, type, team, teamId, testCases, runIDs } = payload;
 
     if (!roomId) return;
 
-    try {
-      fetch("http://fake-backend.lol:6969/execute", {
-        method: "POST",
-        body: { roomId, code }
+    console.log('submitCode received for roomId:', roomId, 'with code length:', code?.length, 'and type:', type);
+
+    if (type === GameType.TWOPLAYER) {
+      console.log('verify its a twoplayer game');
+      await prisma.gameResult.update({
+        where: { gameRoomId: roomId },
+        data: {
+          gameRoomId: roomId,
+          team1Code: code
+        }
       });
-    } catch (error) {
-      console.error("Error POSTing to code executor:", error);
-    } finally {
-      io.to(roomId).emit('gameEnded');
+      console.log('code submitted for two-player game');
+
+      try {
+        // Post results to the code executor
+        let payload = {
+          language: "javascript",
+          code: btoa(code),
+          testCases: JSON.stringify(testCases),
+          runIDs: JSON.stringify(runIDs)
+        };
+        // console.log(JSON.stringify(payload));
+        const res = await fetch("http://127.0.0.1:6969/execute", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const json = await res.json();
+        console.log(JSON.stringify(json));
+      } catch (error) {
+        console.error("Error POSTing to code executor:", error);
+      } finally {
+        io.to(roomId).emit('gameEnded');
+      }
+    }
+    else if (type === GameType.FOURPLAYER) {
+      console.log('verify its a fourplayer game');
+      if (!team) {
+        socket.emit('error', { message: 'Missing team for four-player submitCode.' });
+        return;
+      }
+
+      // Track submissions in Redis
+      const submissionKey = `game:${roomId}:submissions`;
+      const existingSubmissions = await gameService.getGameData(submissionKey);
+
+      if (existingSubmissions && existingSubmissions[team]) {
+        console.log(`Team ${team} already submitted, ignoring duplicate submission`);
+        return;
+      }
+
+      // Store this team's code
+      await prisma.gameResult.update({
+        where: { gameRoomId: roomId },
+        data: {
+          gameRoomId: roomId,
+          ...(team === "team1" ? { team1Code: code } : { team2Code: code })
+        }
+      });
+      console.log(`code submitted for four-player game by ${team}`);
+
+      // Track submission
+      const updatedSubmissions = {
+        ...(existingSubmissions || {}),
+        [team]: true
+      };
+      await gameService.saveGameData(submissionKey, JSON.stringify(updatedSubmissions));
+
+      // Check if both teams have submitted
+      if (Object.keys(updatedSubmissions).length === 2) {
+        // Both teams submitted - end game
+        console.log('Both teams submitted, ending game');
+        try {
+          // Post results to the code executor
+          let payload = {
+            language: "javascript",
+            code: btoa(code),
+            testCases: JSON.stringify(testCases),
+            runIDs: JSON.stringify(runIDs)
+          };
+          // console.log(JSON.stringify(payload));
+          const res = await fetch("http://127.0.0.1:6969/execute", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          const json = await res.json();
+          console.log(JSON.stringify(json));
+        } catch (error) {
+          console.error("Error POSTing to code executor:", error);
+        } finally {
+          io.to(roomId).emit('gameEnded');
+          await gameService.deleteGameData(submissionKey);
+        }
+      } else {
+        // First team submitted - notify waiting (only to that team)
+        console.log('First team submitted, waiting for other team');
+        if (teamId) {
+          io.to(teamId).emit('waitingForOtherTeam');
+        }
+      }
     }
   });
 
@@ -310,21 +407,54 @@ function registerSocketHandlers(io, socket, services) {
    * 
    * @see GameTestCasesContext#TestableCase
    */
+  // TODO: should only send test cases needed. also, the model here needs updated to actually hook up (wtf does that mean??). additionally, this sends base64 for undefined, so somethings broke somewhere.
   socket.on("submitTestCases", async (data) => {
-    const { gameId, teamId, code, testCases, runIDs } = data;
-
-    const res = await fetch("http://fake-backend.lol:6969/execute-tests", {
+    const {
+      code,
+      testCases,
+      runIDs
+    } = data;
+    let payload = {
+      language: "javascript",
+      code: btoa(code),
+      testCases: JSON.stringify(testCases),
+      runIDs: JSON.stringify(runIDs)
+    };
+    // console.log(JSON.stringify(payload));
+    const res = await fetch("http://127.0.0.1:6969/execute", {
       method: "POST",
-      body: {
-        gameId,
-        teamId,
-        code,
-        testCases: JSON.stringify(testCases),
-        runIDs: JSON.stringify(runIDs)
-      },
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
     });
     const json = await res.json();
-    socket.emit("receiveTestCaseSync", json.testCases);
+
+    // json.testCases should realistically only modify a single property
+    // on the existing testCases object: `computedOutput`. Syncing this
+    // back to the frontend is handled over there :)
+    console.log(JSON.stringify(json, null, 2));
+
+    /* 
+      export interface TestableCase {
+        id: number;
+        functionInput: ParameterType[];
+        expectedOutput: ParameterType;
+        computedOutput?: string | null;
+      }
+    */
+
+    const toReceive = [];
+    for (const result of json.results) {
+      const matched = testCases.find(t => t.id === result.id);
+      if (!matched) continue;
+      toReceive.push({
+        id: matched.id,
+        functionInput: matched.functionInput,
+        expectedOutput: matched.expectedOutput,
+        computedOutput: result.actual
+      });
+    }
+
+    socket.emit("receiveTestCaseSync", toReceive);
   });
 
   socket.on('requestTeamUpdate', async (data) => {
@@ -339,8 +469,8 @@ function registerSocketHandlers(io, socket, services) {
     io.emit('teamUpdated', { teamId, playerCount });
   });
 
-  socket.on('joinQueue', async ({ userId, gameType, difficulty, partyId }) => {
-    const result = await matchmakingService.joinQueue(userId, gameType, difficulty, partyId ?? null);
+  socket.on('joinQueue', async ({ userId, gameType, difficulty, partyId, lobbyId }) => {
+    const result = await matchmakingService.joinQueue(userId, gameType, difficulty, partyId ?? lobbyId ?? null);
     socket.emit('queueStatus', result);
   });
 

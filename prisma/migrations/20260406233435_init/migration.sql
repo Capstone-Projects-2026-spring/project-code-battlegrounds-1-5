@@ -1,5 +1,11 @@
 -- CreateEnum
-CREATE TYPE "GameStatus" AS ENUM ('STARTING', 'ACTIVE', 'FINISHED', 'CANCELLED');
+CREATE TYPE "GameStatus" AS ENUM ('WAITING', 'STARTING', 'ACTIVE', 'FLIPPING', 'FINISHED', 'CANCELLED');
+
+-- CreateEnum
+CREATE TYPE "GameType" AS ENUM ('TWOPLAYER', 'FOURPLAYER');
+
+-- CreateEnum
+CREATE TYPE "Role" AS ENUM ('CODER', 'TESTER', 'SPECTATOR');
 
 -- CreateEnum
 CREATE TYPE "ProblemDifficulty" AS ENUM ('EASY', 'MEDIUM', 'HARD');
@@ -71,12 +77,29 @@ CREATE TABLE "infra_test_kv" (
 );
 
 -- CreateTable
+CREATE TABLE "Party" (
+    "id" TEXT NOT NULL,
+
+    CONSTRAINT "Party_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "PartyMember" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "partyId" TEXT NOT NULL,
+
+    CONSTRAINT "PartyMember_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "game_rooms" (
     "id" TEXT NOT NULL,
     "status" "GameStatus" NOT NULL DEFAULT 'STARTING',
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "endedAt" TIMESTAMP(3),
     "problemId" TEXT NOT NULL,
+    "gameType" "GameType" NOT NULL,
 
     CONSTRAINT "game_rooms_pkey" PRIMARY KEY ("id")
 );
@@ -85,6 +108,7 @@ CREATE TABLE "game_rooms" (
 CREATE TABLE "Team" (
     "id" TEXT NOT NULL,
     "gameRoomId" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "Team_pkey" PRIMARY KEY ("id")
 );
@@ -92,24 +116,36 @@ CREATE TABLE "Team" (
 -- CreateTable
 CREATE TABLE "TeamPlayer" (
     "teamId" TEXT NOT NULL,
-    "userId" TEXT NOT NULL
+    "userId" TEXT NOT NULL,
+    "role" "Role" NOT NULL
 );
 
 -- CreateTable
-CREATE TABLE "Problem" (
+CREATE TABLE "problem" (
     "id" TEXT NOT NULL,
-    "problemDescription" TEXT NOT NULL,
+    "title" TEXT NOT NULL,
+    "slug" TEXT NOT NULL,
+    "description" TEXT NOT NULL,
+    "topics" TEXT[],
     "difficulty" "ProblemDifficulty" NOT NULL,
+    "successRate" DOUBLE PRECISION NOT NULL,
+    "totalSubmissions" INTEGER NOT NULL,
+    "totalAccepted" INTEGER NOT NULL,
+    "likes" INTEGER NOT NULL,
+    "dislikes" INTEGER NOT NULL,
+    "starterCode" TEXT,
+    "hints" TEXT,
 
-    CONSTRAINT "Problem_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "problem_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "ProblemTest" (
     "id" TEXT NOT NULL,
-    "testCode" TEXT NOT NULL,
-    "language" TEXT NOT NULL,
     "problemId" TEXT NOT NULL,
+    "functionInput" JSONB NOT NULL,
+    "expectedOutput" JSONB NOT NULL,
+    "language" TEXT NOT NULL,
     "optimalTimeMs" INTEGER NOT NULL,
 
     CONSTRAINT "ProblemTest_pkey" PRIMARY KEY ("id")
@@ -119,9 +155,11 @@ CREATE TABLE "ProblemTest" (
 CREATE TABLE "GameResult" (
     "id" TEXT NOT NULL,
     "gameRoomId" TEXT NOT NULL,
-    "winningTeamId" TEXT NOT NULL,
-    "bestCode" TEXT NOT NULL,
-    "timeToPassMs" INTEGER NOT NULL,
+    "winningTeamId" TEXT,
+    "team1Code" TEXT,
+    "team2Code" TEXT,
+    "team1TimeToPassMs" INTEGER,
+    "team2TimeToPassMs" INTEGER,
 
     CONSTRAINT "GameResult_pkey" PRIMARY KEY ("id")
 );
@@ -157,6 +195,15 @@ CREATE INDEX "TeamPlayer_userId_idx" ON "TeamPlayer"("userId");
 CREATE UNIQUE INDEX "TeamPlayer_teamId_userId_key" ON "TeamPlayer"("teamId", "userId");
 
 -- CreateIndex
+CREATE INDEX "problem_title_idx" ON "problem"("title");
+
+-- CreateIndex
+CREATE INDEX "problem_slug_idx" ON "problem"("slug");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "problem_slug_key" ON "problem"("slug");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "GameResult_gameRoomId_key" ON "GameResult"("gameRoomId");
 
 -- CreateIndex
@@ -172,7 +219,10 @@ ALTER TABLE "session" ADD CONSTRAINT "session_userId_fkey" FOREIGN KEY ("userId"
 ALTER TABLE "account" ADD CONSTRAINT "account_userId_fkey" FOREIGN KEY ("userId") REFERENCES "user"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "game_rooms" ADD CONSTRAINT "game_rooms_problemId_fkey" FOREIGN KEY ("problemId") REFERENCES "Problem"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "PartyMember" ADD CONSTRAINT "PartyMember_partyId_fkey" FOREIGN KEY ("partyId") REFERENCES "Party"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "game_rooms" ADD CONSTRAINT "game_rooms_problemId_fkey" FOREIGN KEY ("problemId") REFERENCES "problem"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Team" ADD CONSTRAINT "Team_gameRoomId_fkey" FOREIGN KEY ("gameRoomId") REFERENCES "game_rooms"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -184,10 +234,10 @@ ALTER TABLE "TeamPlayer" ADD CONSTRAINT "TeamPlayer_teamId_fkey" FOREIGN KEY ("t
 ALTER TABLE "TeamPlayer" ADD CONSTRAINT "TeamPlayer_userId_fkey" FOREIGN KEY ("userId") REFERENCES "user"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "ProblemTest" ADD CONSTRAINT "ProblemTest_problemId_fkey" FOREIGN KEY ("problemId") REFERENCES "Problem"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "ProblemTest" ADD CONSTRAINT "ProblemTest_problemId_fkey" FOREIGN KEY ("problemId") REFERENCES "problem"("slug") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "GameResult" ADD CONSTRAINT "GameResult_winningTeamId_fkey" FOREIGN KEY ("winningTeamId") REFERENCES "Team"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "GameResult" ADD CONSTRAINT "GameResult_winningTeamId_fkey" FOREIGN KEY ("winningTeamId") REFERENCES "Team"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "GameResult" ADD CONSTRAINT "GameResult_gameRoomId_fkey" FOREIGN KEY ("gameRoomId") REFERENCES "game_rooms"("id") ON DELETE CASCADE ON UPDATE CASCADE;

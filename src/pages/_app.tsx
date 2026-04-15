@@ -30,6 +30,7 @@ const sourceSans3 = Source_Sans_3({
 });
 
 const theme = createTheme({
+  /** Put your mantine theme override here */
   primaryColor: "console",
   defaultRadius: "xs",
   respectReducedMotion: true,
@@ -39,8 +40,8 @@ const theme = createTheme({
       "#e1ffd7",
       "#c8f8b8",
       "#a2eb89",
-      "#71d349",
-      "#31b000",
+      "#71d349", 
+      "#31b000", // primary
       "#008e00",
       "#007400",
       "#005a00",
@@ -49,6 +50,7 @@ const theme = createTheme({
       "#001200"
     ]
   },
+
   headings: {
     fontFamily: spaceGrotesk.style.fontFamily
   },
@@ -102,6 +104,7 @@ export default function App({ Component, pageProps }: AppProps) {
           <>
             {showNavbar && (
               <HeaderSimple
+                title="Code BattleGrounds"
                 username={session?.user?.name || "User"}
                 links={["Dashboard", "Matchmaking", "Settings"]}
               />

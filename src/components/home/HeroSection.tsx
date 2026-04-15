@@ -1,24 +1,16 @@
 import { Container, Title, Text, Button, Group, Box, Stack } from "@mantine/core";
 import { IconPlayerPlay, IconUsers } from "@tabler/icons-react";
-import { useRouter } from "next/router";
-import { authClient } from "@/lib/auth-client";
 import { usePostHog } from "posthog-js/react";
-import classes from "./HeroSection.module.css";
+import classes from "@/styles/comps/HeroSection.module.css";
 import Brand from "../Brand";
+import Link from "next/link";
 
 export default function HeroSection() {
-  const router = useRouter();
-  const { data: session } = authClient.useSession();
   const posthog = usePostHog();
 
-  const handleQuickMatch = () => {
-    if (!session) {
-      posthog?.capture("hero_cta_clicked_not_authenticated");
-      router.push("/login?redirect=/matchmaking");
-      return;
-    }
+  const handlePlayNow = () => {
     posthog?.capture("hero_quick_match_clicked");
-    router.push("/matchmaking");
+    // router.push("/matchmaking");
   };
 
   const handleLearnMore = () => {
@@ -60,14 +52,16 @@ export default function HeroSection() {
           {/* Primary CTAs */}
           <Group gap="md" mt="xl">
             <Button
+              component={Link}
+              href="/matchmaking"
               size="xl"
               radius="md"
               leftSection={<IconPlayerPlay size={24} />}
-              onClick={handleQuickMatch}
+              onClick={handlePlayNow}
               className={classes.primaryButton}
               data-testid="hero-quick-match"
             >
-              Quick Match
+              Play Now
             </Button>
             
             <Button
