@@ -202,7 +202,7 @@ export default function TestCaseResultsBox({ gameId, team1Results, team2Results,
         <Table.Td>
           <Box className={styles.cellResult}>
             <Box style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              {hasYourResult && (
+              {hasYourResult && !hasYourError && (
                 <span className={`${styles.statusIndicator} ${yourResultPassed ? styles.statusPass : styles.statusFail}`}>
                   {yourResultPassed ? <IconCheck size={12} className={styles.passIcon} /> : <IconX size={12} className={styles.failIcon} />}
                 </span>
@@ -222,7 +222,7 @@ export default function TestCaseResultsBox({ gameId, team1Results, team2Results,
               )}
               {hasYourError && (
                 <Tooltip label={formatStderr(yourError)} multiline maw={500} withArrow withinPortal>
-                  <Badge color="red" variant="filled" size="lg" leftSection={<IconAlertCircle size={16} />}>
+                  <Badge color="red" variant="filled" size="lg">
                     Error
                   </Badge>
                 </Tooltip>
@@ -234,7 +234,7 @@ export default function TestCaseResultsBox({ gameId, team1Results, team2Results,
           <Table.Td>
             <Box className={styles.cellResult}>
               <Box style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                {hasOtherTeamResult && (
+                {hasOtherTeamResult && !hasOtherTeamError && (
                   <span className={`${styles.statusIndicator} ${otherTeamPassed ? styles.statusPass : styles.statusFail}`}>
                     {otherTeamPassed ? <IconCheck size={12} className={styles.passIcon} /> : <IconX size={12} className={styles.failIcon} />}
                   </span>
@@ -254,7 +254,7 @@ export default function TestCaseResultsBox({ gameId, team1Results, team2Results,
                 )}
                 {hasOtherTeamError && (
                   <Tooltip label={formatStderr(otherTeamError)} multiline maw={500} withArrow withinPortal>
-                    <Badge color="red" variant="filled" size="lg" leftSection={<IconAlertCircle size={16} />}>
+                    <Badge color="red" variant="filled" size="lg">
                       Error
                     </Badge>
                   </Tooltip>
