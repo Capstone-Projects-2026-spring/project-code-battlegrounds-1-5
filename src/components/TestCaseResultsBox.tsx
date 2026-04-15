@@ -210,16 +210,18 @@ export default function TestCaseResultsBox({ gameId, team1Results, team2Results,
               {!hasYourResult && !hasYourError && (
                 <span className={styles.statusPlaceholder} aria-hidden="true" />
               )}
-              <Text
-                size="sm"
-                fw={500}
-                ff="monospace"
-                className={`${styles.cellInput} ${hasYourResult ? (yourResultPassed ? styles.passText : styles.failText) : ""}`}
-              >
-                {hasYourResult ? formatValue(yourResult) : '-'}
-              </Text>
+              {!hasYourError && (
+                <Text
+                  size="sm"
+                  fw={500}
+                  ff="monospace"
+                  className={`${styles.cellInput} ${hasYourResult ? (yourResultPassed ? styles.passText : styles.failText) : ""}`}
+                >
+                  {hasYourResult ? formatValue(yourResult) : '-'}
+                </Text>
+              )}
               {hasYourError && (
-                <Tooltip label={formatStderr(yourError)} multiline maw={300} withArrow>
+                <Tooltip label={formatStderr(yourError)} multiline maw={500} withArrow withinPortal>
                   <Badge color="red" variant="filled" size="lg" leftSection={<IconAlertCircle size={16} />}>
                     Error
                   </Badge>
@@ -240,16 +242,18 @@ export default function TestCaseResultsBox({ gameId, team1Results, team2Results,
                 {!hasOtherTeamResult && !hasOtherTeamError && (
                   <span className={styles.statusPlaceholder} aria-hidden="true" />
                 )}
-                <Text
-                  size="sm"
-                  fw={500}
-                  ff="monospace"
-                  className={`${styles.cellInput} ${hasOtherTeamResult ? (otherTeamPassed ? styles.passText : styles.failText) : ""}`}
-                >
-                  {hasOtherTeamResult ? formatValue(otherTeamResult) : '-'}
-                </Text>
+                {!hasOtherTeamError && (
+                  <Text
+                    size="sm"
+                    fw={500}
+                    ff="monospace"
+                    className={`${styles.cellInput} ${hasOtherTeamResult ? (otherTeamPassed ? styles.passText : styles.failText) : ""}`}
+                  >
+                    {hasOtherTeamResult ? formatValue(otherTeamResult) : '-'}
+                  </Text>
+                )}
                 {hasOtherTeamError && (
-                  <Tooltip label={formatStderr(otherTeamError)} multiline maw={300} withArrow>
+                  <Tooltip label={formatStderr(otherTeamError)} multiline maw={500} withArrow withinPortal>
                     <Badge color="red" variant="filled" size="lg" leftSection={<IconAlertCircle size={16} />}>
                       Error
                     </Badge>
