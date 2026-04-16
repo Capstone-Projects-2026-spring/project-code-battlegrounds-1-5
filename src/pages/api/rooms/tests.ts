@@ -32,6 +32,7 @@ interface ExecutorResponse {
   results?: ExecutorResultItem[];
 }
 
+type ResultValue = Pick<ExecutorResultItem, 'actual' | 'passed' | 'stderr' | 'execution_time_ms'>;
 export interface TestsResponse {
   tests: TestCase[];
   team1Results: unknown[];
@@ -139,12 +140,8 @@ async function executeSubmission(
   }
 
   const executionData = (await response.json()) as ExecutorResponse;
-  const resultsById = new Map<number, {
-    actual: string | null;
-    passed: boolean;
-    stderr: string | null;
-    execution_time_ms: number | null;
-  }>();
+  const resultsById = new Map<number, ResultValue>();
+
 
   for (const result of executionData.results ?? []) {
     if (typeof result.id !== "number") continue;
@@ -154,21 +151,21 @@ async function executeSubmission(
       passed: result.passed === true,
       stderr: typeof result.stderr === "string" ? result.stderr : null,
       execution_time_ms: typeof result.execution_time_ms === "number" ? result.execution_time_ms : null,
-    });
+    } as ResultValue);
   }
 
   const normalizedResults = tests.map((test, index) => {
-    const result = resultsById.get(index);
+    const result = resultsById.get(index) as ResultValue;
     return toDisplayResult(test.expected, result?.actual ?? null);
   });
 
   const executionTimes = tests.map((_, index) => {
-    const result = resultsById.get(index);
+    const result = resultsById.get(index) as ResultValue;
     return result?.execution_time_ms ?? null;
   });
 
   const errors = tests.map((_, index) => {
-    const result = resultsById.get(index);
+    const result = resultsById.get(index) as ResultValue;
     return result?.stderr ?? null;
   });
 
