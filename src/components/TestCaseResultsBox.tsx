@@ -65,8 +65,6 @@ export default function TestCaseResultsBox({ gameId, team1Results, team2Results,
   //const team2TestResults = team2Results || ["[1,2,2]", "[1,2,2,3]", "[1,2,2,3,4,5]"];
   const team1TestResults = team1Results ?? fetchedTeam1Results;
   const team2TestResults = team2Results ?? fetchedTeam2Results;
-  const team1Errors = fetchedTeam1Errors;
-  const team2Errors = fetchedTeam2Errors;
 
   useEffect(() => {
     if (!gameId) return;
@@ -176,8 +174,8 @@ export default function TestCaseResultsBox({ gameId, team1Results, team2Results,
     // Determine which results to show based on user's team
     const yourResults = userTeamNumber === 2 ? team2TestResults : team1TestResults;
     const otherTeamResults = userTeamNumber === 2 ? team1TestResults : team2TestResults;
-    const yourErrors = userTeamNumber === 2 ? team2Errors : team1Errors;
-    const otherTeamErrors = userTeamNumber === 2 ? team1Errors : team2Errors;
+    const yourErrors = userTeamNumber === 2 ? fetchedTeam2Errors : fetchedTeam1Errors;
+    const otherTeamErrors = userTeamNumber === 2 ? fetchedTeam1Errors : fetchedTeam2Errors;
 
     const yourResult = yourResults?.[index];
     const otherTeamResult = otherTeamResults?.[index];
