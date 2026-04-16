@@ -156,7 +156,7 @@ async function executeSubmission(
 
   const normalizedResults = tests.map((test, index) => {
     const result = resultsById.get(index) as ResultValue;
-    return toDisplayResult(test.expected, result?.actual ?? null);
+    return toDisplayResult(test.expected, (result?.actual ?? null) as string | null);
   });
 
   const executionTimes = tests.map((_, index) => {

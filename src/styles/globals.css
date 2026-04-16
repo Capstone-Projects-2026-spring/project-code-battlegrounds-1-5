@@ -51,16 +51,3 @@ a {
     opacity: 0;
   }
 }
-
-/* Badge styling fixes */
-.mantine-Badge-root {
-  width: auto;
-  min-width: max-content;
-  grid-template-columns: auto auto;
-}
-
-.mantine-Badge-label {
-  overflow: visible;
-  text-overflow: clip;
-  width: auto;
-}
