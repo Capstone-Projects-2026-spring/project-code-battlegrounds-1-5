@@ -23,8 +23,6 @@ interface RoomDetailsResponse {
   team1Code: string | null;
   team2Code: string | null;
   userTeamNumber: 1 | 2;
-  team1AverageExecutionTime: number | null;
-  team2AverageExecutionTime: number | null;
 }
 
 interface ErrorResponse {
@@ -112,8 +110,6 @@ export default async function handler(
       select: {
         team1Code: true,
         team2Code: true,
-        team1TimeToPassMs: true,
-        team2TimeToPassMs: true,
       },
     });
 
@@ -130,8 +126,6 @@ export default async function handler(
       team1Code: gameResult?.team1Code ?? null,
       team2Code: gameResult?.team2Code ?? null,
       userTeamNumber,
-      team1AverageExecutionTime: gameResult?.team1TimeToPassMs ?? null,
-      team2AverageExecutionTime: gameResult?.team2TimeToPassMs ?? null,
     });
   } catch (error: unknown) {
     // Surface a useful message while preserving a fallback for unknown errors.

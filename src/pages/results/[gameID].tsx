@@ -47,8 +47,6 @@ interface RoomDetailsResponse {
   team1Code: string | null;
   team2Code: string | null;
   userTeamNumber: 1 | 2;
-  team1AverageExecutionTime?: number | null;
-  team2AverageExecutionTime?: number | null;
 }
 
 // Animated counter hook
@@ -147,6 +145,17 @@ export function Results() {
     });
   }, []);
 
+  const handleExecutionMetrics = useCallback((metrics: { team1AverageExecutionTime: number | null; team2AverageExecutionTime: number | null }) => {
+    setAnalysisProps((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        team1AverageExecutionTime: metrics.team1AverageExecutionTime,
+        team2AverageExecutionTime: metrics.team2AverageExecutionTime,
+      };
+    });
+  }, []);
+
   useEffect(() => {
     if (!router.isReady || !session?.user.id || !gameId) return;
 
@@ -166,8 +175,8 @@ export function Results() {
             team2Code: roomDetails.team2Code ?? undefined,
             gameType: roomDetails.gameType,
             userTeamNumber: roomDetails.userTeamNumber,
-            team1AverageExecutionTime: roomDetails.team1AverageExecutionTime,
-            team2AverageExecutionTime: roomDetails.team2AverageExecutionTime,
+            team1AverageExecutionTime: null,
+            team2AverageExecutionTime: null,
           });
         } else {
           setAnalysisProps(null);
@@ -465,6 +474,7 @@ export function Results() {
                   gameType={gameType as "TWOPLAYER" | "FOURPLAYER"}
                   userTeamNumber={userTeamNumber}
                   onSummaryChange={handleSummaryChange}
+                  onExecutionMetrics={handleExecutionMetrics}
                 />
               </Stack>
             </Flex>

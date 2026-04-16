@@ -298,27 +298,7 @@ function registerSocketHandlers(io, socket, services) {
       });
       console.log('code submitted for two-player game');
 
-      try {
-        // Post results to the code executor
-        let payload = {
-          language: "javascript",
-          code: btoa(code),
-          testCases: JSON.stringify(testCases),
-          runIDs: JSON.stringify(runIDs)
-        };
-        // console.log(JSON.stringify(payload));
-        const res = await fetch("http://127.0.0.1:6969/execute", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-        const json = await res.json();
-        console.log(JSON.stringify(json));
-      } catch (error) {
-        console.error("Error POSTing to code executor:", error);
-      } finally {
-        io.to(roomId).emit('gameEnded');
-      }
+      io.to(roomId).emit('gameEnded');
     }
     else if (type === GameType.FOURPLAYER) {
       console.log('verify its a fourplayer game');
@@ -357,28 +337,8 @@ function registerSocketHandlers(io, socket, services) {
       if (Object.keys(updatedSubmissions).length === 2) {
         // Both teams submitted - end game
         console.log('Both teams submitted, ending game');
-        try {
-          // Post results to the code executor
-          let payload = {
-            language: "javascript",
-            code: btoa(code),
-            testCases: JSON.stringify(testCases),
-            runIDs: JSON.stringify(runIDs)
-          };
-          // console.log(JSON.stringify(payload));
-          const res = await fetch("http://127.0.0.1:6969/execute", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
-          });
-          const json = await res.json();
-          console.log(JSON.stringify(json));
-        } catch (error) {
-          console.error("Error POSTing to code executor:", error);
-        } finally {
-          io.to(roomId).emit('gameEnded');
-          await gameService.deleteGameData(submissionKey);
-        }
+        io.to(roomId).emit('gameEnded');
+        await gameService.deleteGameData(submissionKey);
       } else {
         // First team submitted - notify waiting (only to that team)
         console.log('First team submitted, waiting for other team');

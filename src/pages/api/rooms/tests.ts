@@ -178,6 +178,12 @@ async function executeSubmission(
     ? Math.round(validTimes.reduce((a, b) => a + b, 0) / validTimes.length)
     : null;
 
+  console.log('Execution times:', {
+    validTimes,
+    count: validTimes.length,
+    averageExecutionTime,
+  });
+
   const passedCount = Array.from(resultsById.values()).filter(
     (result) => result.passed,
   ).length;
@@ -273,15 +279,45 @@ export default async function handler(
       }),
     ]);
 
-    // Save average execution times to database
+    // Save average execution times if not previously saved
     try {
-      await prisma.gameResult.update({
+      const currentResult = await prisma.gameResult.findUnique({
         where: { gameRoomId: gameId },
-        data: {
-          team1TimeToPassMs: team1Execution.averageExecutionTime,
-          team2TimeToPassMs: team2Execution.averageExecutionTime,
+        select: {
+          team1TimeToPassMs: true,
+          team2TimeToPassMs: true,
         },
       });
+
+      // Build update data for each team independently
+      const dataToUpdate: Partial<{ team1TimeToPassMs: number | null; team2TimeToPassMs: number | null }> = {};
+
+      // Team 1
+      if (!currentResult || currentResult.team1TimeToPassMs == null) {
+        dataToUpdate.team1TimeToPassMs = team1Execution.averageExecutionTime;
+      }
+
+      // Team 2
+      if (!currentResult || currentResult.team2TimeToPassMs == null) {
+        dataToUpdate.team2TimeToPassMs = team2Execution.averageExecutionTime;
+      }
+
+      // Only call update if there's something to update
+      let savedResult = currentResult;
+      if (Object.keys(dataToUpdate).length > 0) {
+        savedResult = await prisma.gameResult.update({
+          where: { gameRoomId: gameId },
+          data: dataToUpdate,
+          select: {
+            team1TimeToPassMs: true,
+            team2TimeToPassMs: true,
+          },
+        });
+      }
+
+      // Return the saved DB values, not the newly calculated ones
+      team1Execution.averageExecutionTime = savedResult?.team1TimeToPassMs ?? null;
+      team2Execution.averageExecutionTime = savedResult?.team2TimeToPassMs ?? null;
     } catch (error) {
       console.error("Failed to save execution times", error);
     }

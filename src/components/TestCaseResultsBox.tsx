@@ -23,8 +23,6 @@ interface TestsApiResponse {
   team1PassedCount?: number;
   team2PassedCount?: number;
   totalTests?: number;
-  team1ExecutionTimes?: (number | null)[];
-  team2ExecutionTimes?: (number | null)[];
   team1AverageExecutionTime?: number | null;
   team2AverageExecutionTime?: number | null;
   team1Errors?: (string | null)[];
@@ -45,9 +43,10 @@ interface TestCaseResultsBoxProps {
   gameType?: "TWOPLAYER" | "FOURPLAYER";
   userTeamNumber?: 1 | 2;
   onSummaryChange?: (summary: TestResultsSummary) => void;
+  onExecutionMetrics?: (metrics: { team1AverageExecutionTime: number | null; team2AverageExecutionTime: number | null }) => void;
 }
 
-export default function TestCaseResultsBox({ gameId, team1Results, team2Results, showOtherTeamColumn = true, gameType = "FOURPLAYER", userTeamNumber = 1, onSummaryChange }: TestCaseResultsBoxProps) {
+export default function TestCaseResultsBox({ gameId, team1Results, team2Results, showOtherTeamColumn = true, gameType = "FOURPLAYER", userTeamNumber = 1, onSummaryChange, onExecutionMetrics }: TestCaseResultsBoxProps) {
   const [testCases, setTestCases] = useState<TestCase[]>([]);
   const [loading, setLoading] = useState(false);
   const [hasFetchedSummary, setHasFetchedSummary] = useState(false);
@@ -55,6 +54,10 @@ export default function TestCaseResultsBox({ gameId, team1Results, team2Results,
   const [fetchedTeam2Results, setFetchedTeam2Results] = useState<unknown[]>([]);
   const [fetchedTeam1Errors, setFetchedTeam1Errors] = useState<(string | null)[]>([]);
   const [fetchedTeam2Errors, setFetchedTeam2Errors] = useState<(string | null)[]>([]);
+  const [executionMetrics, setExecutionMetrics] = useState<{ team1AverageExecutionTime: number | null; team2AverageExecutionTime: number | null }>({
+    team1AverageExecutionTime: null,
+    team2AverageExecutionTime: null,
+  });
   const [summaryCounts, setSummaryCounts] = useState<TeamSummaryCounts>({
     team1PassedCount: 0,
     team2PassedCount: 0,
@@ -85,6 +88,10 @@ export default function TestCaseResultsBox({ gameId, team1Results, team2Results,
         setFetchedTeam2Results(data.team2Results ?? []);
         setFetchedTeam1Errors(data.team1Errors ?? []);
         setFetchedTeam2Errors(data.team2Errors ?? []);
+        setExecutionMetrics({
+          team1AverageExecutionTime: data.team1AverageExecutionTime ?? null,
+          team2AverageExecutionTime: data.team2AverageExecutionTime ?? null,
+        });
         setSummaryCounts({
           team1PassedCount: data.team1PassedCount ?? 0,
           team2PassedCount: data.team2PassedCount ?? 0,
@@ -123,6 +130,12 @@ export default function TestCaseResultsBox({ gameId, team1Results, team2Results,
     summaryCounts.team2PassedCount,
     summaryCounts.totalTests,
   ]);
+
+  useEffect(() => {
+    if (!onExecutionMetrics || !hasFetchedSummary) return;
+
+    onExecutionMetrics(executionMetrics);
+  }, [onExecutionMetrics, hasFetchedSummary, executionMetrics]);
 
 
   const formatValue = (value: ParameterType[] | unknown): string => {
