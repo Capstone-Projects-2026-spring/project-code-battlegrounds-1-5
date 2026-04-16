@@ -273,6 +273,19 @@ export default async function handler(
       }),
     ]);
 
+    // Save average execution times to database
+    try {
+      await prisma.gameResult.update({
+        where: { gameRoomId: gameId },
+        data: {
+          team1TimeToPassMs: team1Execution.averageExecutionTime,
+          team2TimeToPassMs: team2Execution.averageExecutionTime,
+        },
+      });
+    } catch (error) {
+      console.error("Failed to save execution times", error);
+    }
+
     return res.status(200).json({
       tests: formattedTests,
       team1Results: team1Execution.results,
