@@ -80,9 +80,7 @@ class VMProvisioner:
                 instance = compute_v1.Instance()
                 instance.name = name
                 instance.source_machine_image = self.machine_image
-                tags = compute_v1.Tags()
-                tags.items = ["fastapi-server"]
-                instance.tags = tags
+                instance.tags = ["fastapi-server"]
                 metadata = compute_v1.Metadata()
                 metadata.items = [
                     {
