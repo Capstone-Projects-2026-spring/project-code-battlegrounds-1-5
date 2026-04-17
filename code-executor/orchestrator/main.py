@@ -249,6 +249,11 @@ def execute(req: ExecutionRequest, request: Request):
     try:
         # Ensure we serialize the Pydantic model correctly (supports v1 and v2)
         payload = req.model_dump(mode='json') if hasattr(req, 'model_dump') else req.dict()
+        if isinstance(payload["testCases"], str):
+            payload["testCases"] = json.loads(payload["testCases"])
+
+        if isinstance(payload["runIDs"], str):
+            payload["runIDs"] = json.loads(payload["runIDs"])
         print(f"Forwarding /execute to http://{target_ip}:8000/execute")
         print(f"Payload (truncated): {json.dumps(payload)[:800]}")
         resp = requests.post(
