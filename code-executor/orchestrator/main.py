@@ -96,6 +96,33 @@ class VMProvisioner:
                     instance_resource=instance,
                 )
                 print(f"Instance creation requested for {name} in zone {zone}. Operation: {op.name if hasattr(op, 'name') else 'N/A'}")
+
+                # wait for insert to complete
+                try:
+                    if hasattr(op, 'name') and op.name:
+                        zone_ops = compute_v1.ZoneOperationsClient()
+                        print(f"Waiting for operation {op.name} to complete in {zone}...")
+                        zone_ops.wait(project=self.project_id, zone=zone, operation=op.name)
+                except Exception as wait_err:
+                    print(f"Warning: failed waiting for operation to complete: {wait_err}")
+
+                # force set tags
+                try:
+                    created = self.client.get(project=self.project_id, zone=zone, instance=name)
+                    current_tags = getattr(created, 'tags', None) or compute_v1.Tags()
+                    fingerprint = getattr(current_tags, 'fingerprint', None) or ''
+                    desired_tags = compute_v1.Tags(items=["fastapi-server"], fingerprint=fingerprint)
+                    set_req = compute_v1.InstancesSetTagsRequest(tags=desired_tags)
+                    self.client.set_tags(
+                        project=self.project_id,
+                        zone=zone,
+                        instance=name,
+                        instances_set_tags_request_resource=set_req,
+                    )
+                    print(f"Applied network tags to {name} in {zone} (fingerprint {fingerprint}).")
+                except Exception as tag_err:
+                    print(f"Warning: failed to set tags for {name} in {zone}: {tag_err}")
+
                 return True, zone
             except Exception as e:
                 print(f"Unable to create instance {name} in zone {zone}: {e}")
