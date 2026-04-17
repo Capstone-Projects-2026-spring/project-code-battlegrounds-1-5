@@ -206,7 +206,7 @@ def request_warm_vm(payload: PrewarmRequest, req: Request):
 
 @app.post("/execute")
 def execute(req: ExecutionRequest, request: Request):
-    print(json.dumps(req))
+    print(json.dumps(req.dict()))
 
     # Use the application-level pool to find a READY VM with a reachable executor-api
     pool = getattr(request.app.state, "pool", None)
