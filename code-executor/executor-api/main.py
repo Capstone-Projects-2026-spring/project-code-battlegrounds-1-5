@@ -93,8 +93,13 @@ def execute(req: ExecutionRequest):
 
     # send the execution request to the container and wait for its result
     try:
-        exec_resp = requests.post(f"{base_url}/execute", json=req, timeout=10)
-        exec_json = exec_resp.json() if exec_resp.headers.get("content-type", "").startswith("application/json") else {"stdout": exec_resp.text}
+        # ensure we send a proper JSON body, not a Pydantic model instance
+        payload = req.model_dump() if hasattr(req, "model_dump") else req.dict()
+        exec_resp = requests.post(f"{base_url}/execute", json=payload, timeout=20)
+        if exec_resp.headers.get("content-type", "").startswith("application/json"):
+            exec_json = exec_resp.json()
+        else:
+            exec_json = {"stdout": exec_resp.text}
     except Exception as e:
         exec_json = {"error": "Failed to call executor API", "details": str(e)}
 

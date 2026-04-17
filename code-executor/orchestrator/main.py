@@ -205,11 +205,58 @@ class TestCase(BaseModel):
     input: str
     expected: Optional[str] = None
 
+# Align with executor API/image contract
 class ExecutionRequest(BaseModel):
     language: str
     code: str
-    stdin: Optional[str] = ""
-    testCases: Optional[List[TestCase]] = None
+    testCases: Optional[str] = None
+    runIDs: Optional[object] = None  # accepts JSON string or list; passed through as-is
 
-# @app.post("/execute")
-# def execute(req: ExecutionRequest):
+@app.post("/execute")
+def execute(req: ExecutionRequest, request: Request):
+    # Use the application-level pool to find a READY VM with a reachable executor-api
+    pool = getattr(request.app.state, "pool", None)
+    if pool is None:
+        request.app.state.pool = Pool(VMProvisioner())
+        pool = request.app.state.pool
+
+    # Helper to probe a VM, ensure IP and health
+    def ensure_vm_ready(vm: VM) -> Optional[str]:
+        # obtain IP if missing
+        if not vm.ip:
+            vm.ip = pool.provisioner.fetch_ip(vm.game_id, vm.zone)
+        if not vm.ip:
+            return None
+        # health check
+        try:
+            r = requests.get(f"http://{vm.ip}:8000/health", timeout=2)
+            if r.status_code == 200:
+                vm.status = Status.READY
+                return vm.ip
+        except Exception:
+            pass
+        return None
+
+    # Try any existing VM first
+    target_ip = None
+    for vm in pool.games.values():
+        target_ip = ensure_vm_ready(vm)
+        if target_ip:
+            break
+
+    if not target_ip:
+        # No existing VM is ready. For minimal change, do not auto-provision here; instruct caller to prewarm.
+        return Response(status_code=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+    # Forward the execute request to the executor-api running on the VM
+    payload = req.model_dump() if hasattr(req, "model_dump") else req.dict()
+    try:
+        resp = requests.post(f"http://{target_ip}:8000/execute", json=payload, timeout=30)
+        # mirror status code and response
+        content_type = resp.headers.get("content-type", "")
+        if content_type.startswith("application/json"):
+            return Response(content=resp.text, media_type="application/json", status_code=resp.status_code)
+        else:
+            return PlainTextResponse(content=resp.text, status_code=resp.status_code)
+    except Exception as e:
+        return PlainTextResponse(content=f"Failed to reach executor API: {e}", status_code=status.HTTP_502_BAD_GATEWAY)
