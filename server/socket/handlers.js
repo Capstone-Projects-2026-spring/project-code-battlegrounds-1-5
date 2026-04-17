@@ -379,7 +379,6 @@ function registerSocketHandlers(io, socket, services) {
           io.to(roomId).emit('gameEnded');
           await gameService.deleteGameData(submissionKey);
         }
-        await gameService.deleteGameData(submissionKey);
       } else {
         // First team submitted - notify waiting (only to that team)
         console.log('First team submitted, waiting for other team');
