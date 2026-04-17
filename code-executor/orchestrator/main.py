@@ -76,7 +76,7 @@ class VMProvisioner:
 
 class VM:
     def __init__(self, game_id):
-        self.game_id = "game-{game_id}".format(game_id=game_id)
+        self.game_id = "{game_id}".format(game_id=game_id)
         self.ip = None
         self.zone = None
         self.status = Status.STARTING
