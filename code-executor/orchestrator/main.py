@@ -1,3 +1,4 @@
+import json
 from typing import Optional, List, Tuple, Union, Literal
 
 from fastapi import FastAPI, status, Request
@@ -205,7 +206,7 @@ def request_warm_vm(payload: PrewarmRequest, req: Request):
 
 @app.post("/execute")
 def execute(req: ExecutionRequest, request: Request):
-    print(req.model_dump(mode='json'))
+    print(json.dumps(req))
 
     # Use the application-level pool to find a READY VM with a reachable executor-api
     pool = getattr(request.app.state, "pool", None)
