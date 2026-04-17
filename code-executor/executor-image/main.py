@@ -42,9 +42,18 @@ def execute(req: ExecutionRequest):
     results = []
     all_passed = True
 
-    # the test cases are coming in as a json string.
-    # decode to python!
-    testCases = json.loads(req.testCases)
+    # The testCases may come as a JSON string or as a parsed list/dict
+    if isinstance(req.testCases, str):
+        try:
+            testCases = json.loads(req.testCases)
+        except Exception:
+            return JSONResponse(
+                status_code=400,
+                content={"error": "testCases is not valid JSON"}
+            )
+    else:
+        testCases = req.testCases
+
     # normalize input: allow a single object or a list of objects as frontend usually send json object not list
     if isinstance(testCases, dict):
         testCases = [testCases]

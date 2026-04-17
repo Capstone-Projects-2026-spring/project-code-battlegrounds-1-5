@@ -27,5 +27,5 @@ class TestableCase(BaseModel):
 class ExecutionRequest(BaseModel):
     language: str
     code: str
-    testCases: str = None
+    testCases: Union[str, List[TestableCase]] = None
     runIDs: Union[str, List[int]] = None
