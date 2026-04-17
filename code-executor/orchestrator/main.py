@@ -205,6 +205,8 @@ def request_warm_vm(payload: PrewarmRequest, req: Request):
 
 @app.post("/execute")
 def execute(req: ExecutionRequest, request: Request):
+    print(req.model_dump(mode='json'))
+
     # Use the application-level pool to find a READY VM with a reachable executor-api
     pool = getattr(request.app.state, "pool", None)
     if pool is None:
@@ -240,7 +242,8 @@ def execute(req: ExecutionRequest, request: Request):
         return Response(status_code=status.HTTP_503_SERVICE_UNAVAILABLE)
 
     # Forward the execute request to the executor-api running on the VM
-    payload = req.model_dump(mode='json') if hasattr(req, "model_dump") else req.dict()
+    payload = req.model_dump(mode='json')
+    print(payload)
     try:
         resp = requests.post(f"http://{target_ip}:8000/execute", json=payload, timeout=30)
         # mirror status code and response

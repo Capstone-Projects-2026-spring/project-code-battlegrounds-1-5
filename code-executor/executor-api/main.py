@@ -95,7 +95,7 @@ def execute(req: ExecutionRequest):
     # send the execution request to the container and wait for its result
     try:
         # ensure we send a proper JSON body, not a Pydantic model instance
-        payload = jsonable_encoder(req)
+        payload = req.model_dump(mode='json')
         exec_resp = requests.post(f"{base_url}/execute", json=payload, timeout=20)
         if exec_resp.headers.get("content-type", "").startswith("application/json"):
             exec_json = exec_resp.json()
