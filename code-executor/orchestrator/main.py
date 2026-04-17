@@ -83,6 +83,18 @@ class VMProvisioner:
                 instance.name = name
                 instance.source_machine_image = self.machine_image
                 instance.tags = compute_v1.Tags(items=["fastapi-server"])
+                # Create the network interface
+                network_interface = compute_v1.NetworkInterface()
+                network_interface.network = f"projects/{self.project_id}/global/networks/default"
+
+                # This block is what actually assigns the External IP (Access Config)
+                access_config = compute_v1.AccessConfig()
+                access_config.name = "External NAT"
+                access_config.type_ = "ONE_TO_ONE_NAT"
+                access_config.network_tier = "PREMIUM"
+                network_interface.access_configs = [access_config]
+
+                instance.network_interfaces = [network_interface]
                 metadata = compute_v1.Metadata()
                 metadata.items = [
                     {
