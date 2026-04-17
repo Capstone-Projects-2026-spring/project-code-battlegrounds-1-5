@@ -204,7 +204,7 @@ def request_warm_vm(payload: PrewarmRequest, req: Request):
     else:
         return Response(status_code=status.HTTP_503_SERVICE_UNAVAILABLE) # cant create in instances
 
-@app.post("/execute")
+@app.post("/execute") # TODO: need to include a gameid endpoint here. will need to be reflected in executor image models otherwise shit will fail locally
 def execute(req: ExecutionRequest, request: Request):
     print(json.dumps(req.dict()))
 
@@ -244,8 +244,19 @@ def execute(req: ExecutionRequest, request: Request):
 
     # Forward the execute request to the executor-api running on the VM
     # payload = json.dumps(req.dict())
+    # TODO: first of all. this still is giving issues with how we are talking to the executor-api.
     try:
-        resp = requests.post(f"http://{target_ip}:8000/execute", json=req.dict(), timeout=30)
+        # Ensure we serialize the Pydantic model correctly (supports v1 and v2)
+        payload = req.model_dump(mode='json') if hasattr(req, 'model_dump') else req.dict()
+        print(f"Forwarding /execute to http://{target_ip}:8000/execute")
+        print(f"Payload (truncated): {json.dumps(payload)[:800]}")
+        resp = requests.post(
+            f"http://{target_ip}:8000/execute",
+            json=payload,
+            headers={"Content-Type": "application/json"},
+            timeout=60,
+        )
+        print(f"Executor API response {resp.status_code}: {resp.text[:800]}")
         # mirror status code and response
         content_type = resp.headers.get("content-type", "")
         if content_type.startswith("application/json"):
@@ -253,4 +264,5 @@ def execute(req: ExecutionRequest, request: Request):
         else:
             return PlainTextResponse(content=resp.text, status_code=resp.status_code)
     except Exception as e:
+        print(f"Error calling executor API at {target_ip}: {e}")
         return PlainTextResponse(content=f"Failed to reach executor API: {e}", status_code=status.HTTP_502_BAD_GATEWAY)
