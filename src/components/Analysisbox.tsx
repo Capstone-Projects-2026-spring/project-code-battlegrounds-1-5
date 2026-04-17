@@ -6,9 +6,11 @@ export interface AnalysisBoxProps {
   team2Code?: string;
   gameType?: "TWOPLAYER" | "FOURPLAYER";
   userTeamNumber?: 1 | 2;
+  team1AverageExecutionTime?: number | null;
+  team2AverageExecutionTime?: number | null;
 }
 
-export default function AnalysisBox({ team1Code, team2Code, gameType = "FOURPLAYER", userTeamNumber = 1 }: AnalysisBoxProps) {
+export default function AnalysisBox({ team1Code, team2Code, gameType = "FOURPLAYER", userTeamNumber = 1, team1AverageExecutionTime, team2AverageExecutionTime }: AnalysisBoxProps) {
   const hasAnyCode = Boolean(team1Code || team2Code);
 
   const primaryCodeLabel =
@@ -94,13 +96,7 @@ export default function AnalysisBox({ team1Code, team2Code, gameType = "FOURPLAY
             </Text>
             <Group gap="xs" className={styles.badgeGroup}>
               <Badge color="teal" variant="light" size="md" radius="sm" className={`${styles.metricBadge} ${styles.runtimeBadge}`}>
-                Runtime: A
-              </Badge>
-              <Badge color="yellow" variant="light" size="md" radius="sm" className={`${styles.metricBadge} ${styles.spaceBadge}`}>
-                Space: B
-              </Badge>
-              <Badge color="orange" variant="light" size="md" radius="sm" className={`${styles.metricBadge} ${styles.timeBadge}`}>
-                Time: C
+                Runtime: {team2AverageExecutionTime !== null && team2AverageExecutionTime !== undefined ? `${team2AverageExecutionTime}ms` : 'N/A'}
               </Badge>
             </Group>
           </Box>
@@ -112,13 +108,8 @@ export default function AnalysisBox({ team1Code, team2Code, gameType = "FOURPLAY
           </Text>
           <Group gap="xs" className={styles.badgeGroup}>
             <Badge color="teal" variant="light" size="md" radius="sm" className={`${styles.metricBadge} ${styles.runtimeBadge}`}>
-              Runtime: A
-            </Badge>
-            <Badge color="yellow" variant="light" size="md" radius="sm" className={`${styles.metricBadge} ${styles.spaceBadge}`}>
-              Space: B
-            </Badge>
-            <Badge color="orange" variant="light" size="md" radius="sm" className={`${styles.metricBadge} ${styles.timeBadge}`}>
-              Time: C
+              Runtime: {userTeamNumber === 2 && team2AverageExecutionTime !== null && team2AverageExecutionTime !== undefined ? `${team2AverageExecutionTime}ms` :
+                       userTeamNumber === 1 && team1AverageExecutionTime !== null && team1AverageExecutionTime !== undefined ? `${team1AverageExecutionTime}ms` : 'N/A'}
             </Badge>
           </Group>
         </Box>
@@ -130,13 +121,7 @@ export default function AnalysisBox({ team1Code, team2Code, gameType = "FOURPLAY
             </Text>
             <Group gap="xs" className={styles.badgeGroup}>
               <Badge color="teal" variant="light" size="md" radius="sm" className={`${styles.metricBadge} ${styles.runtimeBadge}`}>
-                Runtime: A
-              </Badge>
-              <Badge color="yellow" variant="light" size="md" radius="sm" className={`${styles.metricBadge} ${styles.spaceBadge}`}>
-                Space: B
-              </Badge>
-              <Badge color="orange" variant="light" size="md" radius="sm" className={`${styles.metricBadge} ${styles.timeBadge}`}>
-                Time: C
+                Runtime: {team2AverageExecutionTime !== null && team2AverageExecutionTime !== undefined ? `${team2AverageExecutionTime}ms` : 'N/A'}
               </Badge>
             </Group>
           </Box>
