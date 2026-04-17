@@ -9,6 +9,7 @@ from contextlib import asynccontextmanager
 from fastapi_globals import GlobalsMiddleware
 from starlette.responses import Response
 import requests
+import time
 
 # TODO: when cloud run deployment is working and i've switched over to internal, i need to tighten the firewall. run:
 # gcloud compute firewall-rules create allow-fastapi-8000 \
@@ -80,8 +81,7 @@ class VMProvisioner:
                 instance = compute_v1.Instance()
                 instance.name = name
                 instance.source_machine_image = self.machine_image
-                instance.tags = compute_v1.Tags()
-                instance.tags.items = ["fastapi-server"]
+                instance.tags = compute_v1.Tags(items=["fastapi-server"])
                 metadata = compute_v1.Metadata()
                 metadata.items = [
                     {
