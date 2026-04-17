@@ -116,7 +116,7 @@ def execute(req: ExecutionRequest):
         else:
             exec_json = {"stdout": exec_resp.text}
     except Exception as e:
-        exec_json = {"error": "Failed to call executor API", "details": str(e)}
+        exec_json = {"error": "Failed to call executor-image API", "details": str(e)}
 
     # stop the container
     try:
