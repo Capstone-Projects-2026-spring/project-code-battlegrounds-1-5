@@ -43,6 +43,7 @@ class VMProvisioner:
                 # internal ip
                 internal_ip = getattr(nic, 'internal_ip', None)
                 if internal_ip:
+                    print("Got internal IP of {ip}".format(ip=internal_ip))
                     return internal_ip
             return None
         else:
@@ -53,6 +54,7 @@ class VMProvisioner:
                         for ac in nic.access_configs:
                             nat_ip = getattr(ac, 'nat_i_p', None) or getattr(ac, 'nat_ip', None)
                             if nat_ip:
+                                print("Got external IP of {ip}".format(ip=nat_ip))
                                 return nat_ip
             return None
 
@@ -61,7 +63,6 @@ class VMProvisioner:
             created = self.client.get(project=self.project_id, zone=zone, instance=name)
             ip = self._extract_ip_from_instance(created)
             if ip:
-                print("Got external IP of {ip} for vm {name}".format(name=name, ip=ip))
                 return ip
         except Exception:
             print("Error fetching IP")
