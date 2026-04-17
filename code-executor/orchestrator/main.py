@@ -33,7 +33,7 @@ class VMProvisioner:
         self.client = compute_v1.InstancesClient()
 
     def _extract_ip_from_instance(self, created) -> Optional[str]:
-        # Prefer external NAT IP if available, fallback to internal
+        # get external ip
         if getattr(created, 'network_interfaces', None):
             for nic in created.network_interfaces:
                 # External NAT IP
@@ -42,22 +42,16 @@ class VMProvisioner:
                         nat_ip = getattr(ac, 'nat_i_p', None) or getattr(ac, 'nat_ip', None)
                         if nat_ip:
                             return nat_ip
-                # Internal IP (if external not found)
-                internal_ip = getattr(nic, 'network_i_p', None) or getattr(nic, 'network_ip', None)
-                if internal_ip:
-                    return internal_ip
         return None
 
-    def fetch_ip(self, name: str) -> Optional[str]:
-        # Iterate zones to find instance and pull IP
-        for zone in self.zones:
-            try:
-                created = self.client.get(project=self.project_id, zone=zone, instance=name)
-                ip = self._extract_ip_from_instance(created)
-                if ip:
-                    return ip
-            except Exception:
-                continue
+    def fetch_ip(self, name: str, zone: str) -> Optional[str]:
+        try:
+            created = self.client.get(project=self.project_id, zone=zone, instance=name)
+            ip = self._extract_ip_from_instance(created)
+            if ip:
+                return ip
+        except Exception:
+            print("Error fetching IP")
         return None
 
     def create_instance(self, name: str) -> Tuple[bool, Optional[str]]:
@@ -73,14 +67,7 @@ class VMProvisioner:
                     instance_resource=instance,
                 )
                 print(f"Instance creation requested for {name} in zone {zone}. Operation: {op.name if hasattr(op, 'name') else 'N/A'}")
-                # Attempt a quick IP fetch (may be None if not ready yet)
-                try:
-                    created = self.client.get(project=self.project_id, zone=zone, instance=name)
-                    ip = self._extract_ip_from_instance(created)
-                except Exception as ge:
-                    print(f"Instance created but unable to fetch IP for {name} in zone {zone} yet: {ge}")
-                    ip = None
-                return True, ip
+                return True, zone
             except Exception as e:
                 print(f"Unable to create instance {name} in zone {zone}: {e}")
                 continue
@@ -91,6 +78,7 @@ class VM:
     def __init__(self, game_id):
         self.game_id = "game-{game_id}".format(game_id=game_id)
         self.ip = None
+        self.zone = None
         self.status = Status.STARTING
 
 class Pool: # we're gonna make a VM per game. based on my math, if a VM is 50$ a month, it will cost us a whopping .8 cents to keep a vm up per game
@@ -100,13 +88,10 @@ class Pool: # we're gonna make a VM per game. based on my math, if a VM is 50$ a
 
     def scale(self, game_id: str): # create VM for this game if possible
         vm = VM(game_id)
-        ok, ip = self.provisioner.create_instance(vm.game_id)
+        ok, zone = self.provisioner.create_instance(vm.game_id)
         if ok:
-            vm.ip = ip
-            if ip:
-                print("VM created successfully at IP " + ip)
-            else:
-                print("Unable to fetch VM IP yet!")
+            vm.zone = zone
+            print("VM created successfully in zone " + zone)
             self.games[game_id] = vm
             return vm.game_id
         else:
@@ -148,7 +133,7 @@ def request_warm_vm(request: PrewarmRequest):
         vm = g.p.games[request.gameId]
         # try to fetch the ip if we don't have it yet
         if not vm.ip:
-            vm.ip = g.p.provisioner.fetch_ip(vm.game_id)
+            vm.ip = g.p.provisioner.fetch_ip(vm.game_id, vm.zone)
         # if we have an ip, ping the /health endpoint on port 8000
         if vm.ip:
             try:
