@@ -1,4 +1,4 @@
-from typing import Optional, List, Tuple
+from typing import Optional, List, Tuple, Union, Literal
 
 from fastapi import FastAPI, status, Request
 from fastapi.responses import PlainTextResponse
@@ -6,9 +6,11 @@ from google.cloud import compute_v1
 from pydantic import BaseModel
 from enum import Enum
 from contextlib import asynccontextmanager
-from fastapi_globals import GlobalsMiddleware
+# from fastapi_globals import GlobalsMiddleware
 from starlette.responses import Response
 import requests
+
+from models import *
 
 # TODO: when cloud run deployment is working and i've switched over to internal, i need to tighten the firewall. run:
 # gcloud compute firewall-rules create allow-fastapi-8000 \
@@ -147,7 +149,7 @@ async def lifespan(app: FastAPI): # ignore the warning here. mess with this line
     yield
 
 app = FastAPI(lifespan=lifespan)
-app.add_middleware(GlobalsMiddleware)
+# app.add_middleware(GlobalsMiddleware)
 
 @app.get("/", response_class=PlainTextResponse)
 def root():
@@ -200,17 +202,6 @@ def request_warm_vm(payload: PrewarmRequest, req: Request):
         return Response(status_code=status.HTTP_201_CREATED) # created but not ready
     else:
         return Response(status_code=status.HTTP_503_SERVICE_UNAVAILABLE) # cant create in instances
-
-class TestCase(BaseModel):
-    input: str
-    expected: Optional[str] = None
-
-# Align with executor API/image contract
-class ExecutionRequest(BaseModel):
-    language: str
-    code: str
-    testCases: Optional[str] = None
-    runIDs: Optional[object] = None  # accepts JSON string or list; passed through as-is
 
 @app.post("/execute")
 def execute(req: ExecutionRequest, request: Request):
