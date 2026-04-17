@@ -39,7 +39,7 @@ export default function GameTimer({ endTime, onExpire }: GameTimerProps) {
     };
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [endTime]);
+  }, [endTime, onExpire]);
 
   const minutes = Math.floor(timeRemaining / 60000);
   const seconds = Math.floor((timeRemaining % 60000) / 1000);
