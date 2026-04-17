@@ -1,16 +1,18 @@
 import { useState } from "react";
-import { Avatar, Box, Button, Text, Tooltip, ActionIcon, Stack } from "@mantine/core";
+import { Avatar, Box, Button, CopyButton, Group, Text, Tooltip, ActionIcon, Stack } from "@mantine/core";
 import { useParty } from "@/contexts/PartyContext";
 import { useSocket } from "@/contexts/SocketContext";
 import { authClient } from "@/lib/auth-client";
+import { IconRefresh, IconCheck, IconCopy } from "@tabler/icons-react";
 
 export function PartySlots() {
-  const { partyMember, setPartyMember, partyCode, joinedParty, setJoinedParty } = useParty();
+  const { partyMember, setPartyMember, partyCode, setPartyCode, joinedParty, setJoinedParty } = useParty();
   const { socket } = useSocket();
   const { data: session } = authClient.useSession();
 
   const [joinInput, setJoinInput] = useState("");
   const [joinError, setJoinError] = useState<string | null>(null);
+  const [resetted, setReset] = useState<boolean>(false);
 
   function handleKick() {
     if (!socket) return;
@@ -22,6 +24,31 @@ export function PartySlots() {
     if (!socket) return;
     socket.emit("partyLeave");
     setJoinedParty(null);
+  }
+
+  const resettedTooltip = "Reset party code";
+
+  async function handleResetCode() {
+    try {
+      setReset(true);
+      const res = await fetch("/api/party", {
+        method: "PUT",
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setPartyCode(data.newId);
+        setReset(true);
+        setTimeout(() => setReset(false), 3000);
+      } else {
+        console.log(data);
+        setTimeout(() => setReset(false), 3000);
+      }
+      
+    } catch (e) {
+      console.error(e);
+      setTimeout(() => setReset(false), 3000);
+    }
+
   }
 
   function handleJoinByCode() {
@@ -40,7 +67,7 @@ export function PartySlots() {
 
   const inviteTooltip = partyCode ? (
     <Box>
-      <Text size="xs" c="dimmed" mb={2}>Share your party code</Text>
+      <Text size="xs" c="dimmed" mb={2}>Click to copy your party code</Text>
       <Text style={{ fontFamily: "monospace", fontWeight: 600, letterSpacing: "0.1em" }}>
         {partyCode}
       </Text>
@@ -104,17 +131,27 @@ export function PartySlots() {
                   </Avatar>
                 </Tooltip>
               ) : (
-                <Tooltip label={inviteTooltip} withArrow>
-                  <Avatar radius="xl" size={50} style={{
-                    border: "2px dashed var(--mantine-color-gray-4)",
-                    background: "transparent",
-                    cursor: "default",
-                    color: "var(--mantine-color-blue-5)",
-                    fontSize: 22,
-                  }}>
-                    +
-                  </Avatar>
-                </Tooltip>
+                <CopyButton value={partyCode as string} timeout={2000}>
+                  {({ copied, copy }) => (
+                    <Tooltip label={copied ? 'Copied' : inviteTooltip} withArrow>
+                      <ActionIcon
+                        size={50}
+                        onClick={copy}
+                        variant="transparent"
+                      >
+                        <Avatar radius="xl" size={50} style={{
+                          border: "2px dashed var(--mantine-color-gray-4)",
+                          background: "transparent",
+                          cursor: "default",
+                          color: "var(--mantine-color-blue-5)",
+                          fontSize: 22,
+                        }}>
+                          { copied ? <IconCheck size={16} /> : <IconCopy size={16} /> }
+                        </Avatar>
+                      </ActionIcon>
+                    </Tooltip>
+                  )}
+                </CopyButton>
               )}
               <Text size="xs" c={partyMember ? "dimmed" : "blue"}>
                 {partyMember ? partyMember.displayName.split(" ")[0] : "Invite"}
@@ -136,7 +173,15 @@ export function PartySlots() {
       {/* Join by code — hidden whenever already in any party */}
       {!isInAnyParty && (
         <Box style={{ borderRadius: 8, padding: "10px 12px" }}>
-          <Text size="xs" c="dimmed" mb={6}>Have a code? Join a party</Text>
+          <Group gap={6} align="center" mb={2}>
+            <Text size="xs" c="dimmed">Have a code? Join a party</Text>
+
+            <ActionIcon onClick={handleResetCode} disabled={resetted} variant="subtle" size={16}>
+              <Tooltip label={resetted ? "Resetting" : resettedTooltip } withArrow position="right">
+                {resetted ? <IconCheck size={16} /> : <IconRefresh size={16} />}
+              </Tooltip>
+            </ActionIcon>
+          </Group>
           <Box style={{ display: "flex", gap: 6 }}>
             <input
               placeholder={`Your code: ${partyCode}`}

@@ -13,6 +13,7 @@ export type PresenceStatus = "online" | "away" | "offline";
 
 export interface Friend {
   id: string;
+  friendId: string;
   username: string;
   displayName: string;
   avatarUrl?: string;
@@ -41,6 +42,7 @@ export interface FriendshipContextAPI {
   outgoingRequests: FriendRequest[];
 
   friendCode: string | null;
+  setFriendCode: Dispatch<SetStateAction<string | null>>;
 }
 
 export const FriendshipContext = createContext<FriendshipContextAPI | null>(null);
@@ -63,6 +65,7 @@ export const FriendshipProvider = ({ children }: { children: ReactNode }) => {
         setFriends(data.friends ?? []);
         setFriendRequests(data.friendRequests ?? []);
         setFriendCode(data.friendCode ?? null);
+
       })
       .catch((err) => {
         console.error("Failed to fetch friends:", err);
@@ -91,14 +94,20 @@ export const FriendshipProvider = ({ children }: { children: ReactNode }) => {
       setFriendRequests((prev) => prev.filter((r) => r.id !== requestId));
     };
 
+    const onFriendDeleted = ({ friendId }: { friendId: string }) => {
+      setFriends((prev) => prev.filter(friend => friend.friendId !== friendId));
+    };
+
     socket.on("friendRequestReceived", onFriendRequestReceived);
     socket.on("friendRequestAccepted", onFriendRequestAccepted);
     socket.on("friendRequestDeclined", onFriendRequestDeclined);
+    socket.on("friendDeleted", onFriendDeleted);
 
     return () => {
       socket.off("friendRequestReceived", onFriendRequestReceived);
       socket.off("friendRequestAccepted", onFriendRequestAccepted);
       socket.off("friendRequestDeclined", onFriendRequestDeclined);
+      socket.on("friendDeleted", onFriendDeleted);
     };
   }, [socket]);
 
@@ -110,6 +119,7 @@ export const FriendshipProvider = ({ children }: { children: ReactNode }) => {
     incomingRequests: friendRequests.filter((r) => r.direction === "incoming"),
     outgoingRequests: friendRequests.filter((r) => r.direction === "outgoing"),
     friendCode,
+    setFriendCode
   };
 
   return (

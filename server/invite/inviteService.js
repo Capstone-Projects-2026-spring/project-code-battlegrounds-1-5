@@ -4,14 +4,13 @@ const PARTY_INVITE_KEY = (toUserId) => `party:invite:${toUserId}`;
 const PARTY_INVITE_TTL = 60; // seconds
 
 function createInviteService(stateRedis) {
+    const prisma = getPrisma();
 
     return {
 
         // PARTY
 
         async sendPartyInvite(fromUserId, toUserId) {
-            const prisma = getPrisma();
-
             const party = await prisma.party.findFirst({
                 where: { ownerId: fromUserId },
                 include: { member: true },
@@ -47,8 +46,6 @@ function createInviteService(stateRedis) {
         },
 
         async acceptPartyInvite(userId) {
-            const prisma = getPrisma();
-
             const raw = await stateRedis.get(PARTY_INVITE_KEY(userId));
             if (!raw) return { error: 'invite_not_found' };
 
@@ -101,8 +98,6 @@ function createInviteService(stateRedis) {
         },
 
         async kickPartyMember(ownerId) {
-            const prisma = getPrisma();
-
             const party = await prisma.party.findFirst({
                 where: { ownerId },
                 include: { member: true },
@@ -120,8 +115,6 @@ function createInviteService(stateRedis) {
         },
 
         async leaveParty(userId) {
-            const prisma = getPrisma();
-
             const partyMember = await prisma.partyMember.findUnique({
                 where: { userId },
                 include: { party: true },
@@ -139,8 +132,6 @@ function createInviteService(stateRedis) {
         },
 
         async joinPartyByCode(userId, code) {
-            const prisma = getPrisma();
-
             const party = await prisma.party.findUnique({
                 where: { id: code },
                 include: { member: true, owner: true },
@@ -180,8 +171,6 @@ function createInviteService(stateRedis) {
         // FRIENDS
 
         async sendFriendRequest(fromUserId, friendCode) {
-            const prisma = getPrisma();
-
             const target = await prisma.user.findUnique({
                 where: { friendCode },
             });
@@ -243,8 +232,6 @@ function createInviteService(stateRedis) {
         },
 
         async acceptFriendRequest(userId, requestId) {
-            const prisma = getPrisma();
-
             const friendship = await prisma.friendship.findUnique({
                 where: { id: requestId },
                 include: {
@@ -290,8 +277,6 @@ function createInviteService(stateRedis) {
         },
 
         async declineFriendRequest(userId, requestId) {
-            const prisma = getPrisma();
-
             const friendship = await prisma.friendship.findUnique({ where: { id: requestId } });
 
             if (!friendship) return { error: 'request_not_found' };
@@ -306,6 +291,13 @@ function createInviteService(stateRedis) {
             // Return requesterId so the socket handler can notify them
             return { status: 'declined', requesterId: friendship.requesterId };
         },
+
+        async deleteFriend(friendId) {
+            await prisma.friendship.delete({
+                where: { id: friendId }
+            });
+            return { status: "ok" };
+        }
     };
 }
 

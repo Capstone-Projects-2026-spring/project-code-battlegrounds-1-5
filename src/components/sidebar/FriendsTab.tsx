@@ -1,12 +1,13 @@
 import { useState } from "react";
-import { Avatar, Box, Button, Stack, Text } from "@mantine/core";
+import { Avatar, Box, Button, Stack, Text, Popover, ActionIcon } from "@mantine/core";
 import { useFriendship } from "@/contexts/FriendshipContext";
 import { useParty } from "@/contexts/PartyContext";
 import { useSocket } from "@/contexts/SocketContext";
 import { AddFriendBox } from "./AddFriendBox";
+import { IconX } from "@tabler/icons-react";
 
 export function FriendsTab() {
-  const { friends } = useFriendship();
+  const { friends, setFriends } = useFriendship();
   const { partyMember, joinedParty } = useParty();
   const { socket } = useSocket();
   const [sent, setSent] = useState<Set<string>>(new Set());
@@ -31,7 +32,13 @@ export function FriendsTab() {
         return next;
       });
     }, 3000);
-  
+
+  }
+
+  async function handleDelete(exFriendId: string, friendId: string) {
+    if (!socket) return;
+    socket.emit("friendDelete", { exFriendId, friendId });
+    setFriends((prev) => prev.filter(friend => friend.friendId !== friendId));
   }
 
   return (
@@ -72,8 +79,8 @@ export function FriendsTab() {
                       friend.status === "online"
                         ? "#22c55e"
                         : friend.status === "away"
-                        ? "#f59e0b"
-                        : "var(--mantine-color-gray-4)",
+                          ? "#f59e0b"
+                          : "var(--mantine-color-gray-4)",
                   }}
                 />
               </Box>
@@ -97,6 +104,23 @@ export function FriendsTab() {
                   Invite
                 </Button>
               )}
+              <Popover position="bottom" withArrow shadow="md">
+                <Popover.Target>
+                  <ActionIcon
+                    size="xs"
+                    variant="light"
+                    style={{ backgroundColor: "maroon" }}
+                  >
+                    <IconX />
+                  </ActionIcon>
+                </Popover.Target>
+                <Popover.Dropdown>
+                  <Box style={{ alignItems: "center" }} >
+                    <Text size="xs">Are you sure?</Text>
+                    <Button onClick={() => handleDelete(friend.id, friend.friendId)}>Yes</Button>
+                  </Box>
+                </Popover.Dropdown>
+              </Popover>
             </Box>
           ))}
         </Stack>

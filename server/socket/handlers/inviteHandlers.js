@@ -2,19 +2,19 @@ const { z } = require("zod");
 const { validate } = require("./utils");
 
 const partyInviteSchema = z.object({
-  toUserId: z.string(),
+    toUserId: z.string(),
 });
 
 const partyJoinByCodeSchema = z.object({
-  code: z.string().min(1).max(10),
+    code: z.string().min(1).max(10),
 });
 
 const friendRequestSchema = z.object({
-  friendCode: z.string().min(1).max(20),
+    friendCode: z.string().min(1).max(20),
 });
 
 const friendRequestRespondSchema = z.object({
-  requestId: z.string(),
+    requestId: z.string(),
 });
 
 
@@ -191,6 +191,14 @@ function registerInviteHandlers(io, socket, inviteService, gameService) {
         if (requesterSocketId) {
             io.to(requesterSocketId).emit('friendRequestDeclined', { requestId: payload.requestId });
         }
+    });
+
+    socket.on("friendDelete", async (data) => {
+        const { exFriendId, friendId } = data;
+        const result = await inviteService.deleteFriend(friendId);
+        if (result.status !== "ok") socket.emit("error", { message: "friendNotDeleted" });
+        const exFriendSocket = await gameService.getSocketId(exFriendId);
+        io.to(exFriendSocket).emit("friendDeleted", { friendId });
     });
 }
 

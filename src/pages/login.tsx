@@ -1,5 +1,5 @@
 import { authClient } from "@/lib/auth-client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { useForm } from "@mantine/form";
 import { Button, Card, Flex, PasswordInput, TextInput, Title, Text, Anchor } from "@mantine/core";
@@ -12,10 +12,20 @@ import Link from "next/link";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { data: session, isPending } = authClient.useSession();
+
+  useEffect(() => {
+    if (session && !isPending) {
+      router.push("/matchmaking");
+    }
+  }, [session, isPending, router]);
   const [pwVisible, { toggle }] = useDisclosure();
   const [loading, setLoading] = useState(false);
+  
 
   const posthog = usePostHog();
+
+  
 
   const form = useForm({
     mode: "uncontrolled",

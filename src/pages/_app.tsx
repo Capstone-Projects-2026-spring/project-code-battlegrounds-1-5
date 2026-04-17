@@ -14,7 +14,6 @@ import { PartyProvider } from "@/contexts/PartyContext";
 
 import { Space_Grotesk, Source_Sans_3 } from "next/font/google";
 import { useRouter } from 'next/router';
-import { authClient } from "@/lib/auth-client";
 
 import HeaderSimple from "@/components/Navbar";
 import { MatchmakingProvider } from "@/contexts/MatchmakingContext";
@@ -59,7 +58,6 @@ const theme = createTheme({
 
 export default function App({ Component, pageProps }: AppProps) {
   const router = useRouter();
-  const { data: session } = authClient.useSession();
 
   const showNavbar = router.pathname !== '/' && router.pathname !== '/login';
 
@@ -85,7 +83,6 @@ export default function App({ Component, pageProps }: AppProps) {
                 {showNavbar && (
                   <HeaderSimple
                     title="Code BattleGrounds"
-                    username={session?.user?.name || "User"}
                     links={["Dashboard", "Matchmaking", "Settings"]}
                   />
                 )}

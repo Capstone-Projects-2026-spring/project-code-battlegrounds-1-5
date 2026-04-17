@@ -2,18 +2,34 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import type { Friend, FriendRequest } from "@/contexts/FriendshipContext";
+import { nanoid } from "nanoid";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== "GET") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
-
   const session = await auth.api.getSession({ headers: req.headers as Record<string, string> });
   if (!session?.user) {
     return res.status(401).json({ error: "Unauthorized" });
   }
 
   const userId = session.user.id;
+
+  if (req.method === "PUT") {
+    const newFriendCode = nanoid(6);
+    try {
+      await prisma.user.update({
+        where: { id: userId },
+        data: { friendCode: newFriendCode },
+      });
+    } catch (e) {
+      console.error("Error: ", e);
+      res.status(405).json({ error: e });
+    }
+    
+    return res.status(200).json({ newFriendCode });
+  }
+
+  if (req.method !== "GET") {
+    return res.status(405).json({ error: "Method not allowed" });
+  }
 
   const [acceptedFriendships, pendingFriendships, currentUser] = await Promise.all([
     prisma.friendship.findMany({
@@ -46,6 +62,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const other = f.requesterId === userId ? f.addressee : f.requester;
     return {
       id: other.id,
+      friendId: f.id,
       username: other.name,
       displayName: other.name,
       avatarUrl: other.image ?? undefined,
