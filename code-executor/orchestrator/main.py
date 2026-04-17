@@ -10,8 +10,13 @@ from fastapi_globals import GlobalsMiddleware
 from starlette.responses import Response
 import requests
 
-# TODO: this can now create vms (but needs to make new image as it won't automatically update git repo - maybe add git commands to startup?).
-# TODO: still need to have the request-warm-vm endpoint ping on subsequent requests until ready, as well as deleting vms
+# TODO: when cloud run deployment is working and i've switched over to internal, i need to tighten the firewall. run:
+# gcloud compute firewall-rules create allow-fastapi-8000 \
+# --network=default \
+# --allow=tcp:8000 \
+#   --source-ranges=10.8.0.0/28   # your VPC connector
+#   --target-tags=fastapi-server
+# TODO: still need enable deleting vms
 
 class Status(Enum):
     STARTING = 1
@@ -75,6 +80,9 @@ class VMProvisioner:
                 instance = compute_v1.Instance()
                 instance.name = name
                 instance.source_machine_image = self.machine_image
+                tags = compute_v1.Tags()
+                tags.items = ["fastapi-server"]
+                instance.tags = tags
                 metadata = compute_v1.Metadata()
                 metadata.items = [
                     {
