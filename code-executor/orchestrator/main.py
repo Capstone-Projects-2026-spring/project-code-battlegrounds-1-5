@@ -9,8 +9,6 @@ from contextlib import asynccontextmanager
 from fastapi_globals import GlobalsMiddleware
 from starlette.responses import Response
 import requests
-import time
-import threading
 
 # TODO: when cloud run deployment is working and i've switched over to internal, i need to tighten the firewall. run:
 # gcloud compute firewall-rules create allow-fastapi-8000 \
@@ -83,18 +81,18 @@ class VMProvisioner:
                 instance.name = name
                 instance.source_machine_image = self.machine_image
                 instance.tags = compute_v1.Tags(items=["fastapi-server"])
-                # Create the network interface
-                network_interface = compute_v1.NetworkInterface()
-                network_interface.network = f"projects/{self.project_id}/global/networks/default"
+                # # Create the network interface
+                # network_interface = compute_v1.NetworkInterface()
+                # network_interface.network = f"projects/{self.project_id}/global/networks/default"
+                #
+                # # This block is what actually assigns the External IP (Access Config)
+                # access_config = compute_v1.AccessConfig()
+                # access_config.name = "External NAT"
+                # access_config.type_ = "ONE_TO_ONE_NAT"
+                # access_config.network_tier = "PREMIUM"
+                # network_interface.access_configs = [access_config]
 
-                # This block is what actually assigns the External IP (Access Config)
-                access_config = compute_v1.AccessConfig()
-                access_config.name = "External NAT"
-                access_config.type_ = "ONE_TO_ONE_NAT"
-                access_config.network_tier = "PREMIUM"
-                network_interface.access_configs = [access_config]
-
-                instance.network_interfaces = [network_interface]
+                # instance.network_interfaces = [network_interface]
                 metadata = compute_v1.Metadata()
                 metadata.items = [
                     {
