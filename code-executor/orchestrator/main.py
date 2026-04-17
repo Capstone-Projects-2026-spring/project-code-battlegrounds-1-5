@@ -49,6 +49,7 @@ class VMProvisioner:
             created = self.client.get(project=self.project_id, zone=zone, instance=name)
             ip = self._extract_ip_from_instance(created)
             if ip:
+                print("Got external IP of {ip} for vm {name}".format(name=name, ip=ip))
                 return ip
         except Exception:
             print("Error fetching IP")
