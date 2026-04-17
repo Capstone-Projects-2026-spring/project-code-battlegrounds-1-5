@@ -128,7 +128,7 @@ def request_warm_vm(request: PrewarmRequest):
     if not hasattr(g, 'p') or g.p is None:
         g.p = Pool(VMProvisioner())
     # if vm is not made for this gameid yet, make it. otherwise, ping the vm on it's /health endpoint and see if it's ready.
-    if request.gameId in g.p.games:
+    if request.gameId in g.p.games.keys():
         print("VM for game " + request.gameId + " already made. Client pinging for status")
         vm = g.p.games[request.gameId]
         # try to fetch the ip if we don't have it yet
