@@ -79,7 +79,7 @@ class VMProvisioner:
                 metadata.items = [
                     {
                         "key":"startup-script",
-                        "value":"#!/bin/bash\ncd /home/juli4fasick/project-code-battlegrounds-1-5\ngit pull\ncd ./code-executor\npip3"
+                        "value":"#!/bin/bash\ncd /home/juli4fasick/project-code-battlegrounds-1-5\ngit pull\ncd ./code-executor\npip3 install -r requirements.txt\ncd ./executor-api\nfastapi run",
                     }
                 ]
                 op = self.client.insert(
