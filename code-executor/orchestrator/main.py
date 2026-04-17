@@ -243,9 +243,9 @@ def execute(req: ExecutionRequest, request: Request):
         return Response(status_code=status.HTTP_503_SERVICE_UNAVAILABLE)
 
     # Forward the execute request to the executor-api running on the VM
-    payload = json.dumps(req.dict())
+    # payload = json.dumps(req.dict())
     try:
-        resp = requests.post(f"http://{target_ip}:8000/execute", json=payload, timeout=30)
+        resp = requests.post(f"http://{target_ip}:8000/execute", json=req.dict(), timeout=30)
         # mirror status code and response
         content_type = resp.headers.get("content-type", "")
         if content_type.startswith("application/json"):
