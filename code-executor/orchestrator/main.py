@@ -21,7 +21,7 @@ class Status(Enum):
     ERROR = 5
 
 PROJECT_ID = "code-battlegrounds"
-MACHINE_IMAGE = "projects/code-battlegrounds/global/machineImages/executor-vm"
+MACHINE_IMAGE = "projects/code-battlegrounds/global/machineImages/executor-vm-v2"
 # valid zones
 DEFAULT_ZONES = ["us-central1-a", "us-central1-b", "us-central1-c"]
 DEPLOYED = False
