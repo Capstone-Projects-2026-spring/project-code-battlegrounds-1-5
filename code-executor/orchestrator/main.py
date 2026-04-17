@@ -126,7 +126,7 @@ class PrewarmRequest(BaseModel):
 def request_warm_vm(request: PrewarmRequest):
     print("Requested warm VM for gameId " + request.gameId)
     # sometimes the lifecycle shit is weird so check manually too
-    if not hasattr(g, 'p') or g.p is None:
+    if g.p is None:
         g.p = Pool(VMProvisioner())
         print("Created Pool/VMProvisioner")
     # if vm is not made for this gameid yet, make it. otherwise, ping the vm on it's /health endpoint and see if it's ready.
