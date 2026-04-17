@@ -1,12 +1,12 @@
 from typing import Optional, List, Tuple
 
 from fastapi import FastAPI, status, Request
-from fastapi.responses import JSONResponse, PlainTextResponse
+from fastapi.responses import PlainTextResponse
 from google.cloud import compute_v1
 from pydantic import BaseModel
 from enum import Enum
 from contextlib import asynccontextmanager
-from fastapi_globals import g, GlobalsMiddleware
+from fastapi_globals import GlobalsMiddleware
 from starlette.responses import Response
 import requests
 
@@ -24,6 +24,7 @@ PROJECT_ID = "code-battlegrounds"
 MACHINE_IMAGE = "projects/code-battlegrounds/global/machineImages/executor-vm"
 # valid zones
 DEFAULT_ZONES = ["us-central1-a", "us-central1-b", "us-central1-c"]
+DEPLOYED = False
 
 class VMProvisioner:
     def __init__(self, project_id: str = PROJECT_ID, machine_image: str = MACHINE_IMAGE, zones: List[str] = DEFAULT_ZONES):
@@ -33,16 +34,27 @@ class VMProvisioner:
         self.client = compute_v1.InstancesClient()
 
     def _extract_ip_from_instance(self, created) -> Optional[str]:
-        # get external ip
-        if getattr(created, 'network_interfaces', None):
+        if DEPLOYED:
+            # get internal ip
+            if not getattr(created, 'network_interfaces', None):
+                return None
+
             for nic in created.network_interfaces:
-                # External NAT IP
-                if getattr(nic, 'access_configs', None):
-                    for ac in nic.access_configs:
-                        nat_ip = getattr(ac, 'nat_i_p', None) or getattr(ac, 'nat_ip', None)
-                        if nat_ip:
-                            return nat_ip
-        return None
+                # internal ip
+                internal_ip = getattr(nic, 'internal_ip', None)
+                if internal_ip:
+                    return internal_ip
+            return None
+        else:
+            if getattr(created, 'network_interfaces', None):
+                for nic in created.network_interfaces:
+                    # external nat ip for testing, in prod we will use internal ip
+                    if getattr(nic, 'access_configs', None):
+                        for ac in nic.access_configs:
+                            nat_ip = getattr(ac, 'nat_i_p', None) or getattr(ac, 'nat_ip', None)
+                            if nat_ip:
+                                return nat_ip
+            return None
 
     def fetch_ip(self, name: str, zone: str) -> Optional[str]:
         try:
