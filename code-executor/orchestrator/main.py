@@ -75,6 +75,13 @@ class VMProvisioner:
                 instance = compute_v1.Instance()
                 instance.name = name
                 instance.source_machine_image = self.machine_image
+                metadata = compute_v1.Metadata()
+                metadata.items = [
+                    {
+                        "key":"startup-script",
+                        "value":"#!/bin/bash\ncd /home/juli4fasick/project-code-battlegrounds-1-5\ngit pull\ncd ./code-executor\npip3"
+                    }
+                ]
                 op = self.client.insert(
                     project=self.project_id,
                     zone=zone,
