@@ -50,7 +50,7 @@ export function AddFriendBox() {
         console.log(data);
         setTimeout(() => setReset(false), 3000);
       }
-      
+
     } catch (e) {
       console.error(e);
       setTimeout(() => setReset(false), 3000);
@@ -75,7 +75,10 @@ export function AddFriendBox() {
 
         <CopyButton value={friendCode as string} timeout={2000}>
           {({ copied, copy }) => (
-            <Tooltip label={copied ? 'Copied' : 'Copy friend Code'} withArrow position="right">
+            <Tooltip
+              label={copied ? 'Copied' : 'Copy friend code'}
+              withArrow
+            >
               <ActionIcon
                 size={20}
                 onClick={copy}
@@ -87,16 +90,25 @@ export function AddFriendBox() {
           )}
         </CopyButton>
 
-        <ActionIcon onClick={handleResetFriend} disabled={resetted} variant="subtle" size={16}>
-          <Tooltip label={resetted ? "Resetting" : resettedTooltip} withArrow position="right">
+        <ActionIcon
+          onClick={handleResetFriend}
+          disabled={resetted}
+          variant="subtle"
+          size={16}
+          color="red"
+        >
+          <Tooltip
+            label={resetted ? "Reset!" : resettedTooltip}
+            withArrow
+          >
             {resetted ? <IconCheck size={16} /> : <IconRefresh size={16} />}
           </Tooltip>
         </ActionIcon>
       </Group>
       <Box style={{ display: "flex", gap: 6 }}>
         <TextInput
-          placeholder={`Your code: ${friendCode}`}
-          size="xs"
+          placeholder={friendCode ?? "Code..."}
+          // size="xs"
           value={code}
           onChange={(e) => {
             setCode(e.currentTarget.value);
@@ -106,13 +118,12 @@ export function AddFriendBox() {
           onKeyDown={(e) => e.key === "Enter" && handleSend()}
           styles={{
             input: {
-              fontFamily: "monospace",
-              letterSpacing: "0.08em",
+              fontFamily: "monospace"
             },
           }}
           style={{ flex: 1 }}
         />
-        <Button size="xs" onClick={handleSend}>
+        <Button size="input-xs" onClick={handleSend}>
           Add
         </Button>
       </Box>

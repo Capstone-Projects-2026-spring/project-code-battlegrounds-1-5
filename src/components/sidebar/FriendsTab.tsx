@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Avatar, Box, Button, Stack, Text, Popover, ActionIcon } from "@mantine/core";
+import { Avatar, Box, Button, Stack, Text, Popover, ActionIcon, Tooltip } from "@mantine/core";
 import { useFriendship } from "@/contexts/FriendshipContext";
 import { useParty } from "@/contexts/PartyContext";
 import { useSocket } from "@/contexts/SocketContext";
@@ -95,29 +95,47 @@ export function FriendsTab() {
               {sent.has(friend.id) ? (
                 <Text size="xs" c="green">Sent</Text>
               ) : (
-                <Button
-                  size="xs"
-                  variant="light"
-                  disabled={friend.status === "offline" || isFull}
-                  onClick={() => handleInvite(friend.id)}
+                <Tooltip
+                  label={
+                    friend.status === "offline" ? "Offline" :
+                      isFull ? "Party full" : ""
+                  }
+                  disabled={!isFull && friend.status !== "offline"}
                 >
-                  Invite
-                </Button>
-              )}
-              <Popover position="bottom" withArrow shadow="md">
-                <Popover.Target>
-                  <ActionIcon
+                  <Button
                     size="xs"
                     variant="light"
-                    style={{ backgroundColor: "maroon" }}
+                    disabled={friend.status === "offline" || isFull}
+                    onClick={() => handleInvite(friend.id)}
                   >
-                    <IconX />
-                  </ActionIcon>
+                    Invite
+                  </Button>
+                </Tooltip>
+              )}
+
+              <Popover position="bottom" withArrow shadow="md">
+                <Popover.Target>
+                  <Tooltip label="Remove friend" withArrow>
+                    <ActionIcon
+                      size="xs"
+                      variant="light"
+                      color="red"
+                    >
+                      <IconX />
+                    </ActionIcon>
+                  </Tooltip>
                 </Popover.Target>
                 <Popover.Dropdown>
-                  <Box style={{ alignItems: "center" }} >
-                    <Text size="xs">Are you sure?</Text>
-                    <Button onClick={() => handleDelete(friend.id, friend.friendId)}>Yes</Button>
+                  <Box style={{ alignItems: "center" }}>
+                    <Text size="xs">Remove friend?</Text>
+                    <Button
+                      size="xs"
+                      onClick={() => handleDelete(friend.id, friend.friendId)}
+                      variant="light"
+                      color="red"
+                    >
+                      Confirm
+                    </Button>
                   </Box>
                 </Popover.Dropdown>
               </Popover>

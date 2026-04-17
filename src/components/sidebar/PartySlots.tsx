@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Avatar, Box, Button, CopyButton, Group, Text, Tooltip, ActionIcon, Stack, Input, TextInput } from "@mantine/core";
+import { Avatar, Box, Button, CopyButton, Group, Text, Tooltip, ActionIcon, Stack, TextInput } from "@mantine/core";
 import { useParty } from "@/contexts/PartyContext";
 import { useSocket } from "@/contexts/SocketContext";
 import { authClient } from "@/lib/auth-client";
@@ -38,15 +38,15 @@ export function PartySlots() {
       if (res.ok) {
         setPartyCode(data.newId);
         setReset(true);
-        setTimeout(() => setReset(false), 3000);
+        setTimeout(() => setReset(false), 2000);
       } else {
         console.log(data);
-        setTimeout(() => setReset(false), 3000);
+        setTimeout(() => setReset(false), 2000);
       }
 
     } catch (e) {
       console.error(e);
-      setTimeout(() => setReset(false), 3000);
+      setTimeout(() => setReset(false), 2000);
     }
 
   }
@@ -195,8 +195,37 @@ export function PartySlots() {
           <Group gap={6} align="center" mb={2}>
             <Text size="xs" c="dimmed">Have a code? Join a party</Text>
 
-            <ActionIcon onClick={handleResetCode} disabled={resetted} variant="subtle" size={16}>
-              <Tooltip label={resetted ? "Resetting" : resettedTooltip} withArrow position="right">
+            <CopyButton
+              value={partyCode as string}
+              timeout={2000}
+            >
+              {({ copied, copy }) => (
+                <Tooltip
+                  label={copied ? "Copied!" : "Copy party code"}
+                  withArrow
+                >
+                  <ActionIcon
+                    size={20}
+                    onClick={copy}
+                    variant="subtle"
+                  >
+                    {copied ? <IconCheck size={16} /> : <IconCopy size={16} />}
+                  </ActionIcon>
+                </Tooltip>
+              )}
+            </CopyButton>
+
+            <ActionIcon
+              onClick={handleResetCode}
+              disabled={resetted}
+              variant="subtle"
+              size={16}
+              color="red"
+            >
+              <Tooltip
+                label={resetted ? "Reset!" : resettedTooltip}
+                withArrow
+              >
                 {resetted ? <IconCheck size={16} /> : <IconRefresh size={16} />}
               </Tooltip>
             </ActionIcon>
