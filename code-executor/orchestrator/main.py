@@ -1,6 +1,6 @@
 from typing import Optional, List, Tuple
 
-from fastapi import FastAPI, status
+from fastapi import FastAPI, status, Request
 from fastapi.responses import JSONResponse, PlainTextResponse
 from google.cloud import compute_v1
 from pydantic import BaseModel
@@ -22,8 +22,8 @@ class Status(Enum):
 
 PROJECT_ID = "code-battlegrounds"
 MACHINE_IMAGE = "projects/code-battlegrounds/global/machineImages/executor-vm"
-# Valid default zones for us-central1; can be overridden by ORCH_GCP_ZONES env var (comma-separated)
-DEFAULT_ZONES = ["us-central1-a", "us-central1-b", "us-central1-c", "us-central1-d"]
+# valid zones
+DEFAULT_ZONES = ["us-central1-a", "us-central1-b", "us-central1-c"]
 
 class VMProvisioner:
     def __init__(self, project_id: str = PROJECT_ID, machine_image: str = MACHINE_IMAGE, zones: List[str] = DEFAULT_ZONES):
@@ -101,7 +101,8 @@ class Pool: # we're gonna make a VM per game. based on my math, if a VM is 50$ a
 
 @asynccontextmanager
 async def lifespan(app: FastAPI): # ignore the warning here. mess with this line and everything breaks. you have been warned!
-    g.p = Pool(VMProvisioner())
+    # Initialize a single Pool/VMProvisioner for the lifetime of the app
+    app.state.pool = Pool(VMProvisioner())
     yield
 
 app = FastAPI(lifespan=lifespan)
@@ -123,19 +124,21 @@ class PrewarmRequest(BaseModel):
     201: {"description": "Warm VM creation requested"},
     503: {"description": "VM not available in any region! Try again later."}
 })
-def request_warm_vm(request: PrewarmRequest):
-    print("Requested warm VM for gameId " + request.gameId)
-    # sometimes the lifecycle shit is weird so check manually too
-    if g.p is None:
-        g.p = Pool(VMProvisioner())
+def request_warm_vm(payload: PrewarmRequest, req: Request):
+    print("Requested warm VM for gameId " + payload.gameId)
+    # app lifetime state pool, make sure it exists
+    pool = getattr(req.app.state, "pool", None)
+    if pool is None:
+        req.app.state.pool = Pool(VMProvisioner())
+        pool = req.app.state.pool
         print("Created Pool/VMProvisioner")
     # if vm is not made for this gameid yet, make it. otherwise, ping the vm on it's /health endpoint and see if it's ready.
-    if request.gameId in g.p.games.keys():
-        print("VM for game " + request.gameId + " already made. Client pinging for status")
-        vm = g.p.games[request.gameId]
+    if payload.gameId in pool.games.keys():
+        print("VM for game " + payload.gameId + " already made. Client pinging for status")
+        vm = pool.games[payload.gameId]
         # try to fetch the ip if we don't have it yet
         if not vm.ip:
-            vm.ip = g.p.provisioner.fetch_ip(vm.game_id, vm.zone)
+            vm.ip = pool.provisioner.fetch_ip(vm.game_id, vm.zone)
         # if we have an ip, ping the /health endpoint on port 8000
         if vm.ip:
             try:
@@ -151,7 +154,7 @@ def request_warm_vm(request: PrewarmRequest):
                 return Response(status_code=status.HTTP_201_CREATED)
         # no ip means still spinning up
         return Response(status_code=status.HTTP_201_CREATED)
-    chk = g.p.scale(request.gameId)
+    chk = pool.scale(payload.gameId)
     if chk is not None:
         return Response(status_code=status.HTTP_201_CREATED) # created but not ready
     else:
