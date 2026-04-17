@@ -35,6 +35,7 @@ import { useSocket } from '@/contexts/SocketContext';
 import { useMatchmaking } from '@/contexts/MatchmakingContext';
 
 import styles from "@/styles/GameRoom.module.css";
+import { convertSegmentPathToStaticExportFilename } from 'next/dist/shared/lib/segment-cache/segment-value-encoding';
 
 interface RoomDetailsResponse {
   problem: ActiveProblem;
@@ -110,13 +111,6 @@ function PlayGameRoom() {
   const [editorFocused, setEditorFocused] = useState(false);
 
   const isSpectator = role === Role.SPECTATOR;
-
-  useEffect(() => {
-    if (router.query.teamId && router.query.role) {
-      setTeamSelected(router.query.teamId as string);
-      setRole(router.query.role as Role);
-    }
-  }, [router.query.teamId, router.query.role]);
 
   // ONLY HAPPENS ON PAGE LAUNCH
   useEffect(() => {
@@ -201,6 +195,9 @@ function PlayGameRoom() {
       teamId: teamSelected,
       testCases: DEFAULT_TEST_CASES
     });
+
+    console.log("Syncing default code");
+    socket.emit("codeChange", {teamId: teamSelected, code: liveCode});
   }, [socket, teamSelected]);
 
   useEffect(() => {

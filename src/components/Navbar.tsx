@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Avatar, Burger, Container, Drawer, Group, Text, Anchor } from '@mantine/core';
+import { Avatar, Burger, Container, Text, Anchor } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { authClient } from "@/lib/auth-client";
 // import Link from 'next/link'; // <-- Import Next.js Link
