@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { Avatar, Box, Button, CopyButton, Group, Text, Tooltip, ActionIcon, Stack } from "@mantine/core";
+import { Avatar, Box, Button, CopyButton, Group, Text, Tooltip, ActionIcon, Stack, Input, TextInput } from "@mantine/core";
 import { useParty } from "@/contexts/PartyContext";
 import { useSocket } from "@/contexts/SocketContext";
 import { authClient } from "@/lib/auth-client";
-import { IconRefresh, IconCheck, IconCopy } from "@tabler/icons-react";
+import { IconRefresh, IconCheck, IconCopy, IconX } from "@tabler/icons-react";
 
 export function PartySlots() {
   const { partyMember, setPartyMember, partyCode, setPartyCode, joinedParty, setJoinedParty } = useParty();
@@ -43,7 +43,7 @@ export function PartySlots() {
         console.log(data);
         setTimeout(() => setReset(false), 3000);
       }
-      
+
     } catch (e) {
       console.error(e);
       setTimeout(() => setReset(false), 3000);
@@ -106,7 +106,14 @@ export function PartySlots() {
             {/* Leave button */}
             <Box style={{ flex: 1, display: "flex", justifyContent: "flex-end", paddingTop: 14 }}>
               <Tooltip label="Leave party" withArrow>
-                <ActionIcon variant="subtle" color="red" size="sm" onClick={handleLeave}>✕</ActionIcon>
+                <ActionIcon
+                  variant="subtle"
+                  color="red"
+                  size="sm"
+                  onClick={handleLeave}
+                >
+                  <IconX />
+                </ActionIcon>
               </Tooltip>
             </Box>
           </>
@@ -133,7 +140,12 @@ export function PartySlots() {
               ) : (
                 <CopyButton value={partyCode as string} timeout={2000}>
                   {({ copied, copy }) => (
-                    <Tooltip label={copied ? 'Copied' : inviteTooltip} withArrow>
+                    <Tooltip
+                      label={copied ? 'Copied' : inviteTooltip}
+                      position="bottom"
+                      withArrow
+                      color={copied ? "green" : undefined}
+                    >
                       <ActionIcon
                         size={50}
                         onClick={copy}
@@ -146,7 +158,7 @@ export function PartySlots() {
                           color: "var(--mantine-color-blue-5)",
                           fontSize: 22,
                         }}>
-                          { copied ? <IconCheck size={16} /> : <IconCopy size={16} /> }
+                          {copied ? <IconCheck size={16} /> : <IconCopy size={16} />}
                         </Avatar>
                       </ActionIcon>
                     </Tooltip>
@@ -162,7 +174,14 @@ export function PartySlots() {
             {partyMember && (
               <Box style={{ flex: 1, display: "flex", justifyContent: "flex-end", paddingTop: 14 }}>
                 <Tooltip label="Kick from party" withArrow>
-                  <ActionIcon variant="subtle" color="red" size="sm" onClick={handleKick}>✕</ActionIcon>
+                  <ActionIcon
+                    variant="subtle"
+                    color="red"
+                    size="sm"
+                    onClick={handleKick}
+                  >
+                    <IconX />
+                  </ActionIcon>
                 </Tooltip>
               </Box>
             )}
@@ -177,30 +196,33 @@ export function PartySlots() {
             <Text size="xs" c="dimmed">Have a code? Join a party</Text>
 
             <ActionIcon onClick={handleResetCode} disabled={resetted} variant="subtle" size={16}>
-              <Tooltip label={resetted ? "Resetting" : resettedTooltip } withArrow position="right">
+              <Tooltip label={resetted ? "Resetting" : resettedTooltip} withArrow position="right">
                 {resetted ? <IconCheck size={16} /> : <IconRefresh size={16} />}
               </Tooltip>
             </ActionIcon>
           </Group>
           <Box style={{ display: "flex", gap: 6 }}>
-            <input
-              placeholder={`Your code: ${partyCode}`}
+            <TextInput
+              placeholder={partyCode ?? "Code..."}
               value={joinInput}
               onChange={(e) => setJoinInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleJoinByCode()}
+              styles={{
+                input: {
+                  fontFamily: "monospace"
+                }
+              }}
               style={{
-                flex: 1,
-                fontFamily: "monospace",
-                fontSize: 13,
-                padding: "4px 8px",
-                border: "0.5px solid var(--mantine-color-gray-4)",
-                borderRadius: 6,
-                background: "transparent",
-                color: "inherit",
-                letterSpacing: "0.08em",
+                flex: 1
               }}
             />
-            <Button size="xs" onClick={handleJoinByCode}>Join</Button>
+            <Button
+              size="input-xs"
+              onClick={handleJoinByCode}
+              disabled={!joinInput}
+            >
+              Join
+            </Button>
           </Box>
           {joinError && <Text size="xs" c="red" mt={4}>{joinError}</Text>}
         </Box>
