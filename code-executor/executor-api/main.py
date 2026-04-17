@@ -1,3 +1,4 @@
+import json
 import subprocess
 import socket
 import time
@@ -36,6 +37,7 @@ def health():
 
 @app.post("/execute")
 def execute(req: ExecutionRequest):
+    print(json.dumps(req.dict()))
     # validate language support
     if not Languages.is_supported(req.language):
         return JSONResponse(
