@@ -10,6 +10,7 @@ from fastapi_globals import GlobalsMiddleware
 from starlette.responses import Response
 import requests
 import time
+import threading
 
 # TODO: when cloud run deployment is working and i've switched over to internal, i need to tighten the firewall. run:
 # gcloud compute firewall-rules create allow-fastapi-8000 \
@@ -97,31 +98,33 @@ class VMProvisioner:
                 )
                 print(f"Instance creation requested for {name} in zone {zone}. Operation: {op.name if hasattr(op, 'name') else 'N/A'}")
 
-                # wait for insert to complete
-                try:
-                    if hasattr(op, 'name') and op.name:
-                        zone_ops = compute_v1.ZoneOperationsClient()
-                        print(f"Waiting for operation {op.name} to complete in {zone}...")
-                        zone_ops.wait(project=self.project_id, zone=zone, operation=op.name)
-                except Exception as wait_err:
-                    print(f"Warning: failed waiting for operation to complete: {wait_err}")
+                # Fire-and-forget: ensure tags are applied without blocking the request thread
+                def _apply_tags():
+                    desired_items = ["fastapi-server"]
+                    for attempt in range(35):  # should be like 42s
+                        try:
+                            created = self.client.get(project=self.project_id, zone=zone, instance=name)
+                            current_tags = getattr(created, 'tags', None) or compute_v1.Tags()
+                            fingerprint = getattr(current_tags, 'fingerprint', None)
+                            if not fingerprint:
+                                time.sleep(1.5)
+                                continue
+                            tags = compute_v1.Tags(items=desired_items, fingerprint=fingerprint)
+                            # Correct usage: set_tags directly with Tags resource (no InstancesSetTagsRequest)
+                            self.client.set_tags(
+                                project=self.project_id,
+                                zone=zone,
+                                instance=name,
+                                tags_resource=tags,
+                            )
+                            print(f"Applied network tags to {name} in {zone} (fingerprint {fingerprint}) on attempt {attempt+1}.")
+                            return
+                        except Exception as tag_err:
+                            print(f"Retry {attempt+1}: failed to set tags for {name} in {zone}: {tag_err}")
+                            time.sleep(1.5)
+                    print(f"Gave up applying tags to {name} in {zone} after 35 attempts.")
 
-                # force set tags
-                try:
-                    created = self.client.get(project=self.project_id, zone=zone, instance=name)
-                    current_tags = getattr(created, 'tags', None) or compute_v1.Tags()
-                    fingerprint = getattr(current_tags, 'fingerprint', None) or ''
-                    desired_tags = compute_v1.Tags(items=["fastapi-server"], fingerprint=fingerprint)
-                    set_req = compute_v1.InstancesSetTagsRequest(tags=desired_tags)
-                    self.client.set_tags(
-                        project=self.project_id,
-                        zone=zone,
-                        instance=name,
-                        instances_set_tags_request_resource=set_req,
-                    )
-                    print(f"Applied network tags to {name} in {zone} (fingerprint {fingerprint}).")
-                except Exception as tag_err:
-                    print(f"Warning: failed to set tags for {name} in {zone}: {tag_err}")
+                threading.Thread(target=_apply_tags, daemon=True).start()
 
                 return True, zone
             except Exception as e:
