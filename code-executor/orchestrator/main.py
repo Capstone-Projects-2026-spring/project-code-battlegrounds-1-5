@@ -93,6 +93,7 @@ class Pool: # we're gonna make a VM per game. based on my math, if a VM is 50$ a
             vm.zone = zone
             print("VM created successfully in zone " + zone)
             self.games[game_id] = vm
+            print(self.games.keys())
             return vm.game_id
         else:
             return None
@@ -127,6 +128,7 @@ def request_warm_vm(request: PrewarmRequest):
     # sometimes the lifecycle shit is weird so check manually too
     if not hasattr(g, 'p') or g.p is None:
         g.p = Pool(VMProvisioner())
+        print("Created Pool/VMProvisioner")
     # if vm is not made for this gameid yet, make it. otherwise, ping the vm on it's /health endpoint and see if it's ready.
     if request.gameId in g.p.games.keys():
         print("VM for game " + request.gameId + " already made. Client pinging for status")
