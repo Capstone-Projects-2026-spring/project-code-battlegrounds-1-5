@@ -10,7 +10,6 @@ import {
 import { GameType, ProblemDifficulty } from "@prisma/client";
 import { authClient } from "@/lib/auth-client";
 import { useRouter } from "next/router";
-import { useParty } from "./PartyContext";
 import { useSocket } from "./SocketContext";
 
 

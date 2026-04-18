@@ -88,13 +88,22 @@ export default function FindLobbySection({
                 ),
                 value: GameType.FOURPLAYER,
               },
+              {
+                label: (
+                  <Center style={{ gap: 8 }}>
+                    <IconUsers size={16} />
+                    <span data-testid="mode-ranked">Ranked</span>
+                  </Center>
+                ),
+                value: GameType.RANKED,
+              },
             ]}
             className={classes.segmentedControl}
           />
         </Box>
 
         {/* Difficulty Selection */}
-        <Box>
+        {gameType !== GameType.RANKED && (<Box>
           <Group justify="space-between" mb="xs">
             <Text size="sm" fw={600}>Difficulty</Text>
           </Group>
@@ -113,7 +122,7 @@ export default function FindLobbySection({
             }))}
             className={classes.segmentedControl}
           />
-        </Box>
+        </Box>)}
 
         {/* Party ID Badge */}
         {inParty && (
