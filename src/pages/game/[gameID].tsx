@@ -7,9 +7,8 @@ import { IconEye, IconPlayerPlay, IconPlayerTrackNextFilled, IconPlus } from '@t
 import { usePostHog } from 'posthog-js/react';
 import { Panel, Group as PanelGroup, Separator as PanelResizeHandle } from 'react-resizable-panels';
 
-import ChatBox from "@/components/ChatBox";
-import GameTimer from "@/components/GameTimer";
-import Navbar from "@/components/Navbar";
+import ChatBox from '@/components/ChatBox';
+import GameTimer from '@/components/GameTimer';
 import TeamSelect from "@/components/TeamSelect";
 import { TeamCount } from "@/components/TeamSelect";
 import type { ActiveProblem } from "@/components/ProblemBox";
@@ -25,15 +24,19 @@ import {
   GameTestCasesProvider,
   TestableCase,
   useTestCases,
-} from "@/components/contexts/GameTestCasesContext";
+} from "@/contexts/GameTestCasesContext";
 import { ParameterType } from "@/lib/ProblemInputOutput";
 import NewParameterButton from "@/components/gameTests/NewParameterButton";
 import {
   GameStateProvider,
   useGameState,
-} from "@/components/contexts/GameStateContext";
+} from "@/contexts/GameStateContext";
+import { useSocket } from '@/contexts/SocketContext';
+import { useMatchmaking } from '@/contexts/MatchmakingContext';
 
 import styles from "@/styles/GameRoom.module.css";
+import { convertSegmentPathToStaticExportFilename } from 'next/dist/shared/lib/segment-cache/segment-value-encoding';
+import { ReactServerDOMTurbopackServer } from 'next/dist/server/route-modules/app-page/vendored/rsc/entrypoints';
 
 interface RoomDetailsResponse {
   problem: ActiveProblem;
@@ -81,15 +84,14 @@ function PlayGameRoom() {
   const { data: session } = authClient.useSession();
   const posthog = usePostHog();
 
-  // 2. Set up our state for the socket connection and the user's role
+  // 2. Set up our game state and the user's role
   const [role, setRole] = useState<Role | null>(null);
-  const [socket, setSocket] = useState<Socket | null>(null);
   const [gameState, setGameState] = useState<GameStatus>(GameStatus.WAITING);
   const [loading, setLoading] = useState(true);
   const [problem, setProblem] = useState<ActiveProblem | null>(null);
   const [teams, setTeams] = useState<TeamCount[]>([]);
   const [teamSelected, setTeamSelected] = useState<string | null>(null);
-  const [liveCode, setLiveCode] = useState<string>("// Waiting for code...");
+  const [liveCode, setLiveCode] = useState<string>("function solution(a, b) { \n\treturn a + b;\n}");
   const [activeTestId, setActiveTestId] = useState<number>(0);
   const [gameType, setGameType] = useState<GameType | null>(null);
   const [isWaitingForOtherTeam, setIsWaitingForOtherTeam] = useState(false);
@@ -99,6 +101,8 @@ function PlayGameRoom() {
   // Context <3
   const testCaseCtx = useTestCases();
   const gameStateCtx = useGameState();
+  const { socket } = useSocket();
+  const { setStatus } = useMatchmaking();
 
   const [spectatorView, setSpectatorView] = useState<Role>(Role.SPECTATOR);
 
@@ -107,8 +111,6 @@ function PlayGameRoom() {
   const [isProblemVisible, setIsProblemVisible] = useState(true);
   const toggleProblemVisibility = () => setIsProblemVisible((prev) => !prev);
   const [editorFocused, setEditorFocused] = useState(false);
-
-  const socketRef = useRef<Socket | null>(null);
 
   const isSpectator = role === Role.SPECTATOR;
 
@@ -140,16 +142,9 @@ function PlayGameRoom() {
     });
   }, [socket, gameType, teamSelected, gameId, gameStateCtx, testCaseCtx.cases, liveCode]);
 
-  useEffect(() => {
-    if (router.query.teamId && router.query.role) {
-      setTeamSelected(router.query.teamId as string);
-      setRole(router.query.role as Role);
-    }
-  }, [router.query.teamId, router.query.role]);
-
   // ONLY HAPPENS ON PAGE LAUNCH
   useEffect(() => {
-    if (!session?.user.id || !gameId || socketRef.current) return;
+    if (!session?.user.id || !gameId || !socket) return;
 
     gameStateCtx.setGameId(gameId);
 
@@ -209,30 +204,30 @@ function PlayGameRoom() {
     loadRoomDetails();
 
     // 3. Initialize the connection to our custom server.js backend
-    const socketInstance = io();
-    socketRef.current = socketInstance;
-    setSocket(socketRef.current);
-    gameStateCtx.setSocket(socketRef.current);
+
+    const teamUpdatedHandler = ({ teamId, playerCount }: { teamId: string; playerCount: number }) => {
+      setTeams((prev) => prev.map((t) => (t.teamId === teamId ? { ...t, playerCount } : t)));
+    };
+
+    const invalidGameHandler = () => {
+      router.replace('/');
+    }
+
+    const errorHandler = (data: JSON) => {
+      console.error("Socket error:", data);
+    };
 
     // This is so if another person picks while someone is deciding
-    socketInstance.on("teamUpdated", ({ teamId, playerCount }) => {
-      setTeams((prev) =>
-        prev.map((t) => (t.teamId === teamId ? { ...t, playerCount } : t)),
-      );
-    });
+    socket.on("teamUpdated", teamUpdatedHandler);
 
-    socketInstance.on("invalidGame", () => {
-      // Backend rejected this game room as illegitimate — redirect home
-      router.replace("/");
-    });
-
-    socketInstance.on("error", (data) => {
-      console.error("Socket error:", data);
-    });
+    socket.on('invalidGame', invalidGameHandler);
+    socket.on("error", errorHandler);
 
     // 6. Cleanup: disconnect the socket if the user leaves the page
     return () => {
-      socketInstance.disconnect();
+      socket.off("teamUpdated", teamUpdatedHandler);
+      socket.off('invalidGame', invalidGameHandler);
+      socket.off("error", errorHandler);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameId, session?.user.id]);
@@ -247,6 +242,9 @@ function PlayGameRoom() {
       teamId: teamSelected,
       testCases: DEFAULT_TEST_CASES,
     });
+
+    console.log("Syncing default code");
+    socket.emit("codeChange", {teamId: teamSelected, code: liveCode});
   }, [socket, teamSelected]);
 
   useEffect(() => {
@@ -275,6 +273,7 @@ function PlayGameRoom() {
       posthog.capture("game_ended", { gameId });
       setIsWaitingForOtherTeam(false);
       setGameState(GameStatus.FINISHED);
+      setStatus("idle"); // reset matchmaking status so players can queue again from results page
       router.push(`/results/${gameId}`);
     };
 
@@ -700,12 +699,6 @@ function PlayGameRoom() {
           style={{ display: "flex", flexDirection: "column" }}
         >
           <RoleFlipPopup gameState={gameState} />
-
-          <Navbar
-            links={["Timer", "Players", "Tournament"]}
-            title={`CODE BATTLEGROUNDS | GAMEMODE: TIMER | YOUR ROLE: ${effectiveRole?.toUpperCase() ?? "UNKNOWN"}`}
-            isSpectator={isSpectator}
-          />
 
           <Box style={{ flex: 1, display: "flex", overflow: "hidden" }}>
             <PanelGroup orientation="horizontal">

@@ -101,6 +101,10 @@ function createGameService(stateRedis) {
       await stateRedis.del(`socket:${userId}`);
     },
 
+    async getSocketId(userId) {
+      return stateRedis.get(`socket:${userId}`);
+    },
+    
     async saveGameData(key, value) {
       return stateRedis.set(key, value);
     },

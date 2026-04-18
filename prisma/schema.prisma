@@ -24,6 +24,14 @@ model User {
   accounts      Account[]
   players       TeamPlayer[]
 
+  // Friendship
+  friendCode    String    @unique @default(uuid())
+  friendshipsInitiated Friendship[] @relation("FriendshipRequester")
+  friendshipsReceived  Friendship[] @relation("FriendshipAddressee")
+  
+  ownedParty  Party?       @relation("PartyOwner")
+  partyMember PartyMember? // the slot they occupy in someone
+
   @@unique([email])
   @@map("user")
 }
@@ -83,16 +91,51 @@ model InfraTestKv {
   @@map("infra_test_kv")
 }
 
+enum FriendshipStatus {
+  PENDING  // requester sent, addressee hasn't responded
+  ACCEPTED
+  DECLINED // kept for cooldown / block logic
+}
+
+model Friendship {
+  id          String           @id @default(uuid())
+  requesterId String
+  addresseeId String
+  status      FriendshipStatus @default(PENDING)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  requester User @relation("FriendshipRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  addressee User @relation("FriendshipAddressee", fields: [addresseeId], references: [id], onDelete: Cascade)
+
+  @@unique([requesterId, addresseeId])
+  @@index([requesterId])
+  @@index([addresseeId])
+  @@map("friendship")
+}
+
+
 model Party {
-  id      String        @id @default(uuid())
-  members PartyMember[]
+  id        String   @id @default(uuid())
+  ownerId   String   @unique // 1-to-1 with User — you own exactly one party
+  createdAt DateTime @default(now())
+
+  owner  User         @relation("PartyOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  member PartyMember? // the single guest slot
+
+  @@map("party")
 }
 
 model PartyMember {
-  id      String @id @default(uuid())
-  userId  String
-  partyId String
-  lobby   Party  @relation(fields: [partyId], references: [id])
+  id       String   @id @default(uuid())
+  partyId  String   @unique // only one member row per party
+  userId   String   @unique // a user can only be a guest in one party at a time
+  joinedAt DateTime @default(now())
+
+  party Party @relation(fields: [partyId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("party_member")
 }
 
 enum GameStatus {

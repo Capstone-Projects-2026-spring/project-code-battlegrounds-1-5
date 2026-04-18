@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ParameterType } from "@/lib/ProblemInputOutput";
-import { type TestableCase } from "@/components/contexts/GameTestCasesContext";
+import { type TestableCase } from "@/contexts/GameTestCasesContext";
 
 export interface TestCase {
   id: string;

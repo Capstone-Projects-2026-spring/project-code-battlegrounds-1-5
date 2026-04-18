@@ -1,6 +1,6 @@
 import { Container, Group, Stack, Text, Box } from "@mantine/core";
 import { IconUsers, IconDeviceGamepad2, IconClock } from "@tabler/icons-react";
-import classes from "./StatsSection.module.css";
+import classes from "@/styles/comps/StatsSection.module.css";
 
 interface Stat {
   value: string;

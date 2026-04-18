@@ -9,8 +9,15 @@ import { Notifications } from "@mantine/notifications";
 import { useEffect } from "react";
 import posthog from "posthog-js";
 import { PostHogProvider } from "posthog-js/react";
+import { FriendshipProvider } from "@/contexts/FriendshipContext";
+import { PartyProvider } from "@/contexts/PartyContext";
 
 import { Space_Grotesk, Source_Sans_3 } from "next/font/google";
+import { useRouter } from 'next/router';
+
+import HeaderSimple from "@/components/Navbar";
+import { MatchmakingProvider } from "@/contexts/MatchmakingContext";
+import { SocketProvider } from "@/contexts/SocketContext";
 
 const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
@@ -32,7 +39,7 @@ const theme = createTheme({
       "#e1ffd7",
       "#c8f8b8",
       "#a2eb89",
-      "#71d349", 
+      "#71d349",
       "#31b000", // primary
       "#008e00",
       "#007400",
@@ -50,6 +57,9 @@ const theme = createTheme({
 });
 
 export default function App({ Component, pageProps }: AppProps) {
+  const router = useRouter();
+
+  const showNavbar = router.pathname !== '/' && router.pathname !== '/login';
 
   useEffect(() => {
     posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY as string, {
@@ -66,8 +76,22 @@ export default function App({ Component, pageProps }: AppProps) {
   return (
     <PostHogProvider client={posthog}>
       <MantineProvider theme={theme} defaultColorScheme="auto">
-        <Notifications position="bottom-right" autoClose={5000} />
-        <Component {...pageProps} />
+        <SocketProvider>
+          <PartyProvider>
+            <MatchmakingProvider>
+              <FriendshipProvider>
+                {showNavbar && (
+                  <HeaderSimple
+                    title="Code BattleGrounds"
+                    links={["Dashboard", "Matchmaking", "Settings"]}
+                  />
+                )}
+                <Notifications position="bottom-right" autoClose={5000} />
+                <Component {...pageProps} />
+              </FriendshipProvider>
+            </MatchmakingProvider>
+          </PartyProvider>
+        </SocketProvider>
       </MantineProvider>
     </PostHogProvider>
   );

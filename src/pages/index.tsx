@@ -1,7 +1,9 @@
 import { useEffect } from "react";
+import { useRouter } from "next/router";
 import Head from "next/head";
 import dynamic from "next/dynamic";
 import { usePostHog } from "posthog-js/react";
+import { authClient } from "@/lib/auth-client";
 
 // Code splitting for performance
 const HeroSection = dynamic(() => import("@/components/home/HeroSection"), {
@@ -19,11 +21,21 @@ const CTASection = dynamic(() => import("@/components/home/CTASection"), {
 });
 
 export default function Home() {
+  const router = useRouter();
+  const { data: session, isPending } = authClient.useSession();
+  useEffect(() => {
+      if (session && !isPending) {
+        router.push("/matchmaking");
+      }
+    }, [session, isPending, router]);
+
   const posthog = usePostHog();
 
   useEffect(() => {
     posthog?.capture("homepage_viewed");
   }, [posthog]);
+
+  
 
   return (
     <>

@@ -103,15 +103,18 @@ function createMatchmakingService(stateRedis, io) {
                     if (parsed.partyId) {
                         const party = await getPrisma().party.findUnique({
                             where: { id: parsed.partyId },
-                            include: { members: true },
+                            include: { owner: true, member: true },
                         });
 
-                        if (!party || party.members.length < 2) {
+                        if (!party || !party.member) {
                             console.warn(`Party ${parsed.partyId} invalid at match time, dropping`);
                             return null;
                         }
 
-                        return party.members.map(m => ({ userId: m.userId, partyId: parsed.partyId }));
+                        return [
+                            { userId: party.owner.id, partyId: parsed.partyId },
+                            { userId: party.member.userId, partyId: parsed.partyId },
+                        ];
                     }
 
                     return [{ userId: parsed.userId }];
@@ -139,13 +142,16 @@ function createMatchmakingService(stateRedis, io) {
         async _formPartyGame(partyId, gameType, difficulty) {
             const party = await getPrisma().party.findUnique({
                 where: { id: partyId },
-                include: { members: true },
+                include: { owner: true, member: true },
             });
 
             if (!party) return { error: 'party_not_found' };
-            if (party.members.length < 2) return { error: 'party_not_full' };
+            if (!party.member) return { error: 'party_not_full' };
 
-            const players = party.members.map(m => ({ userId: m.userId, partyId }));
+            const players = [
+                { userId: party.owner.id, partyId },
+                { userId: party.member.userId, partyId },
+            ];
             const gameRoom = await this._createGameInDB(players, gameType, difficulty);
             await this._notifyPlayers(gameRoom);
             return { status: 'matched', gameId: gameRoom.id };

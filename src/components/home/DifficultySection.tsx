@@ -1,4 +1,4 @@
-import { Text, Stack, Button, Group, Box, Badge, Card } from "@mantine/core";
+import { Text, Stack, Button, Group, Box, Badge, Card, Tooltip } from "@mantine/core";
 import { IconUsers, IconUser } from "@tabler/icons-react";
 import { useRouter } from "next/router";
 import { authClient } from "@/lib/auth-client";
@@ -6,6 +6,9 @@ import { usePostHog } from "posthog-js/react";
 import { GameType } from "@prisma/client";
 import { notifications } from "@mantine/notifications";
 import { useCreateRoom } from "@/hooks/useCreateRoom";
+import { useParty } from "@/contexts/PartyContext";
+import { useMatchmaking } from "@/contexts/MatchmakingContext";
+import { useSocket } from "@/contexts/SocketContext";
 import classes from "@/styles/comps/DifficultySection.module.css";
 
 type DifficultyType = "EASY" | "MEDIUM" | "HARD";
@@ -55,6 +58,9 @@ export default function DifficultySection() {
   const { data: session } = authClient.useSession();
   const posthog = usePostHog();
   const { createRoom, isLoading } = useCreateRoom();
+  const { partyMember, joinedParty } = useParty();
+  const { setGameId } = useMatchmaking();
+  const { socket } = useSocket();
 
   const handleCreateRoom = async (difficulty: DifficultyType, gameType: GameType) => {
     if (!session) {
@@ -67,13 +73,20 @@ export default function DifficultySection() {
       router.push("/login?redirect=/matchmaking");
       return;
     }
+    if (!socket) return;
+
 
     posthog?.capture("room_creation_started", { difficulty, gameType });
 
     const result = await createRoom(difficulty, gameType);
-
     if (result.success && result.gameId) {
       router.push(`/game/${result.gameId}`);
+      console.log("PartyMember", partyMember);
+      if (partyMember !== null) {
+        socket.emit("sendGameWithParty", { partyMember: partyMember.userId, gameId: result.gameId });
+        console.log('emit sent');
+      };
+      setGameId(result.gameId);
     } else {
       notifications.show({
         title: "Failed to create room",
@@ -132,30 +145,44 @@ export default function DifficultySection() {
             </Box>
 
             <Group gap="xs">
-              <Button
-                size="md"
-                color={diff.color}
-                leftSection={<IconUser size={18} />}
-                onClick={() => handleCreateRoom(diff.level, GameType.TWOPLAYER)}
-                loading={isLoading}
-                data-testid={`co-op-create-room-button-${diff.level.toLowerCase()}`}
-                className={classes.actionButton}
+              <Tooltip
+                disabled={joinedParty === null}
+                label="Host-only action"
+                withArrow
               >
-                Co-Op
-              </Button>
+                <Button
+                  size="md"
+                  color={diff.color}
+                  leftSection={<IconUser size={18} />}
+                  onClick={() => handleCreateRoom(diff.level, GameType.TWOPLAYER)}
+                  loading={isLoading}
+                  className={classes.actionButton}
+                  disabled={joinedParty !== null}
+                  data-testid={`co-op-create-room-button-${diff.level.toLowerCase()}`}
+                >
+                  Co-Op
+                </Button>
+              </Tooltip>
 
-              <Button
-                size="md"
-                color={diff.color}
-                variant="outline"
-                leftSection={<IconUsers size={18} />}
-                onClick={() => handleCreateRoom(diff.level, GameType.FOURPLAYER)}
-                loading={isLoading}
-                data-testid={`2v2-create-room-button-${diff.level.toLowerCase()}`}
-                className={classes.actionButton}
+              <Tooltip
+                disabled={joinedParty === null}
+                label="Host-only action"
+                withArrow
               >
-                2v2
-              </Button>
+                <Button
+                  size="md"
+                  color={diff.color}
+                  variant="outline"
+                  leftSection={<IconUsers size={18} />}
+                  onClick={() => handleCreateRoom(diff.level, GameType.FOURPLAYER)}
+                  loading={isLoading}
+                  data-testid={`2v2-create-room-button-${diff.level.toLowerCase()}`}
+                  className={classes.actionButton}
+                  disabled={joinedParty !== null}
+                >
+                  2v2
+                </Button>
+              </Tooltip>
             </Group>
           </Group>
         </Card>
