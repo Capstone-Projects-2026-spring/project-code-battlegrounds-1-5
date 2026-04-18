@@ -75,7 +75,6 @@ class VMProvisioner:
         return None
 
     def delete_instance(self, name: str, zone: str):
-        # TODO: actual deletion client with self.client and self.projectid
         try:
             self.client.delete(
                 project=self.project_id,
@@ -115,7 +114,7 @@ class VMProvisioner:
                     {
                         # TODO: get source in startup script outta here and refer directly to location of python executable in venv
                         "key":"startup-script", # TODO: MUST REMOVE THIS GIT SWITCH AS WE MERGE. vm is already on main. while i test, i want to be on my branch
-                        "value":"#!/bin/bash\ngit config --system --add safe.directory /home/juli4fasick/project-code-battlegrounds-1-5\ncd /home/juli4fasick/project-code-battlegrounds-1-5\ngit switch feat/vm-orchestrator-fr\ngit pull\nsource ./.venv/bin/activate\ncd ./code-executor\npip3 install -r requirements.txt\ncd ./executor-api\nfastapi run --host 0.0.0.0 --port 8000",
+                        "value":"#!/bin/bash\ngit config --system --add safe.directory /home/juli4fasick/project-code-battlegrounds-1-5\ncd /home/juli4fasick/project-code-battlegrounds-1-5\ngit switch feat/execution-in-prod\ngit pull\nsource ./.venv/bin/activate\ncd ./code-executor\npip3 install -r requirements.txt\ncd ./executor-api\nfastapi run --host 0.0.0.0 --port 8000",
                     }
                 ]
                 instance.metadata = metadata
@@ -146,13 +145,13 @@ class Pool: # we're gonna make a VM per game. based on my math, if a VM is 50$ a
         self.provisioner = provisioner
 
     def delete(self, game_id: str):
-        # TODO: here we need to call the provisioners delete function after ensuring we have the game in state
         if game_id not in self.games:
             return "Game {game_id} not found. Either it was never created, is still being created, was already deleted, or is a skill issue one the programmer's end.".format(game_id=game_id)
         game = self.games[game_id]
         chk = self.provisioner.delete_instance(game.game_id, game.zone)
         if chk is not None:
             return chk
+        self.games.pop(game_id)
         return None
 
     def scale(self, game_id: str): # create VM for this game if possible
