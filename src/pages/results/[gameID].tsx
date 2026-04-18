@@ -241,32 +241,37 @@ export function Results() {
     isWinner: false
   };
 
-  const primaryTeam = isCoOp ? coOpTeam : greenTeam;
-  const secondaryTeam = isCoOp ? null : redTeam;
+  const primaryTeam = isCoOp ? coOpTeam : (userTeamNumber === 1 ? greenTeam : redTeam);
+  const secondaryTeam = isCoOp ? null : (userTeamNumber === 1 ? redTeam : greenTeam);
 
-  const winner = secondaryTeam ? (primaryTeam.isWinner ? primaryTeam : secondaryTeam) : primaryTeam;
+  // Determine winner based on actual score comparison
+  const winner = secondaryTeam
+    ? primaryTeam.score >= secondaryTeam.score
+      ? { ...primaryTeam, isWinner: true }
+      : { ...secondaryTeam, isWinner: true }
+    : primaryTeam;
   const areTestResultsLoading = testResultsSummary === null;
   const testsPassedForMetric = testResultsSummary?.yourPassedCount ?? 0;
   const totalTestsForMetric = testResultsSummary?.totalTests ?? 0;
 
   const primaryTeamTestsPassed = !areTestResultsLoading && !isCoOp
-    ? userTeamNumber === 1
-      ? (testResultsSummary?.yourPassedCount ?? 0)
-      : (testResultsSummary?.otherTeamPassedCount ?? 0)
+    ? (testResultsSummary?.yourPassedCount ?? 0)
     : 0;
 
   const secondaryTeamTestsPassed = !areTestResultsLoading && !isCoOp
-    ? userTeamNumber === 1
-      ? (testResultsSummary?.otherTeamPassedCount ?? 0)
-      : (testResultsSummary?.yourPassedCount ?? 0)
+    ? (testResultsSummary?.otherTeamPassedCount ?? 0)
     : 0;
 
   const comparisonTotalTests = testResultsSummary?.totalTests ?? 0;
 
-  // Animated counters
-  const animatedScore = useCounter(winner.score, 2000, 200);
+  // Animated counters - show user's team metrics
+  const userTeamScore = team1Score;  // team1Score is always yourScore from calculateScorePair
+  const animatedScore = useCounter(userTeamScore, 2000, 200);
   const animatedTests = useCounter(areTestResultsLoading ? 0 : testsPassedForMetric, 1500, 400);
   const animatedTime = useCounter(winner.time, 1800, 600);
+
+  // Determine if user's team won
+  const userTeamWon = primaryTeam.score >= (secondaryTeam?.score ?? 0);
 
   if (!session) return null;
 
@@ -301,11 +306,15 @@ export function Results() {
         />
 
         <Container className={styles.container} size="xl">
-          {/* Victory Banner */}
+          {/* Victory/Defeat Banner */}
           <Box className={styles.victoryBanner}>
-            <IconTrophy size={80} className={styles.trophyIcon} />
-            <h1 className={styles.victoryTitle}>
-              Victory!
+            {userTeamWon ? (
+              <IconTrophy size={80} className={styles.trophyIcon} />
+            ) : (
+              <div style={{ fontSize: '80px', fontWeight: 'bold', color: '#ff0000', lineHeight: 1 }}>L</div>
+            )}
+            <h1 className={userTeamWon ? styles.victoryTitle : styles.defeatTitle}>
+              {userTeamWon ? "Victory!" : "Defeat!"}
             </h1>
             <p className={styles.victorySubtitle}>
               <span className={styles.winnerTeamName}>{winner.name}</span>{" "}

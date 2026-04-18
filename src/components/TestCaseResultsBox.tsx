@@ -1,7 +1,7 @@
 import { Paper, Title, Table, Text, Box, Badge, Tooltip } from "@mantine/core";
 import { useEffect, useState, useCallback } from "react";
 import { ParameterType, ParameterPrimitiveType } from "@/lib/ProblemInputOutput";
-import { IconCheck, IconX, IconAlertCircle } from "@tabler/icons-react";
+import { IconCheck, IconX } from "@tabler/icons-react";
 import deepEqual from "@/util/deepEqual";
 import styles from '@/styles/comps/TestCaseResultsBox.module.css';
 
@@ -255,7 +255,7 @@ export default function TestCaseResultsBox({ gameId, team1Results, team2Results,
     return (
       <Table.Tr key={element.id} className={styles.tableRow}>
         <Table.Td>
-          <Text size="sm" fw={500} ff="monospace" className={styles.cellInput}>
+          <Text size="sm" fw={500} ff="monospace" className={styles.cellInput} style={{ maxWidth: '200px', overflow: 'auto', wordBreak: 'break-word' }}>
             {formatValue(element.input)}
           </Text>
         </Table.Td>
@@ -324,7 +324,7 @@ export default function TestCaseResultsBox({ gameId, team1Results, team2Results,
           </Table.Td>
         )}
         <Table.Td>
-          <Text size="sm" fw={500} ff="monospace" className={styles.cellInput}>
+          <Text size="sm" fw={500} ff="monospace" className={styles.cellInput} style={{ maxWidth: '200px', overflow: 'auto', wordBreak: 'break-word' }}>
             {formatValue(element.expected)}
           </Text>
         </Table.Td>
