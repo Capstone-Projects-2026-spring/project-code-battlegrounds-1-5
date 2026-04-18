@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { ScrollArea, TextInput, ActionIcon, Paper, Text, Stack, Box } from '@mantine/core';
 import { IconSend2 } from '@tabler/icons-react';
-import type { Socket } from 'socket.io-client';
 import { usePostHog } from 'posthog-js/react';
-import { Role } from '@prisma/client';
+import { useGameRoom } from '@/contexts/GameRoomContext';
+import { useSocket } from '@/contexts/SocketContext';
 import styles from '@/styles/comps/ChatBox.module.css';
 
 export interface Message {
@@ -13,17 +13,11 @@ export interface Message {
   timestamp: number;
 }
 
-interface ChatBoxProps {
-  socket: Socket;
-  roomId: string;
-  userName: string;
-  isSpectator?: boolean;
-  role?: Role | null // for analytic purposes
-}
-
-export default function ChatBox({ socket, roomId, userName, isSpectator = false, role }: ChatBoxProps) {
+export default function ChatBox() {
 
   const posthog = usePostHog();
+  const { socket } = useSocket();
+  const { teamSelected, userName, isSpectator, role } = useGameRoom();
   const [messages, setMessages] = useState<Message[]>([]);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
@@ -42,24 +36,29 @@ export default function ChatBox({ socket, roomId, userName, isSpectator = false,
 
   // 3. Listen for INCOMING messages from the server
   useEffect(() => {
-    socket.emit('requestChatSync', { teamId: roomId }); // Request chat history on mount
+    if (!socket || !teamSelected) return;
 
-    socket.on('receiveChatHistory', (history: Message[]) => {
+    const handleReceiveChatHistory = (history: Message[]) => {
       setMessages(history);
-    });
+    };
 
-    socket.on('receiveChat', (incomingMessage: Message) => {
+    const handleReceiveChat = (incomingMessage: Message) => {
       // The "prev" callback ensures we always append to the most recent array
       setMessages((prev) => [...prev, incomingMessage]);
-    });
+    };
+
+    socket.emit('requestChatSync', { teamId: teamSelected }); // Request chat history on mount
+    socket.on('receiveChatHistory', handleReceiveChatHistory);
+    socket.on('receiveChat', handleReceiveChat);
 
     return () => {
-      socket.off('receiveChat');
-      socket.off('receiveChatHistory');
+      socket.off('receiveChat', handleReceiveChat);
+      socket.off('receiveChatHistory', handleReceiveChatHistory);
     };
-  }, [socket, roomId]);
+  }, [socket, teamSelected]);
 
   const handleSendMessage = () => {
+    if (!socket || !teamSelected) return;
     if (isSpectator) return;
     if (currentText.trim() === '') return;
 
@@ -75,10 +74,10 @@ export default function ChatBox({ socket, roomId, userName, isSpectator = false,
     setMessages((prev) => [...prev, newMessage]);
 
     // Send it to the server to broadcast to the other person
-    socket.emit('sendChat', { teamId: roomId, message: newMessage });
+    socket.emit('sendChat', { teamId: teamSelected, message: newMessage });
 
     posthog.capture("chat_message_sent", { 
-      roomId, 
+      roomId: teamSelected,
       message: newMessage, 
       isSpectator,
       role // helpful to know which role is sending more messages
@@ -122,7 +121,7 @@ export default function ChatBox({ socket, roomId, userName, isSpectator = false,
 
       <Box className={styles.inputSection}>
         <TextInput
-          disabled={isSpectator}
+          disabled={isSpectator || !socket || !teamSelected}
           placeholder="Type a message..."
           value={currentText}
           onChange={(event) => setCurrentText(event.currentTarget.value)}
@@ -134,7 +133,7 @@ export default function ChatBox({ socket, roomId, userName, isSpectator = false,
               variant="subtle"
               color="console"
               onClick={handleSendMessage}
-              disabled={isSpectator}
+              disabled={isSpectator || !socket || !teamSelected}
               className={styles.sendButton}
             >
               <IconSend2 size={16} />
