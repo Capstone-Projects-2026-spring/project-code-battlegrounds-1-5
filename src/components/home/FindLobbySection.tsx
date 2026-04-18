@@ -65,7 +65,7 @@ export default function FindLobbySection({
             size="md"
             value={gameType}
             onChange={(val) => {
-              if (partyMember) socket?.emit('updateQueueSelection', { gameType: val as GameType, difficulty, partyMember }); 
+              if (partyMember) socket?.emit('updateQueueSelection', { gameType: val as GameType, difficulty, partyMember });
               onGameTypeChange(val as GameType);
             }}
             disabled={status === "queued" || status === "matched" || joinedParty !== null}
@@ -103,10 +103,10 @@ export default function FindLobbySection({
             size="md"
             value={difficulty}
             onChange={(val) => {
-               if (partyMember) socket?.emit('updateQueueSelection', { gameType, difficulty: val as ProblemDifficulty, partyMember }); 
+              if (partyMember) socket?.emit('updateQueueSelection', { gameType, difficulty: val as ProblemDifficulty, partyMember });
               onDifficultyChange(val as ProblemDifficulty);
             }}
-            disabled={status === "queued" || status === "matched"}
+            disabled={status === "queued" || status === "matched" || joinedParty !== null}
             data={Object.values(ProblemDifficulty).map((value) => ({
               label: difficultyLabels[value],
               value,
@@ -172,7 +172,11 @@ export default function FindLobbySection({
             className={classes.primaryButton}
             disabled={joinedParty !== null}
           >
-            {inParty ? "Queue with Lobby" : "Find Match"}
+            {inParty ?
+              joinedParty !== null
+                ? "Waiting for host..."
+                : "Queue with party"
+              : "Find Match"}
           </Button>
         ) : (
           <Button
