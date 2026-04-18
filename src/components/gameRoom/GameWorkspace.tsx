@@ -1,6 +1,7 @@
 import { Box } from "@mantine/core";
 import { Editor } from "@monaco-editor/react";
 import { Role } from "@prisma/client";
+import { useEffect } from "react";
 import {
   Group as PanelGroup,
   Panel,
@@ -12,11 +13,15 @@ import RoleFlipPopup from "@/components/RoleFlipPopup";
 import EditorToolbar from "@/components/gameRoom/EditorToolbar";
 import ProblemSidebar from "@/components/gameRoom/ProblemSidebar";
 import TesterPanel from "@/components/gameRoom/TesterPanel";
+import { useGameState } from "@/contexts/GameStateContext";
 import { useSocket } from "@/contexts/SocketContext";
 import { useGameRoom } from "@/contexts/GameRoomContext";
 import styles from "@/styles/GameRoom.module.css";
 
+export const DEFAULT_STARTER_CODE = "function solution(a, b) { \n\treturn a + b;\n}";
+
 export default function GameWorkspace() {
+  const { code, setCode } = useGameState();
   const { socket } = useSocket();
   const {
     gameState,
@@ -24,11 +29,34 @@ export default function GameWorkspace() {
     isSpectator,
     role,
     isProblemVisible,
-    liveCode,
-    handleEditorChange,
     teamSelected,
     userName,
   } = useGameRoom();
+
+  const editorCode = code && code !== "// Waiting for code..." ? code : DEFAULT_STARTER_CODE;
+
+  useEffect(() => {
+    if (!socket || !teamSelected) return;
+    socket.emit("requestCodeSync", { teamId: teamSelected });
+
+    const handleCodeSync = (newCode: string) => {
+      setCode(newCode);
+    };
+    socket.on("receiveCodeUpdate", handleCodeSync);
+
+    return () => {
+      socket.off("receiveCodeUpdate", handleCodeSync);
+    };
+  }, [socket, teamSelected, setCode]);
+
+  const handleEditorChange = (value: string | undefined) => {
+    if (value === undefined || role !== Role.CODER || !socket || !teamSelected) {
+      return;
+    }
+
+    socket.emit("codeChange", { teamId: teamSelected, code: value });
+    setCode(value);
+  };
 
   if (!socket || !teamSelected) return null;
 
@@ -69,7 +97,7 @@ export default function GameWorkspace() {
                             height="100%"
                             theme="vs-dark"
                             defaultLanguage="javascript"
-                            value={liveCode}
+                            value={editorCode}
                             onChange={!isSpectator ? handleEditorChange : undefined}
                             options={{
                               readOnly: isSpectator || role !== Role.CODER,

@@ -14,7 +14,6 @@ export interface GameRoomContextAPI {
   problem: ActiveProblem | null;
   teams: TeamCount[];
   teamSelected: string | null;
-  liveCode: string;
   isWaitingForOtherTeam: boolean;
   isProblemVisible: boolean;
   endTime: number;
@@ -29,7 +28,6 @@ export interface GameRoomContextAPI {
   ) => void;
   onExitSpectatorView: () => void;
   onRunCodeClick: () => void;
-  handleEditorChange: (value: string | undefined) => void;
   submitFinalCode: () => void;
   handleTimerExpire: () => void;
 }

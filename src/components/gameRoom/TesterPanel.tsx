@@ -27,7 +27,6 @@ export default function TesterPanel() {
     isSpectator,
     isWaitingForOtherTeam,
     teamSelected,
-    liveCode,
   } = useGameRoom();
 
   useEffect(() => {
@@ -206,7 +205,7 @@ export default function TesterPanel() {
 
     setRunningAllTests(true);
     socket.emit("submitTestCases", {
-      code: liveCode,
+      code: gameStateCtx.code ?? "",
       testCases: testCaseCtx.cases,
       runIDs: testCaseCtx.cases.map((testCase) => testCase.id),
     });

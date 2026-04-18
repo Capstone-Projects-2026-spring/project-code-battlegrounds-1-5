@@ -87,7 +87,6 @@ function PlayGameRoom() {
   const [problem, setProblem] = useState<ActiveProblem | null>(null);
   const [teams, setTeams] = useState<TeamCount[]>([]);
   const [teamSelected, setTeamSelected] = useState<string | null>(null);
-  const [liveCode, setLiveCode] = useState<string>(DEFAULT_STARTER_CODE);
   const [gameType, setGameType] = useState<GameType | null>(null);
   const [isWaitingForOtherTeam, setIsWaitingForOtherTeam] = useState(false);
 
@@ -113,10 +112,9 @@ function PlayGameRoom() {
     const indexes = Array.from(
       { length: testCaseCtx.cases.length }, (_, i) => i);
 
-    const codeToSubmit = gameStateCtx.code || liveCode || "";
+    const codeToSubmit = gameStateCtx.code || "";
 
     console.log("Timer expired - submitting code:", {
-      liveCode,
       gameStateCtxCode: gameStateCtx.code,
       codeToSubmit,
       teamSelected,
@@ -319,7 +317,6 @@ function PlayGameRoom() {
 
   useEffect(() => {
     if (!socket || !role || !teamSelected) return;
-    socket.emit("requestCodeSync", { teamId: teamSelected });
     socket.emit("requestTestCaseSync", { teamId: teamSelected });
 
     const testHandler = (cases: TestableCase[] | null) => {
@@ -332,28 +329,12 @@ function PlayGameRoom() {
     };
     socket.on("receiveTestCaseSync", testHandler);
 
-    const handler = (newCode: string) => {
-      setLiveCode(newCode);
-      // must also set code in game state otherwise coder cant run their test cases
-      gameStateCtx.setCode(newCode);
-    };
-    socket.on("receiveCodeUpdate", handler);
-
     return () => {
       socket.off("receiveTestCaseSync", testHandler);
-      socket.off("receiveCodeUpdate", handler);
     };
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [socket, role, teamSelected]);
-
-  const handleEditorChange = (value: string | undefined) => {
-    if (value !== undefined && role === Role.CODER && socket) {
-      setLiveCode(value);
-      socket.emit("codeChange", { teamId: teamSelected, code: value });
-      gameStateCtx.setCode(value);
-    }
-  };
 
   const getTeamLabel = () => {
     if (!teamSelected) return null;
@@ -440,7 +421,6 @@ function PlayGameRoom() {
     problem,
     teams,
     teamSelected,
-    liveCode,
     isWaitingForOtherTeam,
     isProblemVisible,
     endTime,
@@ -458,7 +438,6 @@ function PlayGameRoom() {
       setSpectatorView(Role.SPECTATOR);
     },
     onRunCodeClick: () => posthog.capture("code_run_triggered", { gameId }),
-    handleEditorChange,
     submitFinalCode,
     handleTimerExpire,
   };
