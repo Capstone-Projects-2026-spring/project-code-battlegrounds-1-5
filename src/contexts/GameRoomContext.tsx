@@ -1,7 +1,9 @@
 import type { Role, GameStatus } from "@prisma/client";
 import {
   createContext,
+  type Dispatch,
   type ReactNode,
+  type SetStateAction,
   useContext,
 } from "react";
 
@@ -9,11 +11,14 @@ import type { TeamCount } from "@/components/TeamSelect";
 import type { ActiveProblem } from "@/components/ProblemBox";
 
 export interface GameRoomContextAPI {
+  gameId: string;
   role: Role | null;
   gameState: GameStatus;
   problem: ActiveProblem | null;
   teams: TeamCount[];
   teamSelected: string | null;
+  code: string;
+  setCode: Dispatch<SetStateAction<string>>;
   isWaitingForOtherTeam: boolean;
   isProblemVisible: boolean;
   endTime: number;

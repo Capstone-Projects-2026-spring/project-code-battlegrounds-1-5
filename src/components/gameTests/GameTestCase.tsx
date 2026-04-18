@@ -5,7 +5,7 @@ import { ParameterPrimitiveType, ParameterType } from "@/lib/ProblemInputOutput"
 import { TestableCase, useTestCases } from "@/contexts/GameTestCasesContext";
 import ParameterInput from "./ParameterInput";
 import { useSocket } from "@/contexts/SocketContext";
-import { useGameState } from "@/contexts/GameStateContext";
+import { useGameRoom } from "@/contexts/GameRoomContext";
 import { useEffect, useState } from "react";
 import { usePostHog } from "posthog-js/react";
 import { useDisclosure } from "@mantine/hooks";
@@ -27,7 +27,7 @@ export interface GameTestCaseProps {
 }
 
 export default function GameTestCase(props: GameTestCaseProps) {
-  const gameStateCtx = useGameState();
+  const { gameId, code } = useGameRoom();
   const testCaseCtx = useTestCases();
   const { socket } = useSocket();
   const posthog = usePostHog();
@@ -40,14 +40,14 @@ export default function GameTestCase(props: GameTestCaseProps) {
     setRunning(true);
 
     socket.emit("submitTestCases", {
-      code: gameStateCtx.code,
+      code,
       testCases: testCaseCtx.cases,
       runIDs: [testableCase.id]
     });
 
     posthog.capture("test_case_run", {
-      gameId: gameStateCtx.gameId,
-      code: gameStateCtx.code,
+      gameId,
+      code,
       testableCase
     });
   };
@@ -101,7 +101,7 @@ export default function GameTestCase(props: GameTestCaseProps) {
                       onClick={() => {
                         props.onParameterDelete(param);
                         posthog.capture("parameter_deleted", {
-                          gameId: gameStateCtx.gameId,
+                          gameId,
                           parameter: param
                         });
                       }}
@@ -159,7 +159,7 @@ export default function GameTestCase(props: GameTestCaseProps) {
           onClick={() => {
             props.onTestCaseDelete(testableCase.id);
             posthog.capture("test_case_deleted", {
-              gameId: gameStateCtx.gameId,
+              gameId,
               testableCase
             });
           }}

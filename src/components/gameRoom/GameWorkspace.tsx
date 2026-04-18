@@ -13,15 +13,11 @@ import RoleFlipPopup from "@/components/RoleFlipPopup";
 import EditorToolbar from "@/components/gameRoom/EditorToolbar";
 import ProblemSidebar from "@/components/gameRoom/ProblemSidebar";
 import TesterPanel from "@/components/gameRoom/TesterPanel";
-import { useGameState } from "@/contexts/GameStateContext";
 import { useSocket } from "@/contexts/SocketContext";
 import { useGameRoom } from "@/contexts/GameRoomContext";
 import styles from "@/styles/GameRoom.module.css";
 
-export const DEFAULT_STARTER_CODE = "function solution(a, b) { \n\treturn a + b;\n}";
-
 export default function GameWorkspace() {
-  const { code, setCode } = useGameState();
   const { socket } = useSocket();
   const {
     gameState,
@@ -29,11 +25,13 @@ export default function GameWorkspace() {
     isSpectator,
     role,
     isProblemVisible,
+    code,
+    setCode,
     teamSelected,
     userName,
   } = useGameRoom();
 
-  const editorCode = code && code !== "// Waiting for code..." ? code : DEFAULT_STARTER_CODE;
+  const editorCode = code;
 
   useEffect(() => {
     if (!socket || !teamSelected) return;

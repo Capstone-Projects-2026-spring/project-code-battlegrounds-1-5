@@ -8,7 +8,6 @@ import { Panel } from "react-resizable-panels";
 import GameTestCase from "@/components/gameTests/GameTestCase";
 import NewParameterButton from "@/components/gameTests/NewParameterButton";
 import { useGameRoom } from "@/contexts/GameRoomContext";
-import { useGameState } from "@/contexts/GameStateContext";
 import { TestableCase, useTestCases } from "@/contexts/GameTestCasesContext";
 import { useSocket } from "@/contexts/SocketContext";
 import type { ParameterType } from "@/lib/ProblemInputOutput";
@@ -16,7 +15,6 @@ import type { ParameterType } from "@/lib/ProblemInputOutput";
 export default function TesterPanel() {
   const { socket } = useSocket();
   const testCaseCtx = useTestCases();
-  const gameStateCtx = useGameState();
   const posthog = usePostHog();
 
   const [activeTestId, setActiveTestId] = useState<number>(0);
@@ -27,6 +25,8 @@ export default function TesterPanel() {
     isSpectator,
     isWaitingForOtherTeam,
     teamSelected,
+    gameId,
+    code,
   } = useGameRoom();
 
   useEffect(() => {
@@ -119,7 +119,7 @@ export default function TesterPanel() {
     });
 
     posthog.capture("parameter_created", {
-      gameId: gameStateCtx.gameId,
+      gameId,
       parameter,
     });
   };
@@ -205,7 +205,7 @@ export default function TesterPanel() {
 
     setRunningAllTests(true);
     socket.emit("submitTestCases", {
-      code: gameStateCtx.code ?? "",
+      code,
       testCases: testCaseCtx.cases,
       runIDs: testCaseCtx.cases.map((testCase) => testCase.id),
     });

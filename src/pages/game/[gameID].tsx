@@ -22,10 +22,6 @@ import {
   useTestCases,
 } from "@/contexts/GameTestCasesContext";
 import {
-  GameStateProvider,
-  useGameState,
-} from "@/contexts/GameStateContext";
-import {
   GameRoomProvider,
   type GameRoomContextAPI,
 } from "@/contexts/GameRoomContext";
@@ -65,11 +61,9 @@ export default function Page() {
   }
 
   return (
-    <GameStateProvider>
-      <GameTestCasesProvider>
-        <PlayGameRoom />
-      </GameTestCasesProvider>
-    </GameStateProvider>
+    <GameTestCasesProvider>
+      <PlayGameRoom />
+    </GameTestCasesProvider>
   );
 }
 
@@ -87,12 +81,12 @@ function PlayGameRoom() {
   const [problem, setProblem] = useState<ActiveProblem | null>(null);
   const [teams, setTeams] = useState<TeamCount[]>([]);
   const [teamSelected, setTeamSelected] = useState<string | null>(null);
+  const [code, setCode] = useState<string>(DEFAULT_STARTER_CODE);
   const [gameType, setGameType] = useState<GameType | null>(null);
   const [isWaitingForOtherTeam, setIsWaitingForOtherTeam] = useState(false);
 
   // Context <3
   const testCaseCtx = useTestCases();
-  const gameStateCtx = useGameState();
   const { socket } = useSocket();
   const { setStatus } = useMatchmaking();
 
@@ -112,10 +106,10 @@ function PlayGameRoom() {
     const indexes = Array.from(
       { length: testCaseCtx.cases.length }, (_, i) => i);
 
-    const codeToSubmit = gameStateCtx.code || "";
+    const codeToSubmit = code || "";
 
     console.log("Timer expired - submitting code:", {
-      gameStateCtxCode: gameStateCtx.code,
+      currentCode: code,
       codeToSubmit,
       teamSelected,
       gameId,
@@ -135,8 +129,6 @@ function PlayGameRoom() {
   // ONLY HAPPENS ON PAGE LAUNCH
   useEffect(() => {
     if (!session?.user.id || !gameId || !socket) return;
-
-    gameStateCtx.setGameId(gameId);
 
     const loadRoomDetails = async () => {
       try {
@@ -241,7 +233,6 @@ function PlayGameRoom() {
     // Runs after team gets selected - join rooms first, then set up room-specific listeners
     if (!socket || !teamSelected || !gameId || !gameType) return;
     socket.emit("joinGame", { gameId, teamId: teamSelected, gameType });
-    gameStateCtx.setGameType(gameType);
 
     // Set up game room event listeners AFTER joining the room
     const handleGameStarting = () => {
@@ -358,7 +349,7 @@ function PlayGameRoom() {
 
     socket.emit("submitCode", {
       roomId: gameId,
-      code: gameStateCtx.code,
+      code,
       type: gameType,
       team,
       teamId: teamSelected,
@@ -416,11 +407,14 @@ function PlayGameRoom() {
   const showGameUI = !isSpectator || spectatorView !== Role.SPECTATOR;
 
   const gameRoomContextValue: GameRoomContextAPI = {
+    gameId,
     role,
     gameState,
     problem,
     teams,
     teamSelected,
+    code,
+    setCode,
     isWaitingForOtherTeam,
     isProblemVisible,
     endTime,
