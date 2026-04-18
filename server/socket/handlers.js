@@ -110,6 +110,26 @@ function registerSocketHandlers(io, socket, services) {
     }
 
     const { gameId, teamId, gameType } = payload;
+
+    // Verify the game room was legitimately created before allowing anyone to join.
+    // We check that the teamId exists in the DB and belongs to the given gameRoomId —
+    // matchmaking always creates real Team rows, so a fake gameId/teamId pair will fail this.
+    try {
+      const team = await prisma.team.findFirst({
+        where: { id: teamId, gameRoomId: gameId },
+      });
+
+      if (!team) {
+        socket.emit('error', { message: 'Game room does not exist.' });
+        socket.emit('invalidGame');
+        return;
+      }
+    } catch (e) {
+      console.error('Error verifying game room existence', e);
+      socket.emit('error', { message: 'Failed to verify game room.' });
+      return;
+    }
+
     try {
       await socket.join(teamId);
       await socket.join(gameId);
@@ -317,6 +337,10 @@ function registerSocketHandlers(io, socket, services) {
       } catch (error) {
         console.error("Error POSTing to code executor:", error);
       } finally {
+        await prisma.gameRoom.update({
+          where: { id: roomId },
+          data: { status: 'FINISHED' },
+        });
         io.to(roomId).emit('gameEnded');
       }
     }
@@ -376,6 +400,10 @@ function registerSocketHandlers(io, socket, services) {
         } catch (error) {
           console.error("Error POSTing to code executor:", error);
         } finally {
+          await prisma.gameRoom.update({
+            where: { id: roomId },
+            data: { status: 'FINISHED' },
+          });
           io.to(roomId).emit('gameEnded');
           await gameService.deleteGameData(submissionKey);
         }
