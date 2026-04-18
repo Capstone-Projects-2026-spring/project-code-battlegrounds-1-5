@@ -1,5 +1,5 @@
 import { Paper, Title, Table, Text, Box, Badge, Tooltip } from "@mantine/core";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { ParameterType, ParameterPrimitiveType } from "@/lib/ProblemInputOutput";
 import { IconCheck, IconX, IconAlertCircle } from "@tabler/icons-react";
 import deepEqual from "@/util/deepEqual";
@@ -118,7 +118,7 @@ export default function TestCaseResultsBox({ gameId, team1Results, team2Results,
   useEffect(() => {
     if (!onSummaryChange || !hasFetchedSummary || testCases.length === 0) return;
 
-    // Recalculate passed counts using deepEqual instead of relying on backend counts
+    // Recalculate passed counts using deepEqual instead of relying on backend execution results
     let team1PassedCount = 0;
     let team2PassedCount = 0;
 
@@ -147,6 +147,7 @@ export default function TestCaseResultsBox({ gameId, team1Results, team2Results,
     testCases,
     team1TestResults,
     team2TestResults,
+    extractAndCompare,
   ]);
 
   useEffect(() => {
@@ -199,7 +200,7 @@ export default function TestCaseResultsBox({ gameId, team1Results, team2Results,
     return value;
   };
 
-  const extractAndCompare = (actual: unknown, expectedParams: ParameterType[]): boolean => {
+  const extractAndCompare = useCallback((actual: unknown, expectedParams: ParameterType[]): boolean => {
     if (!expectedParams || expectedParams.length === 0) return false;
     if (actual === null || actual === undefined) return false;
 
@@ -224,7 +225,7 @@ export default function TestCaseResultsBox({ gameId, team1Results, team2Results,
       console.error("Error in extractAndCompare:", { actualValue, expectedValue: expectedParam.value, type, error: e });
       return false;
     }
-  };
+  }, []);
 
   const rows = testCases.map((element, index) => {
     // Determine which results to show based on user's team
