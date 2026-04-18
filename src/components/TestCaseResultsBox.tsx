@@ -79,9 +79,19 @@ export default function TestCaseResultsBox({ gameId, team1Results, team2Results,
       return typeof value === "number" ? value : Number(value);
     } else if (type.includes("array")) {
       if (typeof value === "string") {
-        // Normalize single quotes to double quotes for JSON parsing
-        const normalized = value.replace(/'/g, '"');
-        return JSON.parse(normalized);
+        try {
+          // Normalize single quotes to double quotes for JSON parsing
+          let normalized = value.replace(/'/g, '"');
+          // If it doesn't start with [ or ", wrap it in brackets
+          if (!normalized.startsWith('[') && !normalized.startsWith('"')) {
+            normalized = `[${normalized}]`;
+          }
+          return JSON.parse(normalized);
+        } catch {
+          // If JSON parsing fails, return the original value
+          console.warn(`Failed to parse array value: ${value}`);
+          return value;
+        }
       }
       return value;
     }
