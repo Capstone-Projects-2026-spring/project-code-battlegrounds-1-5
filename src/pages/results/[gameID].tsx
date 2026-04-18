@@ -44,9 +44,9 @@ interface TeamResult {
 interface RoomDetailsResponse {
   problem: ActiveProblem;
   gameType: GameType;
+  userTeamNumber: 1 | 2;
   team1Code: string | null;
   team2Code: string | null;
-  userTeamNumber: 1 | 2;
 }
 
 // Animated counter hook
@@ -161,7 +161,7 @@ export function Results() {
 
     const loadGameData = async () => {
       try {
-        const response = await fetch(`/api/rooms/${gameId}`);
+        const response = await fetch(`/api/results/${gameId}`);
         if (!response.ok) return;
 
         const roomDetails = (await response.json()) as RoomDetailsResponse;
@@ -182,7 +182,7 @@ export function Results() {
           setAnalysisProps(null);
         }
       } catch (error) {
-        console.error("Failed to load room details for results page", error);
+        console.error("Failed to load game details", error);
       } finally {
         setIsGameDataLoading(false);
       }
