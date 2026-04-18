@@ -27,6 +27,5 @@ class TestableCase(BaseModel):
 class ExecutionRequest(BaseModel):
     language: str
     code: str
-    # Accept either a JSON string or a parsed list of TestableCase
     testCases: Union[str, List[TestableCase]] = None
     runIDs: Union[str, List[int]] = None
