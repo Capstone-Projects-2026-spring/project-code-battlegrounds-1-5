@@ -88,7 +88,7 @@ function createGameService(stateRedis) {
     },
 
     // Deletes all Redis timer keys for a game so expiration events stop firing
-    // after the game ends early (example being the submitCode before the clock runs out).
+    // after the game ends early (e.g. via submitCode before the clock runs out).
     async cleanupGameTimers(gameId) {
       await stateRedis.del(`game:${gameId}:expires`);
       await stateRedis.del(`game:${gameId}:roleswap`);
@@ -97,12 +97,8 @@ function createGameService(stateRedis) {
       console.log(`Cleaned up Redis timers for game ${gameId}`);
     },
 
-    async cleanupGame(gameId, userId) {
-      await stateRedis.srem('activeGames', gameId);
+    async cleanupSocket(userId) {
       await stateRedis.del(`socket:${userId}`);
-      await stateRedis.del(`game:${gameId}:expires`);
-      await stateRedis.del(`game:${gameId}:roleswap`);
-      await stateRedis.del(`game:${gameId}:roleswap:warning`);
     },
 
     async saveGameData(key, value) {
