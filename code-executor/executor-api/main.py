@@ -65,7 +65,7 @@ def execute(req: ExecutionRequest):
             "--security-opt", "seccomp=unconfined",
             "--security-opt", "apparmor=unconfined",
             "--name", container_name,
-            "runner:latest",
+            "us-central1-docker.pkg.dev/code-battlegrounds/app/rootjail:latest",
         ]
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
         if result.returncode != 0:
