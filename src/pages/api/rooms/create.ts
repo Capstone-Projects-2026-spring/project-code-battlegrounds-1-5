@@ -14,12 +14,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (req.method !== 'POST') {
         return res.status(405).json({ message: 'Method not allowed' });
     }
-//Defensive validation for difficulty parameter. It should be one of "EASY", "MEDIUM", "HARD" if provided.
-const { difficulty, gameType } = req.body as { difficulty?: ProblemDifficulty, gameType?: GameType };
+    //Defensive validation for difficulty parameter. It should be one of "EASY", "MEDIUM", "HARD" if provided.
+    const { difficulty, gameType } = req.body as { difficulty?: ProblemDifficulty, gameType?: GameType };
 
-if (!difficulty || !Object.values(ProblemDifficulty).includes(difficulty)) {
-    return res.status(400).json({ message: "Invalid difficulty" });
-}
+    if (!difficulty || !Object.values(ProblemDifficulty).includes(difficulty)) {
+        return res.status(400).json({ message: "Invalid difficulty" });
+    }
 
     // check auth status
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -38,7 +38,7 @@ if (!difficulty || !Object.values(ProblemDifficulty).includes(difficulty)) {
         const where = { difficulty };
         const problemCount = await prisma.problem.count({ where });
         if (problemCount === 0) {
-            return res.status(500).json({message: 'No problems found in the database'});
+            return res.status(500).json({ message: 'No problems found in the database' });
         }
 
         const skip = Math.floor(Math.random() * problemCount);
@@ -49,7 +49,7 @@ if (!difficulty || !Object.values(ProblemDifficulty).includes(difficulty)) {
         });
 
         if (!problem) {
-            return res.status(500).json({message: 'Failed to select a random problem'});
+            return res.status(500).json({ message: 'Failed to select a random problem' });
         }
 
         // Need to make a database call to Problem table but there are no Problems in the table right now
@@ -87,7 +87,7 @@ if (!difficulty || !Object.values(ProblemDifficulty).includes(difficulty)) {
             return res.status(201).json({ gameId: gameRoom.id });
         }
 
-        return res.status(500).json({message: "Didn't select gametype somehow"});
+        return res.status(500).json({ message: "Didn't select gametype somehow" });
 
         // TODO: here, store in redis pubsub channel called "matchmaking" or such so that other players can find it. then, before generating a new room, try to join any existing rooms. if room is joined and becomes full, mark it as in progress in postgres. See CODEBAT-14 and CODEBAT-56
 

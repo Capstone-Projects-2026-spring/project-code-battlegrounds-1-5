@@ -61,9 +61,9 @@ export default function TeamSelect({ userId, teams, gameRoomId, onJoined }: Team
                                     {team.playerCount} / 2
                                 </Text>
                                 {isFull && (
-                                    <Badge 
-                                        data-testid={`team-${i + 1}-full`} 
-                                        color="red" 
+                                    <Badge
+                                        data-testid={`team-${i + 1}-full`}
+                                        color="red"
                                         size="sm"
                                         className={styles.fullBadge}
                                     >
@@ -73,21 +73,21 @@ export default function TeamSelect({ userId, teams, gameRoomId, onJoined }: Team
                             </div>
                         );
                     })}
-                    <Button
-                        data-testid="spectator-button"
-                        size="lg"
-                        variant="outline"
-                        className={styles.spectatorButton}
-                        onClick={() => { 
-                            posthog.capture("spectator_joined", {
-                                gameId: gameRoomId
-                            });
-                            onJoined(null, Role.SPECTATOR, null);
-                         }}
-                    >
-                        Spectator Mode
-                    </Button>
                 </Group>
+                <Button
+                    data-testid="spectator-button"
+                    size="lg"
+                    variant="outline"
+                    className={styles.spectatorButton}
+                    onClick={() => {
+                        posthog.capture("spectator_joined", {
+                            gameId: gameRoomId
+                        });
+                        onJoined(null, Role.SPECTATOR, null);
+                    }}
+                >
+                    Spectator Mode
+                </Button>
             </Stack>
         </Center>
     );

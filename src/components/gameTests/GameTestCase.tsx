@@ -2,9 +2,10 @@ import { ActionIcon, Button, ComboboxData, Flex, Group, Popover, Select, SelectP
 import { IconPlayerPlay, IconTrash, IconCode, IconCheck, IconHash, IconList, IconListNumbers, IconMatrix, IconTable, IconTextSize, IconToggleRight } from "@tabler/icons-react";
 
 import { ParameterPrimitiveType, ParameterType } from "@/lib/ProblemInputOutput";
-import { TestableCase, useTestCases } from "../contexts/GameTestCasesContext";
+import { TestableCase, useTestCases } from "@/contexts/GameTestCasesContext";
 import ParameterInput from "./ParameterInput";
-import { useGameState } from "../contexts/GameStateContext";
+import { useSocket } from "@/contexts/SocketContext";
+import { useGameState } from "@/contexts/GameStateContext";
 import { useEffect, useState } from "react";
 import { usePostHog } from "posthog-js/react";
 import { useDisclosure } from "@mantine/hooks";
@@ -28,16 +29,17 @@ export interface GameTestCaseProps {
 export default function GameTestCase(props: GameTestCaseProps) {
   const gameStateCtx = useGameState();
   const testCaseCtx = useTestCases();
+  const { socket } = useSocket();
   const posthog = usePostHog();
   const { testableCase } = props;
 
   const [running, setRunning] = useState<boolean>(false);
 
   const runTest = () => {
-    if (!gameStateCtx.socket) throw new Error("Missing socket!");
+    if (!socket) throw new Error("Missing socket!");
     setRunning(true);
 
-    gameStateCtx.socket.emit("submitTestCases", {
+    socket.emit("submitTestCases", {
       code: gameStateCtx.code,
       testCases: testCaseCtx.cases,
       runIDs: [testableCase.id]

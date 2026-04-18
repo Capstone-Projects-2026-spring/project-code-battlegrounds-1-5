@@ -22,7 +22,6 @@ import {
   // IconHome,
   IconEye,
 } from "@tabler/icons-react";
-import Navbar from "@/components/Navbar";
 import { useRouter } from "next/router";
 import { authClient } from "@/lib/auth-client";
 import { GameType } from "@prisma/client";
@@ -281,10 +280,6 @@ export function Results() {
     return (
       <div className={styles.resultsPage}>
         <div className={styles.gradient} />
-        <Navbar
-          links={["Time", "Players", "Tournament"]}
-          title="Code BattleGrounds"
-        />
         <Center style={{ minHeight: "60vh", position: "relative", zIndex: 1 }}>
           <Loader color="console" size="lg" />
         </Center>
@@ -301,11 +296,6 @@ export function Results() {
 
       <div className={styles.resultsPage}>
         <div className={styles.gradient} />
-
-        <Navbar
-          links={["Time", "Players", "Tournament"]}
-          title="Code BattleGrounds"
-        />
 
         <Container className={styles.container} size="xl">
           {/* Victory/Defeat Banner */}

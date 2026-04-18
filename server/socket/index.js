@@ -2,6 +2,7 @@ const { Server } = require('socket.io');
 const { registerSocketHandlers } = require('./handlers');
 const { createGameService } = require('../game/gameService');
 const { createMatchmakingService } = require('../matchmaking/matchmakingService');
+const { createInviteService } = require('../invite/inviteService');
 const { getPrisma } = require('../prisma');
 const cookie = require('cookie');
 
@@ -16,6 +17,7 @@ function initSocket(httpServer, redis) {
     // Create services using Redis state client
     const gameService = createGameService(redis.stateRedis);
     const matchmakingService = createMatchmakingService(redis.stateRedis, io);
+    const inviteService = createInviteService(redis.stateRedis);
 
     io.use(async (socket, next) => {
         try {
@@ -49,7 +51,7 @@ function initSocket(httpServer, redis) {
 
     // Register per-connection handlers
     io.on('connection', (socket) => {
-        registerSocketHandlers(io, socket, { gameService, matchmakingService });
+        registerSocketHandlers(io, socket, { gameService, matchmakingService, inviteService });
     });
 
     return io;
