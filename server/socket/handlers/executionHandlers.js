@@ -41,6 +41,7 @@ function registerExecutionHandlers(io, socket, gameService) {
             try {
                 // Post results to the code executor
                 let payload = {
+                    // TODO: here is where we need to add roomId to request
                     language: "javascript",
                     code: btoa(code),
                     testCases: JSON.stringify(testCases),
@@ -105,6 +106,7 @@ function registerExecutionHandlers(io, socket, gameService) {
                 try {
                     // Post results to the code executor
                     let payload = {
+                      // TODO: here is where we need to add roomId to request
                         language: "javascript",
                         code: btoa(code),
                         testCases: JSON.stringify(testCases),
@@ -157,6 +159,7 @@ function registerExecutionHandlers(io, socket, gameService) {
             runIDs
         } = data;
         let payload = {
+            // TODO: here is where we need to add roomId to request
             language: "javascript",
             code: btoa(code),
             testCases: JSON.stringify(testCases),
