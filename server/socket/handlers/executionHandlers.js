@@ -13,6 +13,34 @@ const submitCodeSchema = z.object({
     teamId: z.string(),
 });
 
+async function persistTeamGameTests(roomId, teamNumber, testCases) {
+    const gameResult = await prisma.gameResult.upsert({
+        where: { gameRoomId: roomId },
+        update: {},
+        create: { gameRoomId: roomId },
+        select: { id: true },
+    });
+
+    const rows = testCases.map((testCase, position) => ({
+        gameResultId: gameResult.id,
+        teamNumber,
+        position,
+        testCaseId: typeof testCase.id === "number" ? testCase.id : position,
+        functionInput: testCase.functionInput ?? [],
+        expectedOutput: testCase.expectedOutput ?? null,
+    }));
+
+    await prisma.$transaction([
+        prisma.gameTest.deleteMany({
+            where: {
+                gameResultId: gameResult.id,
+                teamNumber,
+            },
+        }),
+        ...(rows.length > 0 ? [prisma.gameTest.createMany({ data: rows })] : []),
+    ]);
+}
+
 function registerExecutionHandlers(io, socket, gameService) {
 
     socket.on('submitCode', async (data) => {
@@ -35,6 +63,23 @@ function registerExecutionHandlers(io, socket, gameService) {
         }
 
         const runIDs = testCases.map((testCase) => testCase.id);
+
+        let teamNumber = 1;
+        if (type === GameType.FOURPLAYER) {
+            if (!team) {
+                socket.emit('error', { message: 'Missing team for four-player submitCode.' });
+                return;
+            }
+            teamNumber = team === "team2" ? 2 : 1;
+        }
+
+        try {
+            await persistTeamGameTests(roomId, teamNumber, testCases);
+        } catch (e) {
+            console.error('Error persisting game tests for submitCode', e);
+            socket.emit('error', { e, message: 'Failed to persist submitted test cases.' });
+            return;
+        }
 
         console.log('submitCode received for roomId:', roomId, 'with code length:', code?.length, 'and type:', type);
 
@@ -78,10 +123,6 @@ function registerExecutionHandlers(io, socket, gameService) {
         }
         else if (type === GameType.FOURPLAYER) {
             console.log('verify its a fourplayer game');
-            if (!team) {
-                socket.emit('error', { message: 'Missing team for four-player submitCode.' });
-                return;
-            }
 
             // Track submissions in Redis
             const submissionKey = `game:${roomId}:submissions`;
