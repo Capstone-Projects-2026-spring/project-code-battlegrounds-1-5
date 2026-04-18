@@ -25,6 +25,21 @@ function getDefaultTestCases() {
   ];
 }
 
+function getDefaultStarterCode() {
+  return "function solution(a, b) { \n\treturn a + b;\n}";
+}
+
+async function getOrCreateTeamCode(gameService, teamId) {
+  const existing = await gameService.getLatestCode(teamId);
+  if (typeof existing === "string" && existing.length > 0) {
+    return existing;
+  }
+
+  const defaults = getDefaultStarterCode();
+  await gameService.saveLatestCode(teamId, defaults);
+  return defaults;
+}
+
 async function getOrCreateTeamTestCases(gameService, teamId) {
   const existing = await gameService.getTestCases(teamId);
   if (Array.isArray(existing) && existing.length > 0) {
@@ -36,4 +51,4 @@ async function getOrCreateTeamTestCases(gameService, teamId) {
   return defaults;
 }
 
-module.exports = { validate, getOrCreateTeamTestCases };
+module.exports = { validate, getOrCreateTeamTestCases, getOrCreateTeamCode };

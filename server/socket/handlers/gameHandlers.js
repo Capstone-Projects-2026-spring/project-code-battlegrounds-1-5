@@ -1,6 +1,6 @@
 const { GameType } = require("@prisma/client");
 const { z } = require("zod");
-const { validate, getOrCreateTeamTestCases } = require("./utils");
+const { validate, getOrCreateTeamTestCases, getOrCreateTeamCode } = require("./utils");
 
 const ParameterPrimitive = z.union([
     z.literal("string"),
@@ -133,10 +133,8 @@ function registerGameHandlers(io, socket, gameService) {
         }
 
         try {
-            const latestCode = await gameService.getLatestCode(teamId);
-            if (latestCode != null) {
-                socket.emit('receiveCodeUpdate', latestCode);
-            }
+            const latestCode = await getOrCreateTeamCode(gameService, teamId);
+            socket.emit('receiveCodeUpdate', latestCode);
         } catch (e) {
             console.error('Error fetching code from Redis', e);
             socket.emit('error', { e, message: 'Failed to fetch latest code.' });
@@ -180,10 +178,8 @@ function registerGameHandlers(io, socket, gameService) {
         const { teamId } = payload;
 
         try {
-            const latestCode = await gameService.getLatestCode(teamId);
-            if (latestCode != null) {
-                socket.emit('receiveCodeUpdate', latestCode);
-            }
+            const latestCode = await getOrCreateTeamCode(gameService, teamId);
+            socket.emit('receiveCodeUpdate', latestCode);
         } catch (e) {
             console.error('Error fetching latest code', e);
             socket.emit('error', { e, message: 'Failed to fetch latest code.' });

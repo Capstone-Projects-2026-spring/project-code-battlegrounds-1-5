@@ -90,7 +90,7 @@ function PlayGameRoom() {
   const [problem, setProblem] = useState<ActiveProblem | null>(null);
   const [teams, setTeams] = useState<TeamCount[]>([]);
   const [teamSelected, setTeamSelected] = useState<string | null>(null);
-  const [liveCode, setLiveCode] = useState<string>("function solution(a, b) { \n\treturn a + b;\n}");
+  const [liveCode, setLiveCode] = useState<string>("// Waiting for code...");
   const [activeTestId, setActiveTestId] = useState<number>(0);
   const [gameType, setGameType] = useState<GameType | null>(null);
   const [isWaitingForOtherTeam, setIsWaitingForOtherTeam] = useState(false);
