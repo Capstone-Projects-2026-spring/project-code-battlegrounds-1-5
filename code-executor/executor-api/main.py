@@ -1,4 +1,4 @@
-from typing import Optional, List
+import json
 import subprocess
 import socket
 import time
@@ -8,7 +8,8 @@ import string
 import requests
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse, PlainTextResponse
-from pydantic import BaseModel
+from fastapi.encoders import jsonable_encoder
+from models import *
 
 app = FastAPI()
 
@@ -34,19 +35,9 @@ def root():
 def health():
     return {"status": "ok"}
 
-class TestCase(BaseModel):
-    input: str
-    expected: Optional[str] = None
-
-
-class ExecutionRequest(BaseModel):
-    language: str
-    code: str
-    stdin: Optional[str] = ""
-    testCases: Optional[List[TestCase]] = None
-
 @app.post("/execute")
 def execute(req: ExecutionRequest):
+    print(json.dumps(req.dict()))
     # validate language support
     if not Languages.is_supported(req.language):
         return JSONResponse(
@@ -74,7 +65,7 @@ def execute(req: ExecutionRequest):
             "--security-opt", "seccomp=unconfined",
             "--security-opt", "apparmor=unconfined",
             "--name", container_name,
-            "runner:latest",
+            "us-central1-docker.pkg.dev/code-battlegrounds/app/rootjail:latest",
         ]
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
         if result.returncode != 0:
@@ -84,7 +75,7 @@ def execute(req: ExecutionRequest):
 
     Containers.map[container_name] = host_port
 
-    # Wait for health endpoint to be available (max ~10s)
+    # wait for container to start by pinging /health endpoint
     base_url = f"http://127.0.0.1:{host_port}"
     healthy = False
     for _ in range(40):
@@ -105,16 +96,27 @@ def execute(req: ExecutionRequest):
 
     # send the execution request to the container and wait for its result
     try:
-        payload = {
-            "language": req.language,
-            "code": req.code,
-            "stdin": req.stdin or "",
-            "testCases": [tc.dict() for tc in (req.testCases or [])] or None,
-        }
-        exec_resp = requests.post(f"{base_url}/execute", json=payload, timeout=15)
-        exec_json = exec_resp.json() if exec_resp.headers.get("content-type", "").startswith("application/json") else {"stdout": exec_resp.text}
+        # ensure we send a proper JSON body, not a Pydantic model instance (support Pydantic v1 and v2)
+        if hasattr(req, 'model_dump'):
+            payload = req.model_dump(mode='json')
+        else:
+            payload = req.dict()
+        # Final safety: coerce to JSON-serializable types
+        payload = jsonable_encoder(payload)
+        print(f"Forwarding to runner at {base_url}/execute")
+        print(f"Runner payload (truncated): {json.dumps(payload)[:800]}")
+        exec_resp = requests.post(
+            f"{base_url}/execute",
+            json=payload,
+            headers={"Content-Type": "application/json"},
+            timeout=30,
+        )
+        if exec_resp.headers.get("content-type", "").startswith("application/json"):
+            exec_json = exec_resp.json()
+        else:
+            exec_json = {"stdout": exec_resp.text}
     except Exception as e:
-        exec_json = {"error": "Failed to call executor API", "details": str(e)}
+        exec_json = {"error": "Failed to call executor-image API", "details": str(e), "Runner payload (truncated)": "{json.dumps(payload)[:800]}"}
 
     # stop the container
     try:
