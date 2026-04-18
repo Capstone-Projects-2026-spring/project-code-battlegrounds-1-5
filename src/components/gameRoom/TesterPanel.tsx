@@ -8,9 +8,15 @@ import { Panel } from "react-resizable-panels";
 import GameTestCase from "@/components/gameTests/GameTestCase";
 import NewParameterButton from "@/components/gameTests/NewParameterButton";
 import { useGameRoom } from "@/contexts/GameRoomContext";
-import { TestableCase, useTestCases } from "@/contexts/GameTestCasesContext";
+import {
+  DEFAULT_TEST_CASES,
+  TestableCase,
+  useTestCases,
+} from "@/contexts/GameTestCasesContext";
 import { useSocket } from "@/contexts/SocketContext";
 import type { ParameterType } from "@/lib/ProblemInputOutput";
+
+const DEFAULT_STARTER_CODE = "function solution(a, b) { \n\treturn a + b;\n}";
 
 export default function TesterPanel() {
   const { socket } = useSocket();
@@ -42,6 +48,19 @@ export default function TesterPanel() {
       socket.off("receiveTestCaseSync", handleTestCaseSync);
     };
   }, [socket]);
+
+  useEffect(() => {
+    if (!socket || !teamSelected || isSpectator) return;
+
+    console.log("Syncing default test cases :3");
+    socket.emit("updateTestCases", {
+      teamId: teamSelected,
+      testCases: DEFAULT_TEST_CASES,
+    });
+
+    console.log("Syncing default code");
+    socket.emit("codeChange", { teamId: teamSelected, code: DEFAULT_STARTER_CODE });
+  }, [socket, teamSelected, isSpectator]);
 
   const selectedTestId = testCaseCtx.cases.some(
     (testCase) => testCase.id === activeTestId,
