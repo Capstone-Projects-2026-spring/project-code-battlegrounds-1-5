@@ -41,7 +41,7 @@ export function showRoleSwapWarning(role: Role) {
     message: 'Make sure you are ready to swap to ' + swapRole,
     color: 'yellow',
     autoClose: 7000,
-    classNames: gradientClassNames,
+    classNames: proClassNames,
   });
 }
 
@@ -83,7 +83,7 @@ export function showFriendRequestNotification(
       </>
     ),
     autoClose: false,
-    classNames: gradientClassNames,
+    classNames: proClassNames,
   });
 }
 
