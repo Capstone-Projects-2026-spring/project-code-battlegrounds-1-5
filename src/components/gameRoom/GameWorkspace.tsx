@@ -28,7 +28,6 @@ export default function GameWorkspace() {
     code,
     setCode,
     teamSelected,
-    userName,
   } = useGameRoom();
 
   const editorCode = code;
@@ -110,13 +109,7 @@ export default function GameWorkspace() {
 
                       <Panel defaultSize={30} minSize={15}>
                         <Box style={{ height: "100%" }}>
-                          <ChatBox
-                            socket={socket}
-                            roomId={teamSelected}
-                            userName={userName}
-                            isSpectator={isSpectator}
-                            role={role}
-                          />
+                          <ChatBox key={teamSelected} />
                         </Box>
                       </Panel>
                     </PanelGroup>
