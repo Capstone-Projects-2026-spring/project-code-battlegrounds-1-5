@@ -13,16 +13,13 @@ function registerSocketHandlers(io, socket, services) {
   registerInviteHandlers(io, socket, inviteService, gameService);
 
   socket.on('disconnect', async () => {
-    if (socket.gameId && socket.userId) {
-      try {
-        await gameService.cleanupGame(socket.gameId, socket.userId);
-        console.log(`Disconnected: ${socket.id}`);
-      } catch (e) {
-        console.error('Error during cleanup on disconnect', e);
-        socket.emit('error', { e, message: 'Failed to cleanup on disconnect.' });
-      }
-    }
+    console.log(`Disconnected: ${socket.id}`);
     if (socket.userId) {
+      try {
+        await gameService.cleanupSocket(socket.userId);
+      } catch (e) {
+        console.error('Error during socket cleanup on disconnect', e);
+      }
       await matchmakingService.leaveAllQueues(socket.userId);
     }
   });

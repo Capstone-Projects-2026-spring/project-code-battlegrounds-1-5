@@ -57,6 +57,11 @@ function registerExecutionHandlers(io, socket, gameService) {
             } catch (error) {
                 console.error("Error POSTing to code executor:", error);
             } finally {
+                await gameService.cleanupGameTimers(roomId);
+                await prisma.gameRoom.update({
+                    where: { id: roomId },
+                    data: { status: 'FINISHED' },
+                });
                 io.to(roomId).emit('gameEnded');
             }
         }
@@ -116,6 +121,11 @@ function registerExecutionHandlers(io, socket, gameService) {
                 } catch (error) {
                     console.error("Error POSTing to code executor:", error);
                 } finally {
+                    await gameService.cleanupGameTimers(roomId);
+                    await prisma.gameRoom.update({
+                        where: { id: roomId },
+                        data: { status: 'FINISHED' },
+                    });
                     io.to(roomId).emit('gameEnded');
                     await gameService.deleteGameData(submissionKey);
                 }
