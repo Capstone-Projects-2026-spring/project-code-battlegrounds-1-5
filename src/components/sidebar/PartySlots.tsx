@@ -84,8 +84,12 @@ export function PartySlots() {
             {/* Party owner */}
             <Box style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
               <Tooltip label={joinedParty.displayName} withArrow>
-                <Avatar src={joinedParty.avatarUrl} radius="xl" size={50} color="blue"
-                  style={{ border: "2px solid var(--mantine-color-blue-5)" }}
+                <Avatar
+                  src={joinedParty.avatarUrl}
+                  radius="xl"
+                  size={50}
+                  color="var(--mantine-color-console-4)"
+                  style={{ border: "2px solid var(--mantine-color-console-5)" }}
                 >
                   {joinedParty.displayName.slice(0, 2).toUpperCase()}
                 </Avatar>
@@ -121,8 +125,13 @@ export function PartySlots() {
           <>
             {/* You (owner) */}
             <Box style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-              <Avatar src={session?.user.image} radius="xl" size={50} color="blue"
-                style={{ border: "2px solid var(--mantine-color-blue-5)" }}
+              <Avatar
+                src={session?.user.image}
+                radius="xl"
+                size={50}
+                color={"var(--mantine-color-console-4)"}
+                // color="blue"
+                style={{ border: "2px solid var(--mantine-color-console-5)" }}
               >
                 {session?.user.name?.slice(0, 2).toUpperCase()}
               </Avatar>

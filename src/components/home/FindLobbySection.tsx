@@ -123,7 +123,7 @@ export default function FindLobbySection({
             color="blue"
             leftSection={<IconUsers size={14} />}
           >
-            Queueing with lobby
+            Queueing with party
           </Badge>
         )}
 

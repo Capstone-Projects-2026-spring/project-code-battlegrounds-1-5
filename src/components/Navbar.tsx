@@ -87,13 +87,12 @@ export default function HeaderSimple(props: HeaderProps) {
           ml="auto"
           name={session?.user.name}
           size="md"
-          radius="sm"
+          radius="xl"
           style={{ cursor: 'pointer' }}
           onClick={toggleFriend}
           alt="Profile picture"
+          color={"var(--mantine-color-console-4)"}
         />
-
-
 
         <SidePanel opened={openFriend} onClose={toggleFriend} />
       </Container>
