@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import Head from "next/head";
 import {
   Container,
@@ -30,6 +30,7 @@ import styles from "@/styles/Results.module.css";
 import AnalysisBox, { type AnalysisBoxProps } from "@/components/Analysisbox";
 import ProblemBox, { type ActiveProblem } from "@/components/ProblemBox";
 import TestCaseResultsBox, { type TestResultsSummary } from "@/components/TestCaseResultsBox";
+import { calculateScorePair } from "@/util/scoring";
 
 // Mock data - replace with actual data from backend
 interface TeamResult {
@@ -193,31 +194,50 @@ export function Results() {
 
   const isCoOp = gameType === GameType.TWOPLAYER;
 
+  // Calculate team scores
+  const [team1Score, team2Score] = useMemo(() => {
+    if (!testResultsSummary || !analysisProps) return [0, 0];
+
+    return calculateScorePair(
+      testResultsSummary.yourPassedCount ?? 0,
+      testResultsSummary.otherTeamPassedCount ?? 0,
+      testResultsSummary.totalTests,
+      analysisProps.team1AverageExecutionTime ?? null,
+      analysisProps.team2AverageExecutionTime ?? null,
+      userTeamNumber === 1 ? "Your Team (Team 1)" : "Other Team (Team 1)",
+      userTeamNumber === 2 ? "Your Team (Team 2)" : "Other Team (Team 2)"
+    );
+  }, [testResultsSummary, analysisProps, userTeamNumber]);
+
   // Mock data - replace with actual fetched data
   const coOpTeam: TeamResult = {
     name: "Co-Op Crew",
-    score: 810,
-    testsPassed: 9,
-    totalTests: 10,
-    time: 236, // 3:56
+    score: team1Score,
+    testsPassed: testResultsSummary?.yourPassedCount ?? 0,
+    totalTests: testResultsSummary?.totalTests ?? 0,
+    time: 0, // Calculated later
     isWinner: true
   };
 
   const greenTeam: TeamResult = {
     name: "Green Hackers",
-    score: 850,
-    testsPassed: 8,
-    totalTests: 10,
-    time: 245, // 4:05
+    score: userTeamNumber === 1 ? team1Score : team2Score,
+    testsPassed: userTeamNumber === 1
+      ? (testResultsSummary?.yourPassedCount ?? 0)
+      : (testResultsSummary?.otherTeamPassedCount ?? 0),
+    totalTests: testResultsSummary?.totalTests ?? 0,
+    time: 0, // Calculated later
     isWinner: true
   };
 
   const redTeam: TeamResult = {
     name: "Red Coders",
-    score: 720,
-    testsPassed: 7,
-    totalTests: 10,
-    time: 312, // 5:12
+    score: userTeamNumber === 1 ? team2Score : team1Score,
+    testsPassed: userTeamNumber === 1
+      ? (testResultsSummary?.otherTeamPassedCount ?? 0)
+      : (testResultsSummary?.yourPassedCount ?? 0),
+    totalTests: testResultsSummary?.totalTests ?? 0,
+    time: 0, // Calculated later
     isWinner: false
   };
 
