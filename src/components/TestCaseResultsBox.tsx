@@ -156,7 +156,13 @@ export default function TestCaseResultsBox({ gameId, team1Results, team2Results,
       return JSON.stringify(value);
     }
 
-    if (typeof value === 'object') return JSON.stringify(value);
+    if (typeof value === 'object') {
+      if (value && 'name' in value && 'value' in value) {
+        const parameter = value as Partial<ParameterType>;
+        return `${parameter.name ?? 'result'}: ${parameter.value ?? ''}`;
+      }
+      return JSON.stringify(value);
+    }
     return String(value);
   };
 
@@ -169,14 +175,23 @@ export default function TestCaseResultsBox({ gameId, team1Results, team2Results,
   };
 
   const isEquivalent = (a: unknown, b: unknown): boolean => {
+    const normalizeParameterShape = (value: unknown): unknown => {
+      if (value && typeof value === "object" && !Array.isArray(value) && "name" in value && "value" in value) {
+        return [value];
+      }
+
+      return value;
+    };
+
     const normalize = (value: unknown): string => {
       if (value === undefined || value === null) return "";
-      if (typeof value === "string") return value.trim();
-      if (typeof value === "number" || typeof value === "boolean") return String(value);
+      const normalizedValue = normalizeParameterShape(value);
+      if (typeof normalizedValue === "string") return normalizedValue.trim();
+      if (typeof normalizedValue === "number" || typeof normalizedValue === "boolean") return String(normalizedValue);
       try {
-        return JSON.stringify(value);
+        return JSON.stringify(normalizedValue);
       } catch {
-        return String(value);
+        return String(normalizedValue);
       }
     };
 
