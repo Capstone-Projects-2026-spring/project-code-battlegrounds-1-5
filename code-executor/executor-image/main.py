@@ -3,6 +3,8 @@ import base64
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse, PlainTextResponse
 from pydantic import BaseModel, ValidationError
+from starlette import status
+from starlette.responses import Response
 
 from utils import *
 from models import *
@@ -12,6 +14,23 @@ app = FastAPI()
 @app.get("/", response_class=PlainTextResponse)
 def root():
     return "Runner is up. Use POST /execute with JSON { language, code, stdin?, testCases? }"
+
+# since we use this image locally, we must support the request-warm-vm and delete-vm endpoints
+class PrewarmRequest(BaseModel):
+    gameId: str
+@app.post("/request-warm-vm", response_class=Response, responses={
+    200: {"description": "Warm VM has been requested and is ready"},
+})
+def request_warm_vm(payload: PrewarmRequest):
+    return Response(status_code=status.HTTP_200_OK)
+
+class DeleteVMRequest(BaseModel):
+    gameId: str
+@app.post("/delete-vm", response_class=Response, responses={
+    200: {"description": "VM queued for deletion"},
+})
+def request_warm_vm(payload: DeleteVMRequest):
+    return Response(status_code=status.HTTP_200_OK)
 
 
 @app.get("/health")
