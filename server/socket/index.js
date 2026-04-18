@@ -16,7 +16,14 @@ function initSocket(httpServer, redis) {
 
     // Create services using Redis state client
     const gameService = createGameService(redis.stateRedis);
+
     const matchmakingService = createMatchmakingService(redis.stateRedis, io);
+
+    matchmakingService.startRankedScan();
+    const stopScan = () => matchmakingService.stopRankedScan();
+    process.once('SIGTERM', stopScan);
+    process.once('SIGINT', stopScan);
+
     const inviteService = createInviteService(redis.stateRedis);
 
     io.use(async (socket, next) => {
@@ -46,7 +53,7 @@ function initSocket(httpServer, redis) {
             console.error('Socket authentication error:', e);
             next(new Error('Authentication error'));
         }
-        
+
     });
 
     // Register per-connection handlers
