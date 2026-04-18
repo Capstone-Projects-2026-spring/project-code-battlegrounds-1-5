@@ -1,7 +1,8 @@
 import { Paper, Title, Table, Text, Box, Badge, Tooltip } from "@mantine/core";
 import { useEffect, useState } from "react";
-import { ParameterType } from "@/lib/ProblemInputOutput";
+import { ParameterType, ParameterPrimitiveType } from "@/lib/ProblemInputOutput";
 import { IconCheck, IconX, IconAlertCircle } from "@tabler/icons-react";
+import deepEqual from "@/util/deepEqual";
 import styles from '@/styles/comps/TestCaseResultsBox.module.css';
 
 export interface TestResultsSummary {
@@ -168,19 +169,44 @@ export default function TestCaseResultsBox({ gameId, team1Results, team2Results,
       .trim();
   };
 
-  const isEquivalent = (a: unknown, b: unknown): boolean => {
-    const normalize = (value: unknown): string => {
-      if (value === undefined || value === null) return "";
-      if (typeof value === "string") return value.trim();
-      if (typeof value === "number" || typeof value === "boolean") return String(value);
-      try {
-        return JSON.stringify(value);
-      } catch {
-        return String(value);
-      }
-    };
+  const parseValueByType = (value: unknown, type: ParameterPrimitiveType): unknown => {
+    if (value === null || value === undefined) return value;
 
-    return normalize(a) === normalize(b);
+    if (type === "boolean") {
+      return typeof value === "boolean" ? value : value === "true";
+    } else if (type === "number") {
+      return typeof value === "number" ? value : Number(value);
+    } else if (type.includes("array")) {
+      return typeof value === "string" ? JSON.parse(value) : value;
+    }
+    return value;
+  };
+
+  const extractAndCompare = (actual: unknown, expectedParams: ParameterType[]): boolean => {
+    if (!expectedParams || expectedParams.length === 0) return false;
+    if (actual === null || actual === undefined) return false;
+
+    // If actual is a ParameterType array, extract the value from it
+    let actualValue: unknown = actual;
+    if (Array.isArray(actual) && actual.length > 0 && typeof actual[0] === 'object' && 'value' in actual[0]) {
+      actualValue = (actual as ParameterType[])[0].value;
+    }
+
+    const expectedParam = expectedParams[0];
+    const type = expectedParam.type as ParameterPrimitiveType;
+
+    try {
+      const parsedExpected = parseValueByType(expectedParam.value, type);
+      const parsedActual = parseValueByType(actualValue, type);
+
+      return deepEqual(
+        parsedActual as string | number | boolean | string[] | number[] | string[][] | number[][],
+        parsedExpected as string | number | boolean | string[] | number[] | string[][] | number[][]
+      );
+    } catch (e) {
+      console.error("Error in extractAndCompare:", { actualValue, expectedValue: expectedParam.value, type, error: e });
+      return false;
+    }
   };
 
   const rows = testCases.map((element, index) => {
@@ -200,8 +226,8 @@ export default function TestCaseResultsBox({ gameId, team1Results, team2Results,
     const hasYourError = yourError && yourError.length > 0;
     const hasOtherTeamError = otherTeamError && otherTeamError.length > 0;
 
-    const yourResultPassed = hasYourResult && isEquivalent(yourResult, element.expected);
-    const otherTeamPassed = hasOtherTeamResult && isEquivalent(otherTeamResult, element.expected);
+    const yourResultPassed = hasYourResult && extractAndCompare(yourResult, element.expected);
+    const otherTeamPassed = hasOtherTeamResult && extractAndCompare(otherTeamResult, element.expected);
 
     return (
       <Table.Tr key={element.id} className={styles.tableRow}>
