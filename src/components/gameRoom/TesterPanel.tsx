@@ -1,31 +1,219 @@
 import { ActionIcon, Box, Button, Group, Stack, Tabs, Tooltip } from "@mantine/core";
+import { Role } from "@prisma/client";
 import { IconPlayerTrackNextFilled, IconPlus } from "@tabler/icons-react";
+import { usePostHog } from "posthog-js/react";
+import { useEffect, useState } from "react";
 import { Panel } from "react-resizable-panels";
 
-import { useTestCases } from "@/contexts/GameTestCasesContext";
 import GameTestCase from "@/components/gameTests/GameTestCase";
 import NewParameterButton from "@/components/gameTests/NewParameterButton";
 import { useGameRoom } from "@/contexts/GameRoomContext";
+import { useGameState } from "@/contexts/GameStateContext";
+import { TestableCase, useTestCases } from "@/contexts/GameTestCasesContext";
+import { useSocket } from "@/contexts/SocketContext";
+import type { ParameterType } from "@/lib/ProblemInputOutput";
 
 export default function TesterPanel() {
+  const { socket } = useSocket();
   const testCaseCtx = useTestCases();
+  const gameStateCtx = useGameState();
+  const posthog = usePostHog();
+
+  const [activeTestId, setActiveTestId] = useState<number>(0);
+  const [runningAllTests, setRunningAllTests] = useState<boolean>(false);
+
   const {
-    activeTestId,
-    setActiveTestId,
+    role,
     isSpectator,
     isWaitingForOtherTeam,
-    runningAllTests,
-    addNewTest,
-    handleRunAllTests,
-    handleNewParameter,
-    handleTestBoxChange,
-    handleParameterDelete,
-    removeTest,
-    handleExpectedOutputTypeChange,
+    teamSelected,
+    liveCode,
   } = useGameRoom();
 
-  const currentTestCase = testCaseCtx.cases.find(
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleTestCaseSync = () => {
+      setRunningAllTests(false);
+    };
+
+    socket.on("receiveTestCaseSync", handleTestCaseSync);
+
+    return () => {
+      socket.off("receiveTestCaseSync", handleTestCaseSync);
+    };
+  }, [socket]);
+
+  const selectedTestId = testCaseCtx.cases.some(
     (testCase) => testCase.id === activeTestId,
+  )
+    ? activeTestId
+    : (testCaseCtx.cases[0]?.id ?? 0);
+
+  const addNewTest = () => {
+    if (isWaitingForOtherTeam || !teamSelected) return;
+    if (testCaseCtx.cases.length >= 5) return;
+
+    const outputParameter = testCaseCtx.parameters.find(
+      (parameter) => parameter.isOutputParameter,
+    );
+    if (!outputParameter) return;
+
+    const newId = testCaseCtx.cases.reduce(
+      (maxId, testCase) => Math.max(maxId, testCase.id),
+      -1,
+    ) + 1;
+
+    const newCase: TestableCase = {
+      id: newId,
+      functionInput: testCaseCtx.parameters
+        .filter((parameter) => !parameter.isOutputParameter)
+        .map((parameter) => ({
+          ...parameter,
+          value: null,
+        })),
+      expectedOutput: {
+        ...outputParameter,
+        value: null,
+      },
+    };
+
+    const updatedCases = [...testCaseCtx.cases, newCase];
+    testCaseCtx.addCase(newCase);
+    setActiveTestId(newId);
+
+    socket?.emit("updateTestCases", {
+      teamId: teamSelected,
+      testCases: updatedCases,
+    });
+  };
+
+  const removeTest = (testId: TestableCase["id"]) => {
+    if (!teamSelected || isWaitingForOtherTeam || testCaseCtx.cases.length === 1) {
+      return;
+    }
+
+    const updatedCases = testCaseCtx.cases.filter((testCase) => testCase.id !== testId);
+    testCaseCtx.removeCase(testId);
+    setActiveTestId(updatedCases[0]?.id ?? 0);
+
+    socket?.emit("updateTestCases", {
+      teamId: teamSelected,
+      testCases: updatedCases,
+    });
+  };
+
+  const handleNewParameter = (parameter: ParameterType) => {
+    if (!teamSelected || isWaitingForOtherTeam) return;
+
+    const updatedCases = testCaseCtx.cases.map((testCase) => ({
+      ...testCase,
+      functionInput: [...testCase.functionInput, parameter],
+    }));
+
+    testCaseCtx.setParameters((prevParameters) => [...prevParameters, parameter]);
+    testCaseCtx.setCases(updatedCases);
+
+    socket?.emit("updateTestCases", {
+      teamId: teamSelected,
+      testCases: updatedCases,
+    });
+
+    posthog.capture("parameter_created", {
+      gameId: gameStateCtx.gameId,
+      parameter,
+    });
+  };
+
+  const handleParameterDelete = (parameter: ParameterType) => {
+    if (!teamSelected || isWaitingForOtherTeam) return;
+
+    const updatedCases = testCaseCtx.cases.map((testCase) => ({
+      ...testCase,
+      functionInput: testCase.functionInput.filter(
+        (inputParameter) => inputParameter.name !== parameter.name,
+      ),
+    }));
+
+    testCaseCtx.setParameters((prevParameters) =>
+      prevParameters.filter((existingParameter) => existingParameter.name !== parameter.name),
+    );
+    testCaseCtx.setCases(updatedCases);
+
+    socket?.emit("updateTestCases", {
+      teamId: teamSelected,
+      testCases: updatedCases,
+    });
+  };
+
+  const handleTestBoxChange = (testCase: TestableCase) => {
+    if (role !== Role.TESTER || !socket || !teamSelected || isWaitingForOtherTeam) {
+      return;
+    }
+
+    const updatedCases = testCaseCtx.cases.map((existingCase) =>
+      existingCase.id === selectedTestId ? testCase : existingCase,
+    );
+
+    testCaseCtx.setCases(updatedCases);
+    socket.emit("updateTestCases", {
+      teamId: teamSelected,
+      testCases: updatedCases,
+    });
+  };
+
+  const handleExpectedOutputTypeChange = (type: ParameterType["type"]) => {
+    if (role !== Role.TESTER || !socket || !teamSelected || isWaitingForOtherTeam) {
+      return;
+    }
+
+    const currentOutputType = testCaseCtx.parameters.find(
+      (parameter) => parameter.isOutputParameter,
+    )?.type;
+    if (currentOutputType === type) return;
+
+    testCaseCtx.setParameters((prevParameters) =>
+      prevParameters.map((parameter) =>
+        parameter.isOutputParameter
+          ? {
+              ...parameter,
+              type,
+              value: null,
+            }
+          : parameter,
+      ),
+    );
+
+    const updatedCases = testCaseCtx.cases.map((testCase) => ({
+      ...testCase,
+      expectedOutput: {
+        ...testCase.expectedOutput,
+        type,
+        value: null,
+      },
+      computedOutput: null,
+    }));
+
+    testCaseCtx.setCases(updatedCases);
+    socket.emit("updateTestCases", {
+      teamId: teamSelected,
+      testCases: updatedCases,
+    });
+  };
+
+  const handleRunAllTests = () => {
+    if (role !== Role.TESTER || !socket || isWaitingForOtherTeam) return;
+
+    setRunningAllTests(true);
+    socket.emit("submitTestCases", {
+      code: liveCode,
+      testCases: testCaseCtx.cases,
+      runIDs: testCaseCtx.cases.map((testCase) => testCase.id),
+    });
+  };
+
+  const currentTestCase = testCaseCtx.cases.find(
+    (testCase) => testCase.id === selectedTestId,
   );
 
   return (
@@ -50,7 +238,7 @@ export default function TesterPanel() {
           <Stack style={{ minHeight: 0, flex: 1 }}>
             <Group justify="space-between">
               <Tabs
-                value={String(activeTestId)}
+                value={String(selectedTestId)}
                 onChange={(value) => {
                   setActiveTestId(Number(value ?? 0));
                 }}

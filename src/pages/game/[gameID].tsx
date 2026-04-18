@@ -21,7 +21,6 @@ import {
   TestableCase,
   useTestCases,
 } from "@/contexts/GameTestCasesContext";
-import { ParameterType } from "@/lib/ProblemInputOutput";
 import {
   GameStateProvider,
   useGameState,
@@ -89,11 +88,8 @@ function PlayGameRoom() {
   const [teams, setTeams] = useState<TeamCount[]>([]);
   const [teamSelected, setTeamSelected] = useState<string | null>(null);
   const [liveCode, setLiveCode] = useState<string>(DEFAULT_STARTER_CODE);
-  const [activeTestId, setActiveTestId] = useState<number>(0);
   const [gameType, setGameType] = useState<GameType | null>(null);
   const [isWaitingForOtherTeam, setIsWaitingForOtherTeam] = useState(false);
-
-  const [runningAllTests, setRunningAllTests] = useState<boolean>(false);
 
   // Context <3
   const testCaseCtx = useTestCases();
@@ -333,7 +329,6 @@ function PlayGameRoom() {
       } else {
         console.warn("Ignoring invalid test case payload from server:", cases);
       }
-      setRunningAllTests(false);
     };
     socket.on("receiveTestCaseSync", testHandler);
 
@@ -359,6 +354,7 @@ function PlayGameRoom() {
       gameStateCtx.setCode(value);
     }
   };
+
   const getTeamLabel = () => {
     if (!teamSelected) return null;
     const teamIndex = teams.findIndex((team) => team.teamId === teamSelected);
@@ -387,165 +383,6 @@ function PlayGameRoom() {
       teamId: teamSelected,
       testCases: testCaseCtx.cases,
       runIDs: indexes,
-    });
-  };
-
-  const addNewTest = () => {
-    if (testCaseCtx.cases.length >= 5) return;
-
-    // const newId = testCaseCtx.cases.length; // zero-based index
-    const newId =
-      testCaseCtx.cases
-        .map((c) => c.id)
-        .reduce((prev, acc) => Math.max(prev, acc)) + 1;
-    console.log("creating new test with id", newId);
-    const newCase: TestableCase = {
-      id: newId,
-      functionInput: testCaseCtx.parameters
-        .filter((p) => !p.isOutputParameter)
-        .map((c) => ({
-          ...c,
-          value: null,
-        })),
-      expectedOutput: {
-        ...testCaseCtx.parameters.find((p) => p.isOutputParameter)!,
-        value: null,
-      },
-    };
-    testCaseCtx.addCase(newCase);
-
-    setActiveTestId(newId);
-    console.log("emitting new test cases", [...testCaseCtx.cases, newCase]);
-    socket?.emit("updateTestCases", {
-      teamId: teamSelected,
-      testCases: [...testCaseCtx.cases, newCase],
-    });
-  };
-
-  const removeTest = (testId: TestableCase["id"]) => {
-    if (testCaseCtx.cases.length === 1 || isWaitingForOtherTeam) return;
-
-    const newId = testCaseCtx.cases
-      .map((c) => c.id)
-      .reduce((prev, acc) => Math.min(prev, acc));
-    console.log(`removing test with id ${testId}`, `min id ${newId}`);
-    testCaseCtx.removeCase(testId);
-
-    setActiveTestId(newId);
-    console.log("emitting new test cases", [
-      ...testCaseCtx.cases.filter((c) => c.id !== testId),
-    ]);
-    socket?.emit("updateTestCases", {
-      teamId: teamSelected,
-      testCases: [...testCaseCtx.cases.filter((c) => c.id !== testId)],
-    });
-  };
-
-  const handleNewParameter = (parameter: ParameterType) => {
-    if (isWaitingForOtherTeam) return;
-
-    const cases = testCaseCtx.cases;
-    const newCases = cases.map((c) => ({
-      ...c,
-      functionInput: [...c.functionInput, parameter],
-    }));
-    console.log("emitting new test cases", newCases);
-    testCaseCtx.setParameters((prev) => [...prev, parameter]);
-    testCaseCtx.setCases(newCases);
-    socket?.emit("updateTestCases", {
-      teamId: teamSelected,
-      testCases: newCases,
-    });
-
-    posthog.capture("parameter_created", {
-      gameId: gameStateCtx.gameId,
-      parameter,
-    });
-  };
-
-  const handleParameterDelete = (parameter: ParameterType) => {
-    if (isWaitingForOtherTeam) return;
-
-    const cases = testCaseCtx.cases;
-    const newCases = cases.map((c) => ({
-      ...c,
-      functionInput: c.functionInput.filter((i) => i.name !== parameter.name),
-    }));
-    console.log("emitting new test cases", newCases);
-    testCaseCtx.setParameters((prev) =>
-      prev.filter((p) => p.name !== parameter.name),
-    );
-    testCaseCtx.setCases(newCases);
-    socket?.emit("updateTestCases", {
-      teamId: teamSelected,
-      testCases: newCases,
-    });
-  };
-
-  const handleTestBoxChange = (testCase: TestableCase) => {
-    if (role !== Role.TESTER || !socket || isWaitingForOtherTeam) return;
-    const updated = testCaseCtx.cases.map((t) =>
-      t.id === activeTestId ? testCase : t,
-    );
-    testCaseCtx.setCases(updated);
-    socket.emit("updateTestCases", {
-      teamId: teamSelected,
-      testCases: updated,
-    });
-  };
-
-  const handleExpectedOutputTypeChange = (type: ParameterType["type"]) => {
-    if (
-      role !== Role.TESTER ||
-      !socket ||
-      !teamSelected ||
-      isWaitingForOtherTeam
-    ) {
-      return;
-    }
-
-    const currentOutputType = testCaseCtx.parameters.find(
-      (parameter) => parameter.isOutputParameter,
-    )?.type;
-    if (currentOutputType === type) return;
-
-    testCaseCtx.setParameters((prev) =>
-      prev.map((parameter) =>
-        parameter.isOutputParameter
-          ? {
-              ...parameter,
-              type,
-              value: null,
-            }
-          : parameter,
-      ),
-    );
-
-    const updatedCases = testCaseCtx.cases.map((testCase) => ({
-      ...testCase,
-      expectedOutput: {
-        ...testCase.expectedOutput,
-        type,
-        value: null,
-      },
-      computedOutput: null,
-    }));
-
-    testCaseCtx.setCases(updatedCases);
-    socket.emit("updateTestCases", {
-      teamId: teamSelected,
-      testCases: updatedCases,
-    });
-  };
-
-  const handleRunAllTests = () => {
-    if (role !== Role.TESTER || !socket || isWaitingForOtherTeam) return;
-
-    setRunningAllTests(true);
-    socket.emit("submitTestCases", {
-      code: liveCode,
-      testCases: testCaseCtx.cases,
-      runIDs: testCaseCtx.cases.map((t) => t.id), // all of em!
     });
   };
 
@@ -604,10 +441,7 @@ function PlayGameRoom() {
     teams,
     teamSelected,
     liveCode,
-    activeTestId,
-    setActiveTestId,
     isWaitingForOtherTeam,
-    runningAllTests,
     isProblemVisible,
     endTime,
     isSpectator,
@@ -626,13 +460,6 @@ function PlayGameRoom() {
     onRunCodeClick: () => posthog.capture("code_run_triggered", { gameId }),
     handleEditorChange,
     submitFinalCode,
-    addNewTest,
-    removeTest,
-    handleNewParameter,
-    handleParameterDelete,
-    handleTestBoxChange,
-    handleExpectedOutputTypeChange,
-    handleRunAllTests,
     handleTimerExpire,
   };
 
