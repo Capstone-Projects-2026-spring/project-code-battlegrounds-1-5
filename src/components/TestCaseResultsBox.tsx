@@ -78,7 +78,12 @@ export default function TestCaseResultsBox({ gameId, team1Results, team2Results,
     } else if (type === "number") {
       return typeof value === "number" ? value : Number(value);
     } else if (type.includes("array")) {
-      return typeof value === "string" ? JSON.parse(value) : value;
+      if (typeof value === "string") {
+        // Normalize single quotes to double quotes for JSON parsing
+        const normalized = value.replace(/'/g, '"');
+        return JSON.parse(normalized);
+      }
+      return value;
     }
     return value;
   };
@@ -119,7 +124,7 @@ export default function TestCaseResultsBox({ gameId, team1Results, team2Results,
     const fetchTests = async () => {
       setLoading(true);
       try {
-        const response = await fetch(`/api/rooms/tests?gameId=${gameId}`);
+        const response = await fetch(`/api/results/${gameId}`);
         if (!response.ok) return;
         const data = (await response.json()) as TestsApiResponse;
         if (cancelled) return;
