@@ -129,6 +129,13 @@ async function executeSubmission(
     runIDs: JSON.stringify(executorTestCases.map((testCase) => testCase.id)),
   };
 
+  console.log("🔵 [EXECUTOR] Sending payload to executor:", {
+    url: executorUrl,
+    codePreview: code.substring(0, 100) + "...",
+    testCasesCount: executorTestCases.length,
+    testCasesPreview: executorTestCases,
+  });
+
   const response = await fetch(executorUrl, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -140,11 +147,20 @@ async function executeSubmission(
   }
 
   const executionData = (await response.json()) as ExecutorResponse;
+  console.log("🟢 [EXECUTOR] Received response:", JSON.stringify(executionData, null, 2));
   const resultsById = new Map<number, ResultValue>();
 
 
   for (const result of executionData.results ?? []) {
     if (typeof result.id !== "number") continue;
+
+    console.log(`🟡 [EXECUTOR] Result ${result.id}:`, {
+      actual: result.actual,
+      passed: result.passed,
+      stderr: result.stderr,
+      stdout: result.stdout,
+      execution_time_ms: result.execution_time_ms,
+    });
 
     resultsById.set(result.id, {
       actual: typeof result.actual === "string" ? result.actual : null,
@@ -185,6 +201,13 @@ async function executeSubmission(
     (result) => result.passed,
   ).length;
 
+  console.log("🟣 [EXECUTOR] Final summary:", {
+    passedCount,
+    totalTests: tests.length,
+    averageExecutionTime,
+    normalizedResultsPreview: normalizedResults.slice(0, 2),
+  });
+
   return {
     results: normalizedResults,
     passedCount,
@@ -212,6 +235,8 @@ export default async function handler(
   if (!gameId || typeof gameId !== "string") {
     return res.status(400).json({ message: "Invalid game ID" });
   }
+
+  console.log("⭐ [RESULTS API] Fetching test results for gameId:", gameId);
 
   try {
     // Get the game room and its problem
@@ -257,13 +282,18 @@ export default async function handler(
       computedOutput: null,
     }));
 
+    console.log("📝 [RESULTS API] Prepared test cases:", {
+      totalTests: formattedTests.length,
+      testCasesPreview: executorTestCases.slice(0, 2),
+    });
+
     const [team1Execution, team2Execution] = await Promise.all([
       executeSubmission(
         gameRoom.gameResult?.team1Code ?? null,
         formattedTests,
         executorTestCases,
       ).catch((error: unknown) => {
-        console.error("Failed to evaluate team 1 submission", error);
+        console.error("❌ [RESULTS API] Failed to evaluate team 1 submission", error);
         return emptyExecution(formattedTests.length);
       }),
       executeSubmission(
@@ -271,7 +301,7 @@ export default async function handler(
         formattedTests,
         executorTestCases,
       ).catch((error: unknown) => {
-        console.error("Failed to evaluate team 2 submission", error);
+        console.error("❌ [RESULTS API] Failed to evaluate team 2 submission", error);
         return emptyExecution(formattedTests.length);
       }),
     ]);
