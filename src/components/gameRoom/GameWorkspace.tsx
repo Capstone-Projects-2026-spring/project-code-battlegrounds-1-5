@@ -111,6 +111,7 @@ export default function GameWorkspace() {
                       <Panel defaultSize={30} minSize={15}>
                         <Box style={{ height: "100%" }}>
                           <ChatBox
+                            key={teamSelected}
                             socket={socket}
                             roomId={teamSelected}
                             userName={userName}

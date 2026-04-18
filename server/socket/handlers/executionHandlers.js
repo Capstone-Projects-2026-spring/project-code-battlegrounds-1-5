@@ -7,10 +7,12 @@ const prisma = getPrisma();
 
 const submitCodeSchema = z.object({
     roomId: z.string(),
-    code: z.string().max(10000).optional(), // Adjust max length as needed
+    code: z.string().max(10000),
     type: z.enum([GameType.TWOPLAYER, GameType.FOURPLAYER]),
     team: z.enum(["team1", "team2"]).nullable().optional(),
     teamId: z.string().optional(),
+    testCases: z.array(z.any()).optional(),
+    runIDs: z.array(z.number()).optional(),
 });
 
 function registerExecutionHandlers(io, socket, gameService) {
@@ -43,8 +45,8 @@ function registerExecutionHandlers(io, socket, gameService) {
                 let payload = {
                     language: "javascript",
                     code: btoa(code),
-                    testCases: JSON.stringify(testCases),
-                    runIDs: JSON.stringify(runIDs)
+                    testCases: JSON.stringify(testCases ?? []),
+                    runIDs: JSON.stringify(runIDs ?? [])
                 };
                 // console.log(JSON.stringify(payload));
                 const res = await fetch("http://127.0.0.1:6969/execute", {
@@ -107,8 +109,8 @@ function registerExecutionHandlers(io, socket, gameService) {
                     let payload = {
                         language: "javascript",
                         code: btoa(code),
-                        testCases: JSON.stringify(testCases),
-                        runIDs: JSON.stringify(runIDs)
+                        testCases: JSON.stringify(testCases ?? []),
+                        runIDs: JSON.stringify(runIDs ?? [])
                     };
                     // console.log(JSON.stringify(payload));
                     const res = await fetch("http://127.0.0.1:6969/execute", {

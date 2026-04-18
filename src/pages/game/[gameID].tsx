@@ -1,6 +1,6 @@
 import { Box, Center, Text } from '@mantine/core';
 import { useRouter } from 'next/router';
-import { useEffect, useState, useRef } from 'react';
+import { useCallback, useEffect, useState, useRef } from 'react';
 import { usePostHog } from 'posthog-js/react';
 
 import TeamSelect from "@/components/TeamSelect";
@@ -16,7 +16,6 @@ import { showRoleSwapWarning } from "@/components/notifications";
 import { Role, GameStatus, GameType } from "@prisma/client";
 import { authClient } from "@/lib/auth-client";
 import {
-  DEFAULT_TEST_CASES,
   GameTestCasesProvider,
   TestableCase,
   useTestCases,
@@ -93,14 +92,30 @@ function PlayGameRoom() {
   const [spectatorView, setSpectatorView] = useState<Role>(Role.SPECTATOR);
 
   const endTimeRef = useRef<number | null>(null);
+  const hasSubmittedOnExpireRef = useRef(false);
   const [endTime, setEndTime] = useState(0);
   const [isProblemVisible, setIsProblemVisible] = useState(true);
   const toggleProblemVisibility = () => setIsProblemVisible((prev) => !prev);
 
   const isSpectator = role === Role.SPECTATOR;
 
-  const handleTimerExpire = () => {
+  useEffect(() => {
+    hasSubmittedOnExpireRef.current = false;
+  }, [gameId]);
+
+  const getTeamLabel = useCallback(() => {
+    if (!teamSelected) return null;
+    const teamIndex = teams.findIndex((team) => team.teamId === teamSelected);
+    if (teamIndex === 0) return "team1";
+    if (teamIndex === 1) return "team2";
+    return null;
+  }, [teamSelected, teams]);
+
+  const handleTimerExpire = useCallback(() => {
+    if (hasSubmittedOnExpireRef.current) return;
     if (!socket || !gameType || !teamSelected) return;
+
+    hasSubmittedOnExpireRef.current = true;
     const team = getTeamLabel();
     setIsWaitingForOtherTeam(true);
     const indexes = Array.from(
@@ -124,7 +139,15 @@ function PlayGameRoom() {
       testCases: testCaseCtx.cases,
       runIDs: indexes,
     });
-  };
+  }, [
+    code,
+    gameId,
+    gameType,
+    getTeamLabel,
+    socket,
+    teamSelected,
+    testCaseCtx.cases,
+  ]);
 
   // ONLY HAPPENS ON PAGE LAUNCH
   useEffect(() => {
@@ -211,23 +234,7 @@ function PlayGameRoom() {
       socket.off('invalidGame', invalidGameHandler);
       socket.off("error", errorHandler);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gameId, session?.user.id]);
-
-  useEffect(() => {
-    if (!socket || !teamSelected) return;
-    // Emit the default test cases ONCE to the socket
-    // so that they're at least synced and ready to go should somebody
-    // hit the run button or attempt to make a new case.
-    console.log("Syncing default test cases :3");
-    socket.emit("updateTestCases", {
-      teamId: teamSelected,
-      testCases: DEFAULT_TEST_CASES,
-    });
-
-    console.log("Syncing default code");
-    socket.emit("codeChange", { teamId: teamSelected, code: DEFAULT_STARTER_CODE });
-  }, [socket, teamSelected]);
+  }, [gameId, router, session?.user.id, socket]);
 
   useEffect(() => {
     // Runs after team gets selected - join rooms first, then set up room-specific listeners
@@ -236,13 +243,16 @@ function PlayGameRoom() {
 
     // Set up game room event listeners AFTER joining the room
     const handleGameStarting = () => {
-      posthog.capture("game_spectated", { gameId });
+      if (isSpectator) {
+        posthog.capture("game_spectated", { gameId });
+      }
       setGameState(GameStatus.STARTING);
     };
 
     const handleGameStarted = ({ start }: { start: number }) => {
       if (isNaN(start)) return;
       posthog.capture("game_started", { gameId });
+      hasSubmittedOnExpireRef.current = false;
       if (!endTimeRef.current) {
         endTimeRef.current = Date.now() + Number(start);
         setEndTime(endTimeRef.current);
@@ -313,7 +323,30 @@ function PlayGameRoom() {
     const testHandler = (cases: TestableCase[] | null) => {
       console.log("Receiving test case sync!", cases);
       if (Array.isArray(cases)) {
-        testCaseCtx.setCases(cases);
+        testCaseCtx.setCases((prevCases) => {
+          const mergedById = new Map(
+            prevCases.map((testCase) => [testCase.id, testCase]),
+          );
+
+          for (const incomingCase of cases) {
+            const existingCase = mergedById.get(incomingCase.id);
+            mergedById.set(
+              incomingCase.id,
+              existingCase ? { ...existingCase, ...incomingCase } : incomingCase,
+            );
+          }
+
+          const orderedMerged = prevCases.map((testCase) =>
+            mergedById.get(testCase.id) ?? testCase,
+          );
+
+          const existingIds = new Set(prevCases.map((testCase) => testCase.id));
+          const newCases = cases.filter(
+            (testCase) => !existingIds.has(testCase.id),
+          );
+
+          return [...orderedMerged, ...newCases];
+        });
       } else {
         console.warn("Ignoring invalid test case payload from server:", cases);
       }
@@ -327,19 +360,14 @@ function PlayGameRoom() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [socket, role, teamSelected]);
 
-  const getTeamLabel = () => {
-    if (!teamSelected) return null;
-    const teamIndex = teams.findIndex((team) => team.teamId === teamSelected);
-    if (teamIndex === 0) return "team1";
-    if (teamIndex === 1) return "team2";
-    return null;
-  };
-
   const submitFinalCode = () => {
     //Send bother Coder and Tester to the results page
     //Store submission and evaluate results on the backend
     //server broadcasts the event to both player
     if (!socket || !gameType || !teamSelected) return; //make sure the socket is connected before emitting
+    if (hasSubmittedOnExpireRef.current) return;
+
+    hasSubmittedOnExpireRef.current = true;
     const team = getTeamLabel();
     setIsWaitingForOtherTeam(true);
     const indexes = Array.from(

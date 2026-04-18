@@ -42,20 +42,23 @@ export default function ChatBox({ socket, roomId, userName, isSpectator = false,
 
   // 3. Listen for INCOMING messages from the server
   useEffect(() => {
-    socket.emit('requestChatSync', { teamId: roomId }); // Request chat history on mount
-
-    socket.on('receiveChatHistory', (history: Message[]) => {
+    const handleReceiveChatHistory = (history: Message[]) => {
       setMessages(history);
-    });
+    };
 
-    socket.on('receiveChat', (incomingMessage: Message) => {
+    const handleReceiveChat = (incomingMessage: Message) => {
       // The "prev" callback ensures we always append to the most recent array
       setMessages((prev) => [...prev, incomingMessage]);
-    });
+    };
+
+    socket.emit('requestChatSync', { teamId: roomId }); // Request chat history on mount
+
+    socket.on('receiveChatHistory', handleReceiveChatHistory);
+    socket.on('receiveChat', handleReceiveChat);
 
     return () => {
-      socket.off('receiveChat');
-      socket.off('receiveChatHistory');
+      socket.off('receiveChat', handleReceiveChat);
+      socket.off('receiveChatHistory', handleReceiveChatHistory);
     };
   }, [socket, roomId]);
 
@@ -77,9 +80,9 @@ export default function ChatBox({ socket, roomId, userName, isSpectator = false,
     // Send it to the server to broadcast to the other person
     socket.emit('sendChat', { teamId: roomId, message: newMessage });
 
-    posthog.capture("chat_message_sent", { 
-      roomId, 
-      message: newMessage, 
+    posthog.capture("chat_message_sent", {
+      roomId,
+      message: newMessage,
       isSpectator,
       role // helpful to know which role is sending more messages
     });

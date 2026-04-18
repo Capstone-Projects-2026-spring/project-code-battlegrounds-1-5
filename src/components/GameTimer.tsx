@@ -13,17 +13,25 @@ export default function GameTimer({ endTime, onExpire }: GameTimerProps) {
     Math.max(0, endTime - Date.now())
   );
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const onExpireRef = useRef(onExpire);
+  const hasExpiredRef = useRef(false);
+
+  useEffect(() => {
+    onExpireRef.current = onExpire;
+  }, [onExpire]);
 
   useEffect(() => {
     if (!endTime) return;
+    hasExpiredRef.current = false;
 
     const tick = () => {
       const remaining = Math.max(0, endTime - Date.now());
       setTimeRemaining(remaining);
-      if (remaining <= 0) {
+      if (remaining <= 0 && !hasExpiredRef.current) {
+        hasExpiredRef.current = true;
         if (intervalRef.current) clearInterval(intervalRef.current);
         intervalRef.current = null;
-        onExpire?.();
+        onExpireRef.current?.();
         posthog.capture("timer_expired");
       }
     };
@@ -38,8 +46,7 @@ export default function GameTimer({ endTime, onExpire }: GameTimerProps) {
       }
     };
 
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [endTime, onExpire]);
+  }, [endTime, posthog]);
 
   const minutes = Math.floor(timeRemaining / 60000);
   const seconds = Math.floor((timeRemaining % 60000) / 1000);
