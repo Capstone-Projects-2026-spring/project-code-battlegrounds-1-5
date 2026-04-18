@@ -6,6 +6,7 @@ import { IconTextSize, IconHash, IconToggleRight, IconList, IconListNumbers, Ico
 
 export interface NewParameterButtonProps {
   onNewParameter: (p: ParameterType) => void;
+  disabled?: boolean;
 }
 export default function NewParameterButton(props: NewParameterButtonProps) {
   interface FormValues {
@@ -57,6 +58,7 @@ export default function NewParameterButton(props: NewParameterButtonProps) {
   const [opened, { close, toggle }] = useDisclosure();
 
   const handleSubmit = (values: FormValues) => {
+    if (props.disabled) return;
     console.log(values);
     form.reset();
     close();
@@ -78,6 +80,7 @@ export default function NewParameterButton(props: NewParameterButtonProps) {
           onClick={toggle}
           size="compact-sm"
           color="blue"
+          disabled={props.disabled}
         >
           New Parameter
         </Button>
@@ -89,12 +92,14 @@ export default function NewParameterButton(props: NewParameterButtonProps) {
             <TextInput
               required
               label="Parameter Name"
+              disabled={props.disabled}
               {...form.getInputProps("name")}
             />
             <Select
               required
               label="Type"
               data={data}
+              disabled={props.disabled}
               renderOption={renderSelectOption}
               comboboxProps={{ withinPortal: false }}
               {...form.getInputProps("type")}
@@ -105,6 +110,7 @@ export default function NewParameterButton(props: NewParameterButtonProps) {
                 size="sm"
                 onClick={close}
                 variant="outline"
+                disabled={props.disabled}
                 flex={1}
               >
                 Cancel
@@ -112,6 +118,7 @@ export default function NewParameterButton(props: NewParameterButtonProps) {
               <Button
                 size="sm"
                 type="submit"
+                disabled={props.disabled}
                 flex={1}
               >
                 Done

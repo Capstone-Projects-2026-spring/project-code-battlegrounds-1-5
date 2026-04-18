@@ -28,6 +28,8 @@ export default function TesterPanel() {
     gameId,
     code,
   } = useGameRoom();
+  const canMutateTests =
+    role === Role.TESTER && !isSpectator && !isWaitingForOtherTeam;
 
   useEffect(() => {
     if (!socket) return;
@@ -50,7 +52,7 @@ export default function TesterPanel() {
     : (testCaseCtx.cases[0]?.id ?? 0);
 
   const addNewTest = () => {
-    if (isWaitingForOtherTeam || !teamSelected) return;
+    if (!canMutateTests || !teamSelected) return;
     if (testCaseCtx.cases.length >= 5) return;
 
     const outputParameter = testCaseCtx.parameters.find(
@@ -88,7 +90,7 @@ export default function TesterPanel() {
   };
 
   const removeTest = (testId: TestableCase["id"]) => {
-    if (!teamSelected || isWaitingForOtherTeam || testCaseCtx.cases.length === 1) {
+    if (!canMutateTests || !teamSelected || testCaseCtx.cases.length === 1) {
       return;
     }
 
@@ -103,7 +105,7 @@ export default function TesterPanel() {
   };
 
   const handleNewParameter = (parameter: ParameterType) => {
-    if (!teamSelected || isWaitingForOtherTeam) return;
+    if (!canMutateTests || !teamSelected) return;
 
     const updatedCases = testCaseCtx.cases.map((testCase) => ({
       ...testCase,
@@ -125,7 +127,7 @@ export default function TesterPanel() {
   };
 
   const handleParameterDelete = (parameter: ParameterType) => {
-    if (!teamSelected || isWaitingForOtherTeam) return;
+    if (!canMutateTests || !teamSelected) return;
 
     const updatedCases = testCaseCtx.cases.map((testCase) => ({
       ...testCase,
@@ -146,7 +148,7 @@ export default function TesterPanel() {
   };
 
   const handleTestBoxChange = (testCase: TestableCase) => {
-    if (role !== Role.TESTER || !socket || !teamSelected || isWaitingForOtherTeam) {
+    if (!canMutateTests || !socket || !teamSelected) {
       return;
     }
 
@@ -162,7 +164,7 @@ export default function TesterPanel() {
   };
 
   const handleExpectedOutputTypeChange = (type: ParameterType["type"]) => {
-    if (role !== Role.TESTER || !socket || !teamSelected || isWaitingForOtherTeam) {
+    if (!canMutateTests || !socket || !teamSelected) {
       return;
     }
 
@@ -201,7 +203,7 @@ export default function TesterPanel() {
   };
 
   const handleRunAllTests = () => {
-    if (role !== Role.TESTER || !socket || isWaitingForOtherTeam) return;
+    if (!canMutateTests || !socket) return;
 
     setRunningAllTests(true);
     socket.emit("submitTestCases", {
@@ -250,7 +252,7 @@ export default function TesterPanel() {
                     </Tabs.Tab>
                   ))}
 
-                  {testCaseCtx.cases.length < 5 && !isSpectator && (
+                  {testCaseCtx.cases.length < 5 && (
                     <Tooltip label="New Test">
                       <ActionIcon
                         variant="subtle"
@@ -259,7 +261,7 @@ export default function TesterPanel() {
                         size="sm"
                         style={{ alignSelf: "center" }}
                         ml="xs"
-                        disabled={isWaitingForOtherTeam}
+                        disabled={!canMutateTests}
                       >
                         <IconPlus />
                       </ActionIcon>
@@ -269,11 +271,14 @@ export default function TesterPanel() {
               </Tabs>
 
               <Group gap="xs">
-                <NewParameterButton onNewParameter={handleNewParameter} />
+                <NewParameterButton
+                  onNewParameter={handleNewParameter}
+                  disabled={!canMutateTests}
+                />
                 <Button
                   size="compact-sm"
                   variant="filled"
-                  disabled={isSpectator || runningAllTests || isWaitingForOtherTeam}
+                  disabled={!canMutateTests || runningAllTests}
                   loading={runningAllTests}
                   onClick={handleRunAllTests}
                   rightSection={
@@ -292,7 +297,7 @@ export default function TesterPanel() {
                 onParameterDelete={handleParameterDelete}
                 onTestCaseDelete={removeTest}
                 showDelete={testCaseCtx.cases.length !== 1}
-                disabled={runningAllTests}
+                disabled={!canMutateTests || runningAllTests}
                 onExpectedOutputTypeChange={handleExpectedOutputTypeChange}
               />
             ) : null}

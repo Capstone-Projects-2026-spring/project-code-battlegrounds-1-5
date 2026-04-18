@@ -36,6 +36,7 @@ export default function GameTestCase(props: GameTestCaseProps) {
   const [running, setRunning] = useState<boolean>(false);
 
   const runTest = () => {
+    if (props.disabled) return;
     if (!socket) throw new Error("Missing socket!");
     setRunning(true);
 
@@ -98,6 +99,7 @@ export default function GameTestCase(props: GameTestCaseProps) {
                       color="red"
                       variant="light"
                       size="sm"
+                      disabled={props.disabled}
                       onClick={() => {
                         props.onParameterDelete(param);
                         posthog.capture("parameter_deleted", {
@@ -142,6 +144,7 @@ export default function GameTestCase(props: GameTestCaseProps) {
                 />
 
                 <ChangeParameterTypeButton
+                  disabled={props.disabled}
                   onTypeChanged={(type) => {
                     props.onExpectedOutputTypeChange(type);
                   }}
@@ -181,6 +184,7 @@ export default function GameTestCase(props: GameTestCaseProps) {
 }
 
 interface ChangeParameterTypeButtonProps {
+  disabled?: boolean;
   onTypeChanged: (type: ParameterPrimitiveType) => void;
 }
 function ChangeParameterTypeButton(props: ChangeParameterTypeButtonProps) {
@@ -245,7 +249,8 @@ function ChangeParameterTypeButton(props: ChangeParameterTypeButtonProps) {
             color="blue"
             variant="light"
             size="sm"
-            onClick={toggle}
+            disabled={props.disabled}
+            onClick={props.disabled ? undefined : toggle}
           >
             <IconCode />
           </ActionIcon>
@@ -259,6 +264,7 @@ function ChangeParameterTypeButton(props: ChangeParameterTypeButtonProps) {
               required
               label="Type"
               data={data}
+              disabled={props.disabled}
               renderOption={renderSelectOption}
               comboboxProps={{ withinPortal: false }}
               {...form.getInputProps("type")}
@@ -269,6 +275,7 @@ function ChangeParameterTypeButton(props: ChangeParameterTypeButtonProps) {
                 size="sm"
                 onClick={close}
                 variant="outline"
+                disabled={props.disabled}
                 flex={1}
               >
                 Cancel
@@ -276,6 +283,7 @@ function ChangeParameterTypeButton(props: ChangeParameterTypeButtonProps) {
               <Button
                 size="sm"
                 type="submit"
+                disabled={props.disabled}
                 flex={1}
               >
                 Done
