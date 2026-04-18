@@ -308,7 +308,7 @@ export default async function handler(
         formattedTests,
         executorTestCases,
       ).catch((error: unknown) => {
-        console.error("❌ [RESULTS API] Failed to evaluate team 1 submission", error);
+        console.error("Failed to evaluate team 1 submission", error);
         return emptyExecution(formattedTests.length);
       }),
       executeSubmission(
@@ -316,7 +316,7 @@ export default async function handler(
         formattedTests,
         executorTestCases,
       ).catch((error: unknown) => {
-        console.error("❌ [RESULTS API] Failed to evaluate team 2 submission", error);
+        console.error("Failed to evaluate team 2 submission", error);
         return emptyExecution(formattedTests.length);
       }),
     ]);
