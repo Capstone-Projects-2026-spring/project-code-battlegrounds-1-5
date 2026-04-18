@@ -172,7 +172,7 @@ export function Results() {
           setAnalysisProps({
             team1Code: roomDetails.team1Code ?? "",
             team2Code: roomDetails.team2Code ?? undefined,
-            gameType: roomDetails.gameType,
+            gameType: roomDetails.gameType === GameType.TWOPLAYER ? "TWOPLAYER" : "FOURPLAYER",
             userTeamNumber: roomDetails.userTeamNumber,
             team1AverageExecutionTime: null,
             team2AverageExecutionTime: null,

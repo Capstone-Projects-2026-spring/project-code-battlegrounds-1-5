@@ -35,8 +35,6 @@ import { useSocket } from '@/contexts/SocketContext';
 import { useMatchmaking } from '@/contexts/MatchmakingContext';
 
 import styles from "@/styles/GameRoom.module.css";
-import { convertSegmentPathToStaticExportFilename } from 'next/dist/shared/lib/segment-cache/segment-value-encoding';
-import { ReactServerDOMTurbopackServer } from 'next/dist/server/route-modules/app-page/vendored/rsc/entrypoints';
 
 interface RoomDetailsResponse {
   problem: ActiveProblem;
