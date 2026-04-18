@@ -243,6 +243,18 @@ function registerGameHandlers(io, socket, gameService) {
         if (!playerCount) return;
         io.emit('teamUpdated', { teamId, playerCount });
     });
+
+    socket.on('creatingRoomWithParty', async (data) => {
+        const { partyMember } = data;
+        const partyMemSocket = await gameService.getSocketId(partyMember);
+        io.to(partyMemSocket).emit('creatingRoomFromHost');
+    });
+
+    socket.on('sendGameWithParty', async (data) => {
+        const { partyMember, gameId } = data;
+        const partyMemSocket = await gameService.getSocketId(partyMember);
+        io.to(partyMemSocket).emit('createdRoomFromHost', { gameId });
+    });
 }
 
 module.exports = { registerGameHandlers };

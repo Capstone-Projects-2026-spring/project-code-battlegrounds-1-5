@@ -6,6 +6,9 @@ import { usePostHog } from "posthog-js/react";
 import { GameType } from "@prisma/client";
 import { notifications } from "@mantine/notifications";
 import { useCreateRoom } from "@/hooks/useCreateRoom";
+import { useParty } from "@/contexts/PartyContext";
+import { useMatchmaking } from "@/contexts/MatchmakingContext";
+import { useSocket } from "@/contexts/SocketContext";
 import classes from "@/styles/comps/DifficultySection.module.css";
 
 type DifficultyType = "EASY" | "MEDIUM" | "HARD";
@@ -55,6 +58,9 @@ export default function DifficultySection() {
   const { data: session } = authClient.useSession();
   const posthog = usePostHog();
   const { createRoom, isLoading } = useCreateRoom();
+  const { partyMember, joinedParty } = useParty();
+  const { setGameId } = useMatchmaking();
+  const { socket } = useSocket();
 
   const handleCreateRoom = async (difficulty: DifficultyType, gameType: GameType) => {
     if (!session) {
@@ -67,12 +73,20 @@ export default function DifficultySection() {
       router.push("/login?redirect=/matchmaking");
       return;
     }
+    if (!socket) return;
+
 
     posthog?.capture("room_creation_started", { difficulty, gameType });
 
     const result = await createRoom(difficulty, gameType);
     if (result.success && result.gameId) {
       router.push(`/game/${result.gameId}`);
+      console.log("PartyMember", partyMember);
+      if (partyMember !== null) {
+        socket.emit("sendGameWithParty", { partyMember: partyMember.userId, gameId: result.gameId });
+        console.log('emit sent');
+      };
+      setGameId(result.gameId);
     } else {
       notifications.show({
         title: "Failed to create room",
@@ -139,6 +153,7 @@ export default function DifficultySection() {
                 loading={isLoading}
                 data-testid={`co-op-create-room-button-${diff.level.toLowerCase()}`}
                 className={classes.actionButton}
+                disabled={joinedParty !== null}
               >
                 Co-Op
               </Button>
@@ -152,6 +167,7 @@ export default function DifficultySection() {
                 loading={isLoading}
                 data-testid={`2v2-create-room-button-${diff.level.toLowerCase()}`}
                 className={classes.actionButton}
+                disabled={joinedParty !== null}
               >
                 2v2
               </Button>

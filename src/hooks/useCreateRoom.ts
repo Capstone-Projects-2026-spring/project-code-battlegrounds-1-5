@@ -14,7 +14,7 @@ export function useCreateRoom() {
 
   const createRoom = async (
     difficulty: DifficultyType,
-    gameType: GameType
+    gameType: GameType,
   ): Promise<CreateRoomResult> => {
     setIsLoading(true);
 
@@ -43,7 +43,7 @@ export function useCreateRoom() {
     } catch (error) {
       return {
         success: false,
-        error: "Network error. Please try again.",
+        error: `Network error. Please try again. ${error}`,
       };
     } finally {
       setIsLoading(false);

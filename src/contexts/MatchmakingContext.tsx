@@ -50,6 +50,11 @@ export const MatchmakingProvider = ({ children }: { children: ReactNode }) => {
 
     socket.emit("register", { userId: session.user.id });
 
+    const handleCreatedRoomFromhost = (({gameId: id}: { gameId: string }) => {
+      router.push(`/game/${id}`);
+      setGameId(id);
+    });
+
     const matchFoundHandler = ({ gameId: id }: { gameId: string }) => {
       router.push(`/game/${id}`);
       setStatus("matched");
@@ -75,6 +80,7 @@ export const MatchmakingProvider = ({ children }: { children: ReactNode }) => {
     socket.on("queueStatus", queueStatusHandler);
     socket.on("receiveQueueSelection", handleReceiveQueueSelection);
     socket.on("partySearchUpdate", handlePartySearchUpdate);
+    socket.on("createdRoomFromHost", handleCreatedRoomFromhost);
 
 
     return () => {
@@ -82,6 +88,7 @@ export const MatchmakingProvider = ({ children }: { children: ReactNode }) => {
       socket.off("queueStatus", queueStatusHandler);
       socket.off("receiveQueueSelection", handleReceiveQueueSelection);
       socket.off("partySearchUpdate", handlePartySearchUpdate);
+      socket.off("createdRoomFromHost", handleCreatedRoomFromhost);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.user.id, socket]);
