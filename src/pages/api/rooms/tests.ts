@@ -13,18 +13,26 @@ export interface TestCase {
 interface ExecutionSummary {
   results: unknown[];
   passedCount: number;
+  executionTimes: (number | null)[];
+  averageExecutionTime: number | null;
+  errors: (string | null)[];
 }
 
 interface ExecutorResultItem {
   id?: unknown;
   actual?: unknown;
   passed?: unknown;
+  stderr?: string;
+  stdout?: string;
+  exit_code?: number;
+  execution_time_ms?: number;
 }
 
 interface ExecutorResponse {
   results?: ExecutorResultItem[];
 }
 
+type ResultValue = Pick<ExecutorResultItem, 'actual' | 'passed' | 'stderr' | 'execution_time_ms'>;
 export interface TestsResponse {
   tests: TestCase[];
   team1Results: unknown[];
@@ -32,6 +40,12 @@ export interface TestsResponse {
   team1PassedCount: number;
   team2PassedCount: number;
   totalTests: number;
+  team1ExecutionTimes: (number | null)[];
+  team2ExecutionTimes: (number | null)[];
+  team1AverageExecutionTime: number | null;
+  team2AverageExecutionTime: number | null;
+  team1Errors: (string | null)[];
+  team2Errors: (string | null)[];
 }
 
 export interface ErrorResponse {
@@ -89,6 +103,9 @@ function emptyExecution(totalTests: number): ExecutionSummary {
   return {
     results: Array.from({ length: totalTests }, () => null),
     passedCount: 0,
+    executionTimes: Array.from({ length: totalTests }, () => null),
+    averageExecutionTime: null,
+    errors: Array.from({ length: totalTests }, () => null),
   };
 }
 
@@ -123,7 +140,8 @@ async function executeSubmission(
   }
 
   const executionData = (await response.json()) as ExecutorResponse;
-  const resultsById = new Map<number, { actual: string | null; passed: boolean }>();
+  const resultsById = new Map<number, ResultValue>();
+
 
   for (const result of executionData.results ?? []) {
     if (typeof result.id !== "number") continue;
@@ -131,12 +149,36 @@ async function executeSubmission(
     resultsById.set(result.id, {
       actual: typeof result.actual === "string" ? result.actual : null,
       passed: result.passed === true,
-    });
+      stderr: typeof result.stderr === "string" ? result.stderr : null,
+      execution_time_ms: typeof result.execution_time_ms === "number" ? result.execution_time_ms : null,
+    } as ResultValue);
   }
 
   const normalizedResults = tests.map((test, index) => {
-    const result = resultsById.get(index);
-    return toDisplayResult(test.expected, result?.actual ?? null);
+    const result = resultsById.get(index) as ResultValue;
+    return toDisplayResult(test.expected, (result?.actual ?? null) as string | null);
+  });
+
+  const executionTimes = tests.map((_, index) => {
+    const result = resultsById.get(index) as ResultValue;
+    return result?.execution_time_ms ?? null;
+  });
+
+  const errors = tests.map((_, index) => {
+    const result = resultsById.get(index) as ResultValue;
+    return result?.stderr ?? null;
+  });
+
+  // Calculate average execution time (only from successful execution times)
+  const validTimes = executionTimes.filter((t): t is number => t !== null && typeof t === "number");
+  const averageExecutionTime = validTimes.length > 0
+    ? Math.round(validTimes.reduce((a, b) => a + b, 0) / validTimes.length)
+    : null;
+
+  console.log('Execution times:', {
+    validTimes,
+    count: validTimes.length,
+    averageExecutionTime,
   });
 
   const passedCount = Array.from(resultsById.values()).filter(
@@ -146,6 +188,9 @@ async function executeSubmission(
   return {
     results: normalizedResults,
     passedCount,
+    executionTimes,
+    averageExecutionTime,
+    errors,
   };
 }
 
@@ -231,6 +276,49 @@ export default async function handler(
       }),
     ]);
 
+    // Save average execution times if not previously saved
+    try {
+      const currentResult = await prisma.gameResult.findUnique({
+        where: { gameRoomId: gameId },
+        select: {
+          team1TimeToPassMs: true,
+          team2TimeToPassMs: true,
+        },
+      });
+
+      // Build update data for each team independently
+      const dataToUpdate: Partial<{ team1TimeToPassMs: number | null; team2TimeToPassMs: number | null }> = {};
+
+      // Team 1
+      if (!currentResult || currentResult.team1TimeToPassMs == null) {
+        dataToUpdate.team1TimeToPassMs = team1Execution.averageExecutionTime;
+      }
+
+      // Team 2
+      if (!currentResult || currentResult.team2TimeToPassMs == null) {
+        dataToUpdate.team2TimeToPassMs = team2Execution.averageExecutionTime;
+      }
+
+      // Only call update if there's something to update
+      let savedResult = currentResult;
+      if (Object.keys(dataToUpdate).length > 0) {
+        savedResult = await prisma.gameResult.update({
+          where: { gameRoomId: gameId },
+          data: dataToUpdate,
+          select: {
+            team1TimeToPassMs: true,
+            team2TimeToPassMs: true,
+          },
+        });
+      }
+
+      // Return the saved DB values, not the newly calculated ones
+      team1Execution.averageExecutionTime = savedResult?.team1TimeToPassMs ?? null;
+      team2Execution.averageExecutionTime = savedResult?.team2TimeToPassMs ?? null;
+    } catch (error) {
+      console.error("Failed to save execution times", error);
+    }
+
     return res.status(200).json({
       tests: formattedTests,
       team1Results: team1Execution.results,
@@ -238,6 +326,12 @@ export default async function handler(
       team1PassedCount: team1Execution.passedCount,
       team2PassedCount: team2Execution.passedCount,
       totalTests: formattedTests.length,
+      team1ExecutionTimes: team1Execution.executionTimes,
+      team2ExecutionTimes: team2Execution.executionTimes,
+      team1AverageExecutionTime: team1Execution.averageExecutionTime,
+      team2AverageExecutionTime: team2Execution.averageExecutionTime,
+      team1Errors: team1Execution.errors,
+      team2Errors: team2Execution.errors,
     });
   } catch (error: unknown) {
     if (error instanceof Error) {

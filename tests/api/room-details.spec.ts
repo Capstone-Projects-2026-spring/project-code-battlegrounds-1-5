@@ -102,6 +102,7 @@ describe("GET /api/rooms/[gameId] unit tests", () => {
     expect(mockFindUnique).toHaveBeenCalledWith({
       where: { id: "room-1" },
       select: {
+        status: true,
         gameType: true,
         problem: {
           select: {
@@ -172,7 +173,7 @@ describe("GET /api/rooms/[gameId] unit tests", () => {
         { teamId: "team-2", playerCount: 2 }
       ],
       teamId: "team-1",
-      role: Role.CODER
+      role: Role.CODER,
     });
   });
 

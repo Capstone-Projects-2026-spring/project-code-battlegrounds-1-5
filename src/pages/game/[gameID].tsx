@@ -1,8 +1,8 @@
 import { ActionIcon, Box, Button, Center, Group, Loader, Modal, Select, Stack, Tabs, Text, Tooltip } from '@mantine/core';
 import { Editor } from '@monaco-editor/react';
 import { useRouter } from 'next/router';
-import { useEffect, useState, useRef } from 'react';
-import { Socket } from 'socket.io-client';
+import { useEffect, useState, useRef, useCallback } from 'react';
+import { io, Socket } from 'socket.io-client';
 import { IconEye, IconPlayerPlay, IconPlayerTrackNextFilled, IconPlus } from '@tabler/icons-react';
 import { usePostHog } from 'posthog-js/react';
 import { Panel, Group as PanelGroup, Separator as PanelResizeHandle } from 'react-resizable-panels';
@@ -36,10 +36,12 @@ import { useMatchmaking } from '@/contexts/MatchmakingContext';
 
 import styles from "@/styles/GameRoom.module.css";
 import { convertSegmentPathToStaticExportFilename } from 'next/dist/shared/lib/segment-cache/segment-value-encoding';
+import { ReactServerDOMTurbopackServer } from 'next/dist/server/route-modules/app-page/vendored/rsc/entrypoints';
 
 interface RoomDetailsResponse {
   problem: ActiveProblem;
   gameType: GameType;
+  status: GameStatus;
   teams: TeamCount[];
   teamId: string | null;
   role: Role | null;
@@ -112,6 +114,34 @@ function PlayGameRoom() {
 
   const isSpectator = role === Role.SPECTATOR;
 
+  const handleTimerExpire = useCallback(() => {
+    if (!socket || !gameType || !teamSelected) return;
+    const team = getTeamLabel();
+    setIsWaitingForOtherTeam(true);
+    const indexes = Array.from(
+      { length: testCaseCtx.cases.length }, (_, i) => i);
+
+    const codeToSubmit = gameStateCtx.code || liveCode || "";
+
+    console.log("Timer expired - submitting code:", {
+      liveCode,
+      gameStateCtxCode: gameStateCtx.code,
+      codeToSubmit,
+      teamSelected,
+      gameId,
+    });
+
+    socket.emit("submitCode", {
+      roomId: gameId,
+      code: codeToSubmit,
+      type: gameType,
+      team,
+      teamId: teamSelected,
+      testCases: testCaseCtx.cases,
+      runIDs: indexes,
+    });
+  }, [socket, gameType, teamSelected, gameId, gameStateCtx, testCaseCtx.cases, liveCode]);
+
   // ONLY HAPPENS ON PAGE LAUNCH
   useEffect(() => {
     if (!session?.user.id || !gameId || !socket) return;
@@ -121,8 +151,19 @@ function PlayGameRoom() {
     const loadRoomDetails = async () => {
       try {
         const response = await fetch(`/api/rooms/${gameId}/${session.user.id}`);
-        if (!response.ok) return;
+        if (!response.ok) {
+          // Game room doesn't exist or user isn't authorized — send them home
+          router.replace("/");
+          return;
+        }
         const data = (await response.json()) as RoomDetailsResponse;
+
+        // If the game is already finished, send straight to results
+        if (data.status === GameStatus.FINISHED) {
+          router.replace(`/results/${gameId}`);
+          return;
+        }
+
         setProblem(data.problem as ActiveProblem);
         setGameType(data.gameType as GameType);
         setTeams(data.teams as TeamCount[]);
@@ -157,16 +198,20 @@ function PlayGameRoom() {
         setLoading(false);
       } catch (error) {
         console.error("Failed to load room problem", error);
+        router.replace("/");
       }
     };
     loadRoomDetails();
-    setLoading(false);
 
     // 3. Initialize the connection to our custom server.js backend
 
     const teamUpdatedHandler = ({ teamId, playerCount }: { teamId: string; playerCount: number }) => {
       setTeams((prev) => prev.map((t) => (t.teamId === teamId ? { ...t, playerCount } : t)));
     };
+
+    const invalidGameHandler = () => {
+      router.replace('/');
+    }
 
     const errorHandler = (data: JSON) => {
       console.error("Socket error:", data);
@@ -175,11 +220,13 @@ function PlayGameRoom() {
     // This is so if another person picks while someone is deciding
     socket.on("teamUpdated", teamUpdatedHandler);
 
+    socket.on('invalidGame', invalidGameHandler);
     socket.on("error", errorHandler);
 
     // 6. Cleanup: disconnect the socket if the user leaves the page
     return () => {
       socket.off("teamUpdated", teamUpdatedHandler);
+      socket.off('invalidGame', invalidGameHandler);
       socket.off("error", errorHandler);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -193,7 +240,7 @@ function PlayGameRoom() {
     console.log("Syncing default test cases :3");
     socket.emit("updateTestCases", {
       teamId: teamSelected,
-      testCases: DEFAULT_TEST_CASES
+      testCases: DEFAULT_TEST_CASES,
     });
 
     console.log("Syncing default code");
@@ -311,6 +358,7 @@ function PlayGameRoom() {
 
   const handleEditorChange = (value: string | undefined) => {
     if (value !== undefined && role === Role.CODER && socket) {
+      setLiveCode(value);
       socket.emit("codeChange", { teamId: teamSelected, code: value });
       gameStateCtx.setCode(value);
     }
@@ -332,7 +380,7 @@ function PlayGameRoom() {
     setIsWaitingForOtherTeam(true);
     const indexes = Array.from(
       { length: testCaseCtx.cases.length },
-      (_, i) => i
+      (_, i) => i,
     );
 
     socket.emit("submitCode", {
@@ -469,10 +517,10 @@ function PlayGameRoom() {
       prev.map((parameter) =>
         parameter.isOutputParameter
           ? {
-            ...parameter,
-            type,
-            value: null,
-          }
+              ...parameter,
+              type,
+              value: null,
+            }
           : parameter,
       ),
     );
@@ -569,7 +617,7 @@ function PlayGameRoom() {
       {/* Waiting Modal */}
       <Modal
         opened={isWaitingForOtherTeam}
-        onClose={() => { }}
+        onClose={() => {}}
         centered
         withCloseButton={false}
         closeOnEscape={false}
@@ -663,30 +711,55 @@ function PlayGameRoom() {
               >
                 <Box
                   style={{
-                    height: '100%',
+                    height: "100%",
                     backgroundColor: "#333",
                     color: "white",
                     padding: "0",
                     overflowY: "auto",
                     display: "flex",
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: isProblemVisible ? 'flex-start' : 'center',
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: isProblemVisible ? "flex-start" : "center",
                   }}
                 >
-                  {(gameState === GameStatus.ACTIVE || gameState === GameStatus.FLIPPING) && (
+                  {(gameState === GameStatus.ACTIVE ||
+                    gameState === GameStatus.FLIPPING) && (
                     <Box mb="md" p="1rem" pb={isProblemVisible ? "md" : "1rem"}>
-                      <GameTimer endTime={endTime}
-                        onExpire={() => { if (role === Role.CODER) socket.emit("submitCode", { roomId: gameId, code: liveCode }); }} />
+                      <GameTimer
+                        endTime={endTime}
+                        onExpire={() => {
+                          if (role === Role.CODER)
+                            socket.emit("submitCode", {
+                              roomId: gameId,
+                              code: liveCode,
+                            });
+                        }}
+                      />
                     </Box>
                   )}
                   {isProblemVisible ? (
-                    <Box style={{ width: '100%', flex: 1, minHeight: 0, padding: '0 1rem 1rem 1rem' }}>
-                      <ProblemBox problem={problem} onToggleVisibility={toggleProblemVisibility} />
+                    <Box
+                      style={{
+                        width: "100%",
+                        flex: 1,
+                        minHeight: 0,
+                        padding: "0 1rem 1rem 1rem",
+                      }}
+                    >
+                      <ProblemBox
+                        problem={problem}
+                        onToggleVisibility={toggleProblemVisibility}
+                      />
                     </Box>
                   ) : (
                     <Tooltip label="Show Problem">
-                      <ActionIcon variant="transparent" color="gray" size="xl" onClick={toggleProblemVisibility} title="Show Problem">
+                      <ActionIcon
+                        variant="transparent"
+                        color="gray"
+                        size="xl"
+                        onClick={toggleProblemVisibility}
+                        title="Show Problem"
+                      >
                         <IconEye size={24} />
                       </ActionIcon>
                     </Tooltip>
@@ -695,16 +768,14 @@ function PlayGameRoom() {
               </Panel>
 
               {isProblemVisible && (
-                <PanelResizeHandle
-                  className={styles.panelResizeHandleCol}
-                />
+                <PanelResizeHandle className={styles.panelResizeHandleCol} />
               )}
 
               {/* Main Workspace */}
               <Panel minSize={30}>
                 <Box
                   style={{
-                    height: '100%',
+                    height: "100%",
                     display: "flex",
                     flexDirection: "column",
                     minWidth: 0,
@@ -729,7 +800,9 @@ function PlayGameRoom() {
                             posthog.capture("code_run_triggered", { gameId })
                           }
                           rightSection={
-                            <IconPlayerPlay size={"var(--mantine-font-size-md)"} />
+                            <IconPlayerPlay
+                              size={"var(--mantine-font-size-md)"}
+                            />
                           }
                         >
                           RUN
@@ -740,7 +813,9 @@ function PlayGameRoom() {
                           onClick={submitFinalCode}
                           disabled={isSpectator || isWaitingForOtherTeam}
                         >
-                          {isWaitingForOtherTeam ? "Waiting for other team..." : "Submit Final Code"}
+                          {isWaitingForOtherTeam
+                            ? "Waiting for other team..."
+                            : "Submit Final Code"}
                         </Button>
                       </>
                     )}
@@ -754,17 +829,20 @@ function PlayGameRoom() {
                         <PanelGroup orientation="horizontal">
                           {/* Code Editor */}
                           <Panel defaultSize={70} minSize={40}>
-                            <Box style={{ height: '100%' }}>
+                            <Box style={{ height: "100%" }}>
                               <Editor
                                 height="100%"
                                 theme="vs-dark"
                                 defaultLanguage="javascript"
                                 value={liveCode}
-                                onChange={!isSpectator ? handleEditorChange : undefined}
+                                onChange={
+                                  !isSpectator ? handleEditorChange : undefined
+                                }
                                 options={{
                                   readOnly: isSpectator || role !== Role.CODER,
-                                  domReadOnly: isSpectator || role !== Role.CODER,
-                                  minimap: { enabled: false }
+                                  domReadOnly:
+                                    isSpectator || role !== Role.CODER,
+                                  minimap: { enabled: false },
                                 }}
                               />
                             </Box>
@@ -776,7 +854,7 @@ function PlayGameRoom() {
 
                           {/* Chat Box */}
                           <Panel defaultSize={30} minSize={15}>
-                            <Box style={{ height: '100%' }}>
+                            <Box style={{ height: "100%" }}>
                               <ChatBox
                                 socket={socket as Socket}
                                 roomId={teamSelected as string}
@@ -798,18 +876,26 @@ function PlayGameRoom() {
                         <Panel defaultSize={25} minSize={20}>
                           <Box
                             style={{
-                              height: '100%',
+                              height: "100%",
                               display: "flex",
                               flexDirection: "column",
                               minHeight: 0,
                             }}
                           >
-                            <Box p="xs" style={{ display: "flex", flexDirection: "column", minHeight: 0, flex: 1 }}>
+                            <Box
+                              p="xs"
+                              style={{
+                                display: "flex",
+                                flexDirection: "column",
+                                minHeight: 0,
+                                flex: 1,
+                              }}
+                            >
                               <Stack style={{ minHeight: 0, flex: 1 }}>
                                 <Group justify="space-between">
                                   <Tabs
                                     value={String(activeTestId)}
-                                    onChange={val => {
+                                    onChange={(val) => {
                                       setActiveTestId(+(val ?? 0));
                                     }}
                                     variant="outline"
@@ -824,21 +910,22 @@ function PlayGameRoom() {
                                         </Tabs.Tab>
                                       ))}
 
-                                      {testCaseCtx.cases.length < 5 && !isSpectator && (
-                                        <Tooltip label="New Test">
-                                          <ActionIcon
-                                            variant="subtle"
-                                            color="gray"
-                                            onClick={addNewTest}
-                                            size="sm"
-                                            style={{ alignSelf: "center" }}
-                                            ml="xs"
-                                            disabled={isWaitingForOtherTeam}
-                                          >
-                                            <IconPlus />
-                                          </ActionIcon>
-                                        </Tooltip>
-                                      )}
+                                      {testCaseCtx.cases.length < 5 &&
+                                        !isSpectator && (
+                                          <Tooltip label="New Test">
+                                            <ActionIcon
+                                              variant="subtle"
+                                              color="gray"
+                                              onClick={addNewTest}
+                                              size="sm"
+                                              style={{ alignSelf: "center" }}
+                                              ml="xs"
+                                              disabled={isWaitingForOtherTeam}
+                                            >
+                                              <IconPlus />
+                                            </ActionIcon>
+                                          </Tooltip>
+                                        )}
                                     </Tabs.List>
                                   </Tabs>
 
@@ -849,7 +936,11 @@ function PlayGameRoom() {
                                     <Button
                                       size="compact-sm"
                                       variant="filled"
-                                      disabled={isSpectator || runningAllTests || isWaitingForOtherTeam}
+                                      disabled={
+                                        isSpectator ||
+                                        runningAllTests ||
+                                        isWaitingForOtherTeam
+                                      }
                                       loading={runningAllTests}
                                       onClick={handleRunAllTests}
                                       rightSection={
@@ -862,18 +953,23 @@ function PlayGameRoom() {
                                 </Group>
 
                                 {(() => {
-                                  const currentTestCase = testCaseCtx.cases.find(
-                                    (t) => t.id === activeTestId,
-                                  );
+                                  const currentTestCase =
+                                    testCaseCtx.cases.find(
+                                      (t) => t.id === activeTestId,
+                                    );
                                   return currentTestCase ? (
                                     <GameTestCase
                                       testableCase={currentTestCase}
                                       onTestCaseChange={handleTestBoxChange}
                                       onParameterDelete={handleParameterDelete}
                                       onTestCaseDelete={removeTest}
-                                      showDelete={testCaseCtx.cases.length !== 1}
+                                      showDelete={
+                                        testCaseCtx.cases.length !== 1
+                                      }
                                       disabled={runningAllTests}
-                                      onExpectedOutputTypeChange={handleExpectedOutputTypeChange}
+                                      onExpectedOutputTypeChange={
+                                        handleExpectedOutputTypeChange
+                                      }
                                     />
                                   ) : null;
                                 })()}
