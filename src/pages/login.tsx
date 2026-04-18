@@ -40,7 +40,7 @@ export default function LoginPage() {
 
     if (error) {
       posthog.capture("user_login_failure");
-      showErrorNotification(error.message, 'Login Failed');
+      showErrorNotification(error.message ?? 'An unexpected error occurred', 'Login Failed')
       setLoading(false);
       return;
     }
