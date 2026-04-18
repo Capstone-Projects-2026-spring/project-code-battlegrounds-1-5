@@ -116,20 +116,37 @@ export default function TestCaseResultsBox({ gameId, team1Results, team2Results,
   }, [gameId]);
 
   useEffect(() => {
-    if (!onSummaryChange || !hasFetchedSummary) return;
+    if (!onSummaryChange || !hasFetchedSummary || testCases.length === 0) return;
+
+    // Recalculate passed counts using deepEqual instead of relying on backend counts
+    let team1PassedCount = 0;
+    let team2PassedCount = 0;
+
+    testCases.forEach((testCase) => {
+      const team1Result = team1TestResults?.[testCases.indexOf(testCase)];
+      const team2Result = team2TestResults?.[testCases.indexOf(testCase)];
+
+      if (team1Result !== undefined && extractAndCompare(team1Result, testCase.expected)) {
+        team1PassedCount++;
+      }
+      if (team2Result !== undefined && extractAndCompare(team2Result, testCase.expected)) {
+        team2PassedCount++;
+      }
+    });
 
     onSummaryChange({
-      yourPassedCount: userTeamNumber === 2 ? summaryCounts.team2PassedCount : summaryCounts.team1PassedCount,
-      otherTeamPassedCount: userTeamNumber === 2 ? summaryCounts.team1PassedCount : summaryCounts.team2PassedCount,
+      yourPassedCount: userTeamNumber === 2 ? team2PassedCount : team1PassedCount,
+      otherTeamPassedCount: userTeamNumber === 2 ? team1PassedCount : team2PassedCount,
       totalTests: summaryCounts.totalTests,
     });
   }, [
     onSummaryChange,
     hasFetchedSummary,
     userTeamNumber,
-    summaryCounts.team1PassedCount,
-    summaryCounts.team2PassedCount,
     summaryCounts.totalTests,
+    testCases,
+    team1TestResults,
+    team2TestResults,
   ]);
 
   useEffect(() => {
