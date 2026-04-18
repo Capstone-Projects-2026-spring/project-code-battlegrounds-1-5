@@ -70,6 +70,46 @@ export default function TestCaseResultsBox({ gameId, team1Results, team2Results,
   const team1TestResults = team1Results ?? fetchedTeam1Results;
   const team2TestResults = team2Results ?? fetchedTeam2Results;
 
+  const parseValueByType = (value: unknown, type: ParameterPrimitiveType): unknown => {
+    if (value === null || value === undefined) return value;
+
+    if (type === "boolean") {
+      return typeof value === "boolean" ? value : value === "true";
+    } else if (type === "number") {
+      return typeof value === "number" ? value : Number(value);
+    } else if (type.includes("array")) {
+      return typeof value === "string" ? JSON.parse(value) : value;
+    }
+    return value;
+  };
+
+  const extractAndCompare = useCallback((actual: unknown, expectedParams: ParameterType[]): boolean => {
+    if (!expectedParams || expectedParams.length === 0) return false;
+    if (actual === null || actual === undefined) return false;
+
+    // If actual is a ParameterType array, extract the value from it
+    let actualValue: unknown = actual;
+    if (Array.isArray(actual) && actual.length > 0 && typeof actual[0] === 'object' && 'value' in actual[0]) {
+      actualValue = (actual as ParameterType[])[0].value;
+    }
+
+    const expectedParam = expectedParams[0];
+    const type = expectedParam.type as ParameterPrimitiveType;
+
+    try {
+      const parsedExpected = parseValueByType(expectedParam.value, type);
+      const parsedActual = parseValueByType(actualValue, type);
+
+      return deepEqual(
+        parsedActual as string | number | boolean | string[] | number[] | string[][] | number[][],
+        parsedExpected as string | number | boolean | string[] | number[] | string[][] | number[][]
+      );
+    } catch (e) {
+      console.error("Error in extractAndCompare:", { actualValue, expectedValue: expectedParam.value, type, error: e });
+      return false;
+    }
+  }, []);
+
   useEffect(() => {
     if (!gameId) return;
 
@@ -186,46 +226,6 @@ export default function TestCaseResultsBox({ gameId, team1Results, team2Results,
       .replace(/\(node:internal\/module[\s\S]*$/, "")
       .trim();
   };
-
-  const parseValueByType = (value: unknown, type: ParameterPrimitiveType): unknown => {
-    if (value === null || value === undefined) return value;
-
-    if (type === "boolean") {
-      return typeof value === "boolean" ? value : value === "true";
-    } else if (type === "number") {
-      return typeof value === "number" ? value : Number(value);
-    } else if (type.includes("array")) {
-      return typeof value === "string" ? JSON.parse(value) : value;
-    }
-    return value;
-  };
-
-  const extractAndCompare = useCallback((actual: unknown, expectedParams: ParameterType[]): boolean => {
-    if (!expectedParams || expectedParams.length === 0) return false;
-    if (actual === null || actual === undefined) return false;
-
-    // If actual is a ParameterType array, extract the value from it
-    let actualValue: unknown = actual;
-    if (Array.isArray(actual) && actual.length > 0 && typeof actual[0] === 'object' && 'value' in actual[0]) {
-      actualValue = (actual as ParameterType[])[0].value;
-    }
-
-    const expectedParam = expectedParams[0];
-    const type = expectedParam.type as ParameterPrimitiveType;
-
-    try {
-      const parsedExpected = parseValueByType(expectedParam.value, type);
-      const parsedActual = parseValueByType(actualValue, type);
-
-      return deepEqual(
-        parsedActual as string | number | boolean | string[] | number[] | string[][] | number[][],
-        parsedExpected as string | number | boolean | string[] | number[] | string[][] | number[][]
-      );
-    } catch (e) {
-      console.error("Error in extractAndCompare:", { actualValue, expectedValue: expectedParam.value, type, error: e });
-      return false;
-    }
-  }, []);
 
   const rows = testCases.map((element, index) => {
     // Determine which results to show based on user's team
