@@ -32,6 +32,8 @@ model User {
   ownedParty  Party?       @relation("PartyOwner")
   partyMember PartyMember? // the slot they occupy in someone
 
+  elo     Int     @default(1000)
+
   @@unique([email])
   @@map("user")
 }
@@ -150,6 +152,7 @@ enum GameStatus {
 enum GameType {
   TWOPLAYER
   FOURPLAYER
+  RANKED
 }
 
 model GameRoom {
@@ -188,6 +191,7 @@ model TeamPlayer {
   teamId      String
   userId      String
   role        Role
+  eloAtGame   Int?
   team        Team    @relation(fields: [teamId], references: [id], onDelete: Cascade)
   user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
