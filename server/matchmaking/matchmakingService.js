@@ -235,7 +235,7 @@ function createMatchmakingService(stateRedis, io) {
                 results.map(async raw => {
                     const parsed = JSON.parse(raw);
                     if (parsed.partyId) {
-                        const party = await getPrisma().party.findUnique({
+                        const party = await prisma.party.findUnique({
                             where: { id: parsed.partyId },
                             include: { owner: true, member: true },
                         });
@@ -259,7 +259,7 @@ function createMatchmakingService(stateRedis, io) {
                 for (const raw of results) {
                     const parsed = JSON.parse(raw);
                     if (parsed.partyId) {
-                        const party = await getPrisma().party.findUnique({
+                        const party = await prisma.party.findUnique({
                             where: { id: parsed.partyId },
                             include: { owner: true, member: true },
                         });
@@ -313,8 +313,6 @@ function createMatchmakingService(stateRedis, io) {
         },
 
         async _createGameInDB(players, gameType, difficulty) {
-            const prisma = prisma;
-
             let resolvedDifficulty = difficulty;
 
             if (gameType === GameType.RANKED) {
@@ -381,8 +379,8 @@ function createMatchmakingService(stateRedis, io) {
                     gameRoom.teams.flatMap(team =>
                         team.players.map(tp =>
                             prisma.teamPlayer.update({
-                                where: { id: tp.id },
-                                data: { eloAtMatch: eloMap[tp.userId] ?? 1000 },
+                                where: { teamId_userId: { teamId: tp.teamId, userId: tp.userId }},
+                                data: { eloAtGame: eloMap[tp.userId] ?? 1000 },
                             })
                         )
                     )

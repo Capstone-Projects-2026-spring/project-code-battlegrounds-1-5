@@ -19,12 +19,10 @@ const Parameter = z.object({
     isOutputParameter: z.optional(z.boolean().default(false))
 });
 
-
-
 const joinGameSchema = z.object({
     gameId: z.string(),
     teamId: z.string(),
-    gameType: z.enum([GameType.TWOPLAYER, GameType.FOURPLAYER])
+    gameType: z.enum([GameType.TWOPLAYER, GameType.FOURPLAYER, GameType.RANKED])
 });
 
 const codeChangeSchema = z.object({
@@ -118,7 +116,7 @@ function registerGameHandlers(io, socket, gameService) {
                 console.error('Error starting game', e);
                 socket.emit('error', { e, message: 'Failed to start game.' });
             }
-        } else if ((numPlayers === 4 && gameType === GameType.FOURPLAYER) || (numPlayers === 2 && gameType === GameType.TWOPLAYER)) {
+        } else if ((numPlayers === 4 && gameType === GameType.RANKED) || (numPlayers === 4 && gameType === GameType.FOURPLAYER) || (numPlayers === 2 && gameType === GameType.TWOPLAYER)) {
             try {
                 io.to(gameId).emit('gameStarting');
                 setTimeout(async () => {
