@@ -20,7 +20,6 @@ import { Role, GameStatus, GameType } from "@prisma/client";
 import { authClient } from "@/lib/auth-client";
 import GameTestCase from "@/components/gameTests/GameTestCase";
 import {
-  DEFAULT_TEST_CASES,
   GameTestCasesProvider,
   TestableCase,
   useTestCases,
@@ -113,13 +112,17 @@ function PlayGameRoom() {
   const [editorFocused, setEditorFocused] = useState(false);
 
   const isSpectator = role === Role.SPECTATOR;
+  const selectedTestId = testCaseCtx.cases.some(
+    (testCase) => testCase.id === activeTestId,
+  )
+    ? activeTestId
+    : (testCaseCtx.cases[0]?.id ?? 0);
 
   const handleTimerExpire = useCallback(() => {
     if (!socket || !gameType || !teamSelected) return;
-    const team = getTeamLabel();
+    const teamIndex = teams.findIndex((entry) => entry.teamId === teamSelected);
+    const team = teamIndex === 0 ? "team1" : teamIndex === 1 ? "team2" : null;
     setIsWaitingForOtherTeam(true);
-    const indexes = Array.from(
-      { length: testCaseCtx.cases.length }, (_, i) => i);
 
     const codeToSubmit = gameStateCtx.code || liveCode || "";
 
@@ -137,10 +140,15 @@ function PlayGameRoom() {
       type: gameType,
       team,
       teamId: teamSelected,
-      testCases: testCaseCtx.cases,
-      runIDs: indexes,
     });
-  }, [socket, gameType, teamSelected, gameId, gameStateCtx, testCaseCtx.cases, liveCode]);
+  }, [socket, gameType, teamSelected, gameId, gameStateCtx, liveCode, teams]);
+
+  useEffect(() => {
+    if (router.query.teamId && router.query.role) {
+      setTeamSelected(router.query.teamId as string);
+      setRole(router.query.role as Role);
+    }
+  }, [router.query.teamId, router.query.role]);
 
   // ONLY HAPPENS ON PAGE LAUNCH
   useEffect(() => {
@@ -233,21 +241,6 @@ function PlayGameRoom() {
   }, [gameId, session?.user.id]);
 
   useEffect(() => {
-    if (!socket || !teamSelected) return;
-    // Emit the default test cases ONCE to the socket
-    // so that they're at least synced and ready to go should somebody
-    // hit the run button or attempt to make a new case.
-    console.log("Syncing default test cases :3");
-    socket.emit("updateTestCases", {
-      teamId: teamSelected,
-      testCases: DEFAULT_TEST_CASES,
-    });
-
-    console.log("Syncing default code");
-    socket.emit("codeChange", {teamId: teamSelected, code: liveCode});
-  }, [socket, teamSelected]);
-
-  useEffect(() => {
     // Runs after team gets selected - join rooms first, then set up room-specific listeners
     if (!socket || !teamSelected || !gameId || !gameType) return;
     socket.emit("joinGame", { gameId, teamId: teamSelected, gameType });
@@ -326,35 +319,42 @@ function PlayGameRoom() {
   }, [socket, teamSelected, gameId, gameType, role]);
 
   useEffect(() => {
-    if (!socket || !role || !teamSelected) return;
-    socket.emit("requestCodeSync", { teamId: teamSelected });
-    socket.emit("requestTestCaseSync", { teamId: teamSelected });
+    if (!socket || !teamSelected) return;
 
     const testHandler = (cases: TestableCase[] | null) => {
       console.log("Receiving test case sync!", cases);
       if (Array.isArray(cases)) {
         testCaseCtx.setCases(cases);
+        setActiveTestId((prevActiveTestId) =>
+          cases.some((testCase) => testCase.id === prevActiveTestId)
+            ? prevActiveTestId
+            : (cases[0]?.id ?? 0),
+        );
       } else {
         console.warn("Ignoring invalid test case payload from server:", cases);
       }
       setRunningAllTests(false);
     };
-    socket.on("receiveTestCaseSync", testHandler);
 
-    const handler = (newCode: string) => {
+    const codeHandler = (newCode: string) => {
       setLiveCode(newCode);
       // must also set code in game state otherwise coder cant run their test cases
       gameStateCtx.setCode(newCode);
     };
-    socket.on("receiveCodeUpdate", handler);
+
+    socket.on("receiveTestCaseSync", testHandler);
+    socket.on("receiveCodeUpdate", codeHandler);
+
+    socket.emit("requestCodeSync", { teamId: teamSelected });
+    socket.emit("requestTestCaseSync", { teamId: teamSelected });
 
     return () => {
       socket.off("receiveTestCaseSync", testHandler);
-      socket.off("receiveCodeUpdate", handler);
+      socket.off("receiveCodeUpdate", codeHandler);
     };
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [socket, role, teamSelected]);
+  }, [socket, teamSelected]);
 
   const handleEditorChange = (value: string | undefined) => {
     if (value !== undefined && role === Role.CODER && socket) {
@@ -378,19 +378,14 @@ function PlayGameRoom() {
     if (!socket || !gameType || !teamSelected) return; //make sure the socket is connected before emitting
     const team = getTeamLabel();
     setIsWaitingForOtherTeam(true);
-    const indexes = Array.from(
-      { length: testCaseCtx.cases.length },
-      (_, i) => i,
-    );
+    const codeToSubmit = gameStateCtx.code || liveCode || "";
 
     socket.emit("submitCode", {
       roomId: gameId,
-      code: gameStateCtx.code,
+      code: codeToSubmit,
       type: gameType,
       team,
       teamId: teamSelected,
-      testCases: testCaseCtx.cases,
-      runIDs: indexes,
     });
   };
 
@@ -489,7 +484,7 @@ function PlayGameRoom() {
   const handleTestBoxChange = (testCase: TestableCase) => {
     if (role !== Role.TESTER || !socket || isWaitingForOtherTeam) return;
     const updated = testCaseCtx.cases.map((t) =>
-      t.id === activeTestId ? testCase : t,
+      t.id === selectedTestId ? testCase : t,
     );
     testCaseCtx.setCases(updated);
     socket.emit("updateTestCases", {
@@ -894,8 +889,8 @@ function PlayGameRoom() {
                               <Stack style={{ minHeight: 0, flex: 1 }}>
                                 <Group justify="space-between">
                                   <Tabs
-                                    value={String(activeTestId)}
-                                    onChange={(val) => {
+                                    value={String(selectedTestId)}
+                                    onChange={val => {
                                       setActiveTestId(+(val ?? 0));
                                     }}
                                     variant="outline"
@@ -953,10 +948,9 @@ function PlayGameRoom() {
                                 </Group>
 
                                 {(() => {
-                                  const currentTestCase =
-                                    testCaseCtx.cases.find(
-                                      (t) => t.id === activeTestId,
-                                    );
+                                  const currentTestCase = testCaseCtx.cases.find(
+                                    (t) => t.id === selectedTestId,
+                                  );
                                   return currentTestCase ? (
                                     <GameTestCase
                                       testableCase={currentTestCase}
