@@ -337,6 +337,7 @@ function registerSocketHandlers(io, socket, services) {
       } catch (error) {
         console.error("Error POSTing to code executor:", error);
       } finally {
+        await gameService.cleanupGameTimers(roomId);
         await prisma.gameRoom.update({
           where: { id: roomId },
           data: { status: 'FINISHED' },
@@ -400,6 +401,7 @@ function registerSocketHandlers(io, socket, services) {
         } catch (error) {
           console.error("Error POSTing to code executor:", error);
         } finally {
+          await gameService.cleanupGameTimers(roomId);
           await prisma.gameRoom.update({
             where: { id: roomId },
             data: { status: 'FINISHED' },
@@ -503,16 +505,13 @@ function registerSocketHandlers(io, socket, services) {
 
   // 3. Handle graceful disconnection need to do more to this so will just leave it to this right now
   socket.on('disconnect', async () => {
-    if (socket.gameId && socket.userId) {
-      try {
-        await gameService.cleanupGame(socket.gameId, socket.userId);
-        console.log(`Disconnected: ${socket.id}`);
-      } catch (e) {
-        console.error('Error during cleanup on disconnect', e);
-        socket.emit('error', { e, message: 'Failed to cleanup on disconnect.' });
-      }
-    }
+    console.log(`Disconnected: ${socket.id}`);
     if (socket.userId) {
+      try {
+        await gameService.cleanupSocket(socket.userId);
+      } catch (e) {
+        console.error('Error during socket cleanup on disconnect', e);
+      }
       await matchmakingService.leaveAllQueues(socket.userId);
     }
   });
