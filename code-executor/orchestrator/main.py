@@ -150,7 +150,7 @@ class Pool: # we're gonna make a VM per game. based on my math, if a VM is 50$ a
         if game_id not in self.games:
             return "Game {game_id} not found. Either it was never created, is still being created, was already deleted, or is a skill issue one the programmer's end.".format(game_id=game_id)
         game = self.games[game_id]
-        chk = self.provisioner.delete_instance(game.name, game.zone)
+        chk = self.provisioner.delete_instance(game.game_id, game.zone)
         if chk is not None:
             return chk
         return None
