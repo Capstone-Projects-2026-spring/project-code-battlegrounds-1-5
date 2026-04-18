@@ -174,7 +174,9 @@ export default function QueuePage() {
             </Tabs.Panel>
           </Tabs>
 
-          <JoinGameSection />
+          {joinedParty === null && (
+            <JoinGameSection />
+          )}
 
           {/* Help Text */}
           <Text size="sm" c="dimmed" ta="center" mt="xl">
