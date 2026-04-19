@@ -309,14 +309,22 @@ export default async function handler(
     const selectedGameTests =
       preferredGameTests.length > 0 ? preferredGameTests : fallbackGameTests;
 
-    const gameplayFormattedTests: TestCase[] = selectedGameTests.map((test) => ({
+    const gameplayExecutionTests: ExecutionTestCase[] = selectedGameTests.map((test) => ({
       id: String(test.testCaseId),
       input: test.functionInput,
       expected: test.expectedOutput,
+      executorId: test.testCaseId,
       source: "gameplay",
     }));
 
-    // Hidden problem fixtures are always evaluated and returned.
+    const gameplayExecutorTestCases: TestableCase[] = selectedGameTests.map((test) => ({
+      id: test.testCaseId,
+      functionInput: normalizeParameterArray(test.functionInput),
+      expectedOutput: normalizeExpectedParameter(test.expectedOutput),
+      computedOutput: null,
+    }));
+
+    // Hidden problem fixtures are always evaluated and returned separately.
     const problemTests = await prisma.problemTest.findMany({
       where: { problemId: gameRoom.problem.slug },
       select: {
@@ -326,71 +334,107 @@ export default async function handler(
       },
     });
 
-    const hiddenFormattedTests: TestCase[] = problemTests.map((test) => ({
+    const hiddenExecutionTests: ExecutionTestCase[] = problemTests.map((test, index) => ({
       id: test.id,
       input: test.functionInput,
       expected: test.expectedOutput,
+      executorId: index,
       source: "hidden",
     }));
 
-    // Build one executor payload so each team is evaluated in a single call.
+    const hiddenExecutorTestCases: TestableCase[] = problemTests.map((test, index) => ({
+      id: index,
+      functionInput: normalizeParameterArray(test.functionInput),
+      expectedOutput: normalizeExpectedParameter(test.expectedOutput),
+      computedOutput: null,
+    }));
+
+    const gameplayFormattedTests: TestCase[] = gameplayExecutionTests.map((test) => ({
+      id: test.id,
+      input: test.input,
+      expected: test.expected,
+      source: "gameplay",
+    }));
+
+    const hiddenFormattedTests: TestCase[] = hiddenExecutionTests.map((test) => ({
+      id: test.id,
+      input: test.input,
+      expected: test.expected,
+      source: "hidden",
+    }));
+
+    const [
+      team1GameplayExecution,
+      team2GameplayExecution,
+      team1HiddenExecution,
+      team2HiddenExecution,
+    ] = await Promise.all([
+      executeSubmission(
+        gameRoom.gameResult?.team1Code ?? null,
+        gameplayExecutionTests,
+        gameplayExecutorTestCases,
+      ).catch((error: unknown) => {
+        console.error("Failed to evaluate team 1 gameplay tests", error);
+        return emptyExecution(gameplayFormattedTests.length);
+      }),
+      executeSubmission(
+        gameRoom.gameResult?.team2Code ?? null,
+        gameplayExecutionTests,
+        gameplayExecutorTestCases,
+      ).catch((error: unknown) => {
+        console.error("Failed to evaluate team 2 gameplay tests", error);
+        return emptyExecution(gameplayFormattedTests.length);
+      }),
+      executeSubmission(
+        gameRoom.gameResult?.team1Code ?? null,
+        hiddenExecutionTests,
+        hiddenExecutorTestCases,
+      ).catch((error: unknown) => {
+        console.error("Failed to evaluate team 1 hidden tests", error);
+        return emptyExecution(hiddenFormattedTests.length);
+      }),
+      executeSubmission(
+        gameRoom.gameResult?.team2Code ?? null,
+        hiddenExecutionTests,
+        hiddenExecutorTestCases,
+      ).catch((error: unknown) => {
+        console.error("Failed to evaluate team 2 hidden tests", error);
+        return emptyExecution(hiddenFormattedTests.length);
+      }),
+    ]);
+
     const formattedTests: TestCase[] = [
       ...gameplayFormattedTests,
       ...hiddenFormattedTests,
     ];
 
-    const executionTests: ExecutionTestCase[] = formattedTests.map((test, index) => ({
-      ...test,
-      executorId: index,
-    }));
+    const team1Results = [
+      ...team1GameplayExecution.results,
+      ...team1HiddenExecution.results,
+    ];
 
-    const executorTestCases: TestableCase[] = executionTests.map((test) => ({
-      id: test.executorId,
-      functionInput: normalizeParameterArray(test.input),
-      expectedOutput: normalizeExpectedParameter(test.expected),
-      computedOutput: null,
-    }));
+    const team2Results = [
+      ...team2GameplayExecution.results,
+      ...team2HiddenExecution.results,
+    ];
 
-    const [
-      team1Execution,
-      team2Execution,
-    ] = await Promise.all([
-      executeSubmission(
-        gameRoom.gameResult?.team1Code ?? null,
-        executionTests,
-        executorTestCases,
-      ).catch((error: unknown) => {
-        console.error("Failed to evaluate team 1 tests", error);
-        return emptyExecution(formattedTests.length);
-      }),
-      executeSubmission(
-        gameRoom.gameResult?.team2Code ?? null,
-        executionTests,
-        executorTestCases,
-      ).catch((error: unknown) => {
-        console.error("Failed to evaluate team 2 tests", error);
-        return emptyExecution(formattedTests.length);
-      }),
-    ]);
+    const team1ExecutionTimes = [
+      ...team1GameplayExecution.executionTimes,
+      ...team1HiddenExecution.executionTimes,
+    ];
 
-    const gameplayCount = gameplayFormattedTests.length;
+    const team2ExecutionTimes = [
+      ...team2GameplayExecution.executionTimes,
+      ...team2HiddenExecution.executionTimes,
+    ];
 
-    const team1Results = team1Execution.results;
-    const team2Results = team2Execution.results;
+    const team1Errors = [...team1GameplayExecution.errors, ...team1HiddenExecution.errors];
+    const team2Errors = [...team2GameplayExecution.errors, ...team2HiddenExecution.errors];
 
-    const gameplayTeam1Results = team1Results.slice(0, gameplayCount);
-    const gameplayTeam2Results = team2Results.slice(0, gameplayCount);
-    const hiddenTeam1Results = team1Results.slice(gameplayCount);
-    const hiddenTeam2Results = team2Results.slice(gameplayCount);
-
-    const team1ExecutionTimes = team1Execution.executionTimes;
-    const team2ExecutionTimes = team2Execution.executionTimes;
-
-    const team1Errors = team1Execution.errors;
-    const team2Errors = team2Execution.errors;
-
-    const team1PassedCount = team1Execution.passedCount;
-    const team2PassedCount = team2Execution.passedCount;
+    const team1PassedCount =
+      team1GameplayExecution.passedCount + team1HiddenExecution.passedCount;
+    const team2PassedCount =
+      team2GameplayExecution.passedCount + team2HiddenExecution.passedCount;
 
     let resolvedTeam1AverageExecutionTime = computeAverageExecutionTime(team1ExecutionTimes);
     let resolvedTeam2AverageExecutionTime = computeAverageExecutionTime(team2ExecutionTimes);
@@ -444,10 +488,10 @@ export default async function handler(
       hiddenTests: hiddenFormattedTests,
       team1Results,
       team2Results,
-      gameplayTeam1Results,
-      gameplayTeam2Results,
-      hiddenTeam1Results,
-      hiddenTeam2Results,
+      gameplayTeam1Results: team1GameplayExecution.results,
+      gameplayTeam2Results: team2GameplayExecution.results,
+      hiddenTeam1Results: team1HiddenExecution.results,
+      hiddenTeam2Results: team2HiddenExecution.results,
       team1PassedCount,
       team2PassedCount,
       totalTests: formattedTests.length,
