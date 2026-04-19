@@ -37,8 +37,29 @@
 }
 
 .table {
-  min-width: 620px;
+  width: 100%;
+  min-width: 0;
+  table-layout: fixed;
   animation: fadeIn 0.5s ease-out 0.1s both;
+}
+
+.colInput {
+  width: 30%;
+}
+
+.colResult {
+  width: 23%;
+}
+
+.colExpected {
+  width: 24%;
+}
+
+.colInputCell,
+.colResultCell,
+.colExpectedCell {
+  max-width: 18rem;
+  vertical-align: top;
 }
 
 .scrollRegion {
@@ -105,6 +126,10 @@
   font-family: var(--mantine-font-family-monospace);
   font-size: 0.875rem;
   font-weight: 500;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  line-height: 1.3;
 }
 
 .cellResult {
@@ -114,6 +139,18 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  min-width: 0;
+}
+
+.resultContent {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  width: 100%;
+  min-width: 0;
+}
+
+.resultText {
   min-width: 0;
 }
 
@@ -177,8 +214,16 @@
 }
 
 @media (max-width: 768px) {
-  .table {
-    min-width: 540px;
+  .colInput {
+    width: 34%;
+  }
+
+  .colResult {
+    width: 22%;
+  }
+
+  .colExpected {
+    width: 22%;
   }
 }
 

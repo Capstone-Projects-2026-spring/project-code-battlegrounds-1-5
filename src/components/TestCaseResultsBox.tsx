@@ -1,7 +1,7 @@
 import { Paper, Title, Table, Text, Box, Badge, Tooltip } from "@mantine/core";
 import { useEffect, useState } from "react";
 import { ParameterType } from "@/lib/ProblemInputOutput";
-import { IconCheck, IconX, IconAlertCircle } from "@tabler/icons-react";
+import { IconCheck, IconX } from "@tabler/icons-react";
 import styles from '@/styles/comps/TestCaseResultsBox.module.css';
 
 export interface TestResultsSummary {
@@ -220,14 +220,14 @@ export default function TestCaseResultsBox({ gameId, team1Results, team2Results,
 
     return (
       <Table.Tr key={element.id} className={styles.tableRow}>
-        <Table.Td>
+        <Table.Td className={styles.colInputCell}>
           <Text size="sm" fw={500} ff="monospace" className={styles.cellInput}>
             {formatValue(element.input)}
           </Text>
         </Table.Td>
-        <Table.Td>
+        <Table.Td className={styles.colResultCell}>
           <Box className={styles.cellResult}>
-            <Box style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Box className={styles.resultContent}>
               {hasYourResult && !hasYourError && (
                 <span className={`${styles.statusIndicator} ${yourResultPassed ? styles.statusPass : styles.statusFail}`}>
                   {yourResultPassed ? <IconCheck size={12} className={styles.passIcon} /> : <IconX size={12} className={styles.failIcon} />}
@@ -241,7 +241,7 @@ export default function TestCaseResultsBox({ gameId, team1Results, team2Results,
                   size="sm"
                   fw={500}
                   ff="monospace"
-                  className={`${styles.cellInput} ${hasYourResult ? (yourResultPassed ? styles.passText : styles.failText) : ""}`}
+                  className={`${styles.cellInput} ${styles.resultText} ${hasYourResult ? (yourResultPassed ? styles.passText : styles.failText) : ""}`}
                 >
                   {hasYourResult ? formatValue(yourResult) : '-'}
                 </Text>
@@ -257,9 +257,9 @@ export default function TestCaseResultsBox({ gameId, team1Results, team2Results,
           </Box>
         </Table.Td>
         {showOtherTeamColumn && (
-          <Table.Td>
+          <Table.Td className={styles.colResultCell}>
             <Box className={styles.cellResult}>
-              <Box style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Box className={styles.resultContent}>
                 {hasOtherTeamResult && !hasOtherTeamError && (
                   <span className={`${styles.statusIndicator} ${otherTeamPassed ? styles.statusPass : styles.statusFail}`}>
                     {otherTeamPassed ? <IconCheck size={12} className={styles.passIcon} /> : <IconX size={12} className={styles.failIcon} />}
@@ -273,7 +273,7 @@ export default function TestCaseResultsBox({ gameId, team1Results, team2Results,
                     size="sm"
                     fw={500}
                     ff="monospace"
-                    className={`${styles.cellInput} ${hasOtherTeamResult ? (otherTeamPassed ? styles.passText : styles.failText) : ""}`}
+                    className={`${styles.cellInput} ${styles.resultText} ${hasOtherTeamResult ? (otherTeamPassed ? styles.passText : styles.failText) : ""}`}
                   >
                     {hasOtherTeamResult ? formatValue(otherTeamResult) : '-'}
                   </Text>
@@ -289,7 +289,7 @@ export default function TestCaseResultsBox({ gameId, team1Results, team2Results,
             </Box>
           </Table.Td>
         )}
-        <Table.Td>
+        <Table.Td className={styles.colExpectedCell}>
           <Text size="sm" fw={500} ff="monospace" className={styles.cellInput}>
             {formatValue(element.expected)}
           </Text>
@@ -308,12 +308,22 @@ export default function TestCaseResultsBox({ gameId, team1Results, team2Results,
 
       <Box className={styles.scrollRegion}>
         <Table highlightOnHover verticalSpacing="sm" striped className={styles.table}>
+          <colgroup>
+            <col className={styles.colInput} />
+            <col className={styles.colResult} />
+            {showOtherTeamColumn && <col className={styles.colResult} />}
+            <col className={styles.colExpected} />
+          </colgroup>
           <Table.Thead>
             <Table.Tr>
-              <Table.Th className={styles.tableHeader}>Input</Table.Th>
-              <Table.Th className={styles.tableHeader}>{gameType === "TWOPLAYER" ? "Your Code" : "Your Result"}</Table.Th>
-              {showOtherTeamColumn && <Table.Th className={styles.tableHeader}>Other Team</Table.Th>}
-              <Table.Th className={styles.tableHeader}>Expected Result</Table.Th>
+              <Table.Th
+                className={`${styles.tableHeader} ${styles.colInputCell}`}
+              >
+                Input
+              </Table.Th>
+              <Table.Th className={`${styles.tableHeader} ${styles.colResultCell}`}>{gameType === "TWOPLAYER" ? "Your Code" : "Your Result"}</Table.Th>
+              {showOtherTeamColumn && <Table.Th className={`${styles.tableHeader} ${styles.colResultCell}`}>Other Team</Table.Th>}
+              <Table.Th className={`${styles.tableHeader} ${styles.colExpectedCell}`}>Expected Result</Table.Th>
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
