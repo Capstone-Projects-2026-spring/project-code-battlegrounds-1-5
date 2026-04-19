@@ -1,6 +1,6 @@
 const { GameType } = require("@prisma/client");
 const { z } = require("zod");
-const { validate } = require("./utils");
+const { validate } = require("../../utils/validate");
 
 const ParameterPrimitive = z.union([
     z.literal("string"),

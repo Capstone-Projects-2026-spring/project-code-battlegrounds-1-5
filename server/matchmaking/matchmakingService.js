@@ -1,6 +1,6 @@
 const { getPrisma } = require('../prisma/index');
 const { GameType, Role, ProblemDifficulty } = require('@prisma/client');
-const { nanoid } = require('nanoid');
+const { nanoid } = require('../utils/nanoid');
 const { readFileSync } = require('node:fs');
 const { join } = require('node:path');
 

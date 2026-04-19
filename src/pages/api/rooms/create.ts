@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ProblemDifficulty, GameType } from "@prisma/client";
-import { nanoid } from "nanoid";
+import { nanoid } from "@/lib/nanoid";
 /**
  * API route handler for creating a new game room.
  * This endpoint is called when the user clicks the "Create Game Room" button on the landing page.

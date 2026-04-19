@@ -1,7 +1,7 @@
 const { z } = require("zod");
 const { GameType } = require("@prisma/client");
 const { getPrisma } = require("../../prisma");
-const { validate } = require("./utils");
+const { validate } = require("../../utils/validate");
 
 const prisma = getPrisma();
 
