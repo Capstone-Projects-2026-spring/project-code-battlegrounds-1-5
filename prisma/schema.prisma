@@ -25,10 +25,10 @@ model User {
   players       TeamPlayer[]
 
   // Friendship
-  friendCode           String       @unique @default(uuid())
+  friendCode    String    @unique @default(uuid())
   friendshipsInitiated Friendship[] @relation("FriendshipRequester")
   friendshipsReceived  Friendship[] @relation("FriendshipAddressee")
-
+  
   ownedParty  Party?       @relation("PartyOwner")
   partyMember PartyMember? // the slot they occupy in someone
 
@@ -92,7 +92,7 @@ model InfraTestKv {
 }
 
 enum FriendshipStatus {
-  PENDING // requester sent, addressee hasn't responded
+  PENDING  // requester sent, addressee hasn't responded
   ACCEPTED
   DECLINED // kept for cooldown / block logic
 }
@@ -113,6 +113,7 @@ model Friendship {
   @@index([addresseeId])
   @@map("friendship")
 }
+
 
 model Party {
   id        String   @id @default(uuid())
@@ -184,11 +185,11 @@ enum Role {
 }
 
 model TeamPlayer {
-  teamId String
-  userId String
-  role   Role
-  team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  teamId      String
+  userId      String
+  role        Role
+  team        Team    @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([teamId, userId])
   @@index([teamId])
@@ -236,34 +237,16 @@ model ProblemTest {
   problem Problem @relation(fields: [problemId], references: [slug], onDelete: Cascade)
 }
 
-model GameTest {
-  id             String @id @default(uuid())
-  gameResultId   String
-  teamNumber     Int
-  position       Int
-  testCaseId     Int
-  functionInput  Json
-  expectedOutput Json
-
-  gameResult GameResult @relation(fields: [gameResultId], references: [id], onDelete: Cascade)
-
-  @@index([gameResultId])
-  @@index([gameResultId, teamNumber])
-  @@unique([gameResultId, teamNumber, position])
-  @@unique([gameResultId, teamNumber, testCaseId])
-}
-
 model GameResult {
-  id                String  @id @default(uuid())
-  gameRoomId        String  @unique
-  winningTeamId     String? @unique
-  team1Code         String?
-  team2Code         String?
+  id            String @id @default(uuid())
+  gameRoomId    String @unique
+  winningTeamId String? @unique
+  team1Code      String?
+  team2Code      String?
   team1TimeToPassMs Int?
   team2TimeToPassMs Int?
-  gameTests         GameTest[]
 
-  winningTeam Team?    @relation("WinningTeamRelation", fields: [winningTeamId], references: [id])
+  winningTeam Team?     @relation("WinningTeamRelation", fields: [winningTeamId], references: [id])
   gameRoom    GameRoom @relation(fields: [gameRoomId], references: [id], onDelete: Cascade)
 
   @@index([winningTeamId])
