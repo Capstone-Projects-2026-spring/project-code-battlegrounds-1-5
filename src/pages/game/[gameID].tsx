@@ -146,7 +146,11 @@ function PlayGameRoom() {
 
   // ONLY HAPPENS ON PAGE LAUNCH
   useEffect(() => {
+
+
     if (!session?.user.id || !gameId || !socket) return;
+
+    setStatus('idle');
 
     gameStateCtx.setGameId(gameId);
 
