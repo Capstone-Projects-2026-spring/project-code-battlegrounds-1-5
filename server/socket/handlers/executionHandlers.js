@@ -1,16 +1,16 @@
 const { z } = require("zod");
 const { GameType } = require("@prisma/client");
 const { getPrisma } = require("../../prisma");
-const { validate } = require("./utils");
+const { validate, getOrCreateTeamTestCases } = require("./utils");
 
 const prisma = getPrisma();
 
 const submitCodeSchema = z.object({
     roomId: z.string(),
-    code: z.string().max(10000).optional(), // Adjust max length as needed
+    code: z.string().min(1).max(10000),
     type: z.enum([GameType.TWOPLAYER, GameType.FOURPLAYER]),
     team: z.enum(["team1", "team2"]).nullable().optional(),
-    teamId: z.string().optional(),
+    teamId: z.string(),
 });
 
 function registerExecutionHandlers(io, socket, gameService) {
@@ -21,9 +21,20 @@ function registerExecutionHandlers(io, socket, gameService) {
             socket.emit('error', { message: 'Invalid payload for submitCode.' });
             return;
         }
-        const { roomId, code, type, team, teamId, testCases, runIDs } = payload;
+        const { roomId, code, type, team, teamId } = payload;
 
         if (!roomId) return;
+
+        let testCases;
+        try {
+            testCases = await getOrCreateTeamTestCases(gameService, teamId);
+        } catch (e) {
+            console.error('Error preparing test cases for submitCode', e);
+            socket.emit('error', { e, message: 'Failed to prepare test cases for submission.' });
+            return;
+        }
+
+        const runIDs = testCases.map((testCase) => testCase.id);
 
         console.log('submitCode received for roomId:', roomId, 'with code length:', code?.length, 'and type:', type);
 
@@ -132,9 +143,7 @@ function registerExecutionHandlers(io, socket, gameService) {
             } else {
                 // First team submitted - notify waiting (only to that team)
                 console.log('First team submitted, waiting for other team');
-                if (teamId) {
-                    io.to(teamId).emit('waitingForOtherTeam');
-                }
+                io.to(teamId).emit('waitingForOtherTeam');
             }
         }
     });

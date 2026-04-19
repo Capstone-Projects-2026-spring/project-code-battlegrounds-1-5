@@ -7,4 +7,48 @@ function validate(schema, data) {
   return result.data;
 }
 
-module.exports = { validate };
+function getDefaultTestCases() {
+  return [
+    {
+      id: 0,
+      functionInput: [
+        { name: "a", type: "number", value: "2" },
+        { name: "b", type: "number", value: "3" },
+      ],
+      expectedOutput: {
+        name: "result",
+        type: "number",
+        value: "5",
+        isOutputParameter: true,
+      },
+    },
+  ];
+}
+
+function getDefaultStarterCode() {
+  return "function solution(a, b) { \n\treturn a + b;\n}";
+}
+
+async function getOrCreateTeamCode(gameService, teamId) {
+  const existing = await gameService.getLatestCode(teamId);
+  if (typeof existing === "string" && existing.length > 0) {
+    return existing;
+  }
+
+  const defaults = getDefaultStarterCode();
+  await gameService.saveLatestCode(teamId, defaults);
+  return defaults;
+}
+
+async function getOrCreateTeamTestCases(gameService, teamId) {
+  const existing = await gameService.getTestCases(teamId);
+  if (Array.isArray(existing) && existing.length > 0) {
+    return existing;
+  }
+
+  const defaults = getDefaultTestCases();
+  await gameService.saveTestCases(teamId, defaults);
+  return defaults;
+}
+
+module.exports = { validate, getOrCreateTeamTestCases, getOrCreateTeamCode };

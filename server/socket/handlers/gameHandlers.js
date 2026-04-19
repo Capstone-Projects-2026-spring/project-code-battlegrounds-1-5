@@ -1,6 +1,6 @@
 const { GameType } = require("@prisma/client");
 const { z } = require("zod");
-const { validate } = require("./utils");
+const { validate, getOrCreateTeamTestCases, getOrCreateTeamCode } = require("./utils");
 
 const ParameterPrimitive = z.union([
     z.literal("string"),
@@ -133,13 +133,19 @@ function registerGameHandlers(io, socket, gameService) {
         }
 
         try {
-            const latestCode = await gameService.getLatestCode(teamId);
-            if (latestCode != null) {
-                socket.emit('receiveCodeUpdate', latestCode);
-            }
+            const latestCode = await getOrCreateTeamCode(gameService, teamId);
+            socket.emit('receiveCodeUpdate', latestCode);
         } catch (e) {
             console.error('Error fetching code from Redis', e);
             socket.emit('error', { e, message: 'Failed to fetch latest code.' });
+        }
+
+        try {
+            const latestTestCases = await getOrCreateTeamTestCases(gameService, teamId);
+            socket.emit('receiveTestCaseSync', latestTestCases);
+        } catch (e) {
+            console.error('Error fetching test cases from Redis', e);
+            socket.emit('error', { e, message: 'Failed to fetch latest test cases.' });
         }
 
         console.log(`Socket ${socket.id} joined room ${gameId} and team ${teamId}`);
@@ -161,6 +167,23 @@ function registerGameHandlers(io, socket, gameService) {
         }
 
         socket.to(teamId).emit('receiveCodeUpdate', code);
+    });
+
+    socket.on('requestCodeSync', async (data) => {
+        const payload = validate(requestSyncSchema, data);
+        if (!payload) {
+            socket.emit('error', { message: 'Invalid payload for requestCodeSync.' });
+            return;
+        }
+        const { teamId } = payload;
+
+        try {
+            const latestCode = await getOrCreateTeamCode(gameService, teamId);
+            socket.emit('receiveCodeUpdate', latestCode);
+        } catch (e) {
+            console.error('Error fetching latest code', e);
+            socket.emit('error', { e, message: 'Failed to fetch latest code.' });
+        }
     });
 
     socket.on('sendChat', async (data) => {
@@ -209,6 +232,7 @@ function registerGameHandlers(io, socket, gameService) {
 
         try {
             await gameService.saveTestCases(teamId, testCases);
+            io.to(teamId).emit('receiveTestCaseSync', testCases);
         } catch (e) {
             console.error('Error saving test cases', e);
             socket.emit('error', { e, message: 'Failed to save test cases.' });
@@ -224,8 +248,8 @@ function registerGameHandlers(io, socket, gameService) {
         const { teamId } = payload;
 
         try {
-            const testCases = await gameService.getTestCases(teamId);
-            if (testCases) socket.emit('receiveTestCaseSync', testCases);
+            const testCases = await getOrCreateTeamTestCases(gameService, teamId);
+            socket.emit('receiveTestCaseSync', testCases);
         } catch (e) {
             console.error('Error fetching test cases', e);
             socket.emit('error', { e, message: 'Failed to fetch test cases.' });

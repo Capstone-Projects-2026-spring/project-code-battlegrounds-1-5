@@ -1,5 +1,5 @@
 const { Server } = require('socket.io');
-const { registerSocketHandlers } = require('./handlers');
+const { registerSocketHandlers } = require('./handlers/index');
 const { createGameService } = require('../game/gameService');
 const { createMatchmakingService } = require('../matchmaking/matchmakingService');
 const { createInviteService } = require('../invite/inviteService');
