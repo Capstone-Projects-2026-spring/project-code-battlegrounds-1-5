@@ -86,12 +86,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             })
          */
 
-        const gameId = gameRoom.id;
+        const gameId = gameRoom.id; // warm vm
         fetch(`${process.env.ORCHESTRATOR_URL ?? "localhost:6969"}/request-warm-vm`, {
             method: "POST",
-            headers: {'Content-Type': 'application/json'},
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ gameId })
-        }).catch((error) => console.error(error));
+        })
+            .then(res => res.json())
+            .then(data => console.log(data))
+            .catch((error) => console.error(error));
 
 
         // return generated code

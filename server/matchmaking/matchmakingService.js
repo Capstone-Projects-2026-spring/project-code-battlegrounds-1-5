@@ -3,6 +3,7 @@ const { GameType, Role, ProblemDifficulty } = require('@prisma/client');
 const { nanoid } = require('../utils/nanoid');
 const { readFileSync } = require('node:fs');
 const { join } = require('node:path');
+const { warmVm } = require('../utils/vm/warmVm');
 
 const QUEUE_KEY = (gameType, difficulty) => `queue:${gameType}:${difficulty}`;
 const REQUIRED_PLAYERS = {
@@ -136,11 +137,7 @@ function createMatchmakingService(stateRedis, io) {
 
             const gameRoom = await this._createGameInDB(players, gameType, difficulty);
             const gameId = gameRoom.id;
-            fetch(`${process.env.ORCHESTRATOR_URL ?? "localhost:6969"}/request-warm-vm`, {
-                method: "POST",
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ gameId })
-            }).catch((error) => console.error(error));
+            warmVm(gameId);
             await this._notifyPlayers(gameRoom);
             return { status: 'matched', gameId: gameRoom.id };
         },
@@ -160,12 +157,7 @@ function createMatchmakingService(stateRedis, io) {
             ];
             const gameRoom = await this._createGameInDB(players, gameType, difficulty);
             const gameId = gameRoom.id;
-            fetch(`${process.env.ORCHESTRATOR_URL ?? "localhost:6969"}/request-warm-vm`, {
-                method: "POST",
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ gameId })
-            }).catch((error) => console.error(error));
-            await this._notifyPlayers(gameRoom);
+            warmVm(gameId);
             return { status: 'matched', gameId: gameRoom.id };
         },
 

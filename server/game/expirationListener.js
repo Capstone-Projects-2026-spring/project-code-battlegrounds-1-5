@@ -1,5 +1,6 @@
 const { getPrisma } = require('../prisma/index');
 const { Role } = require('@prisma/client');
+const { deleteVm } = require('../utils/vm/deleteVm');
 
 function startExpirationListener(io, pubClient) {
   const sub = pubClient.duplicate();
@@ -101,14 +102,7 @@ function startExpirationListener(io, pubClient) {
           }) 
       */
      // deletes vm after game is over
-      fetch(`${process.env.ORCHESTRATOR_URL ?? "localhost:6969"}/delete-vm`, {
-        method: "POST",
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ gameId })
-      })
-        .then(res => res.json())
-        .then(data => console.log(data))
-        .catch(error => console.error(error));
+      deleteVm(gameId);
       io.to(gameId).emit('gameEnded');
     }
 

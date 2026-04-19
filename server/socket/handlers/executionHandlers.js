@@ -2,6 +2,7 @@ const { z } = require("zod");
 const { GameType } = require("@prisma/client");
 const { getPrisma } = require("../../prisma");
 const { validate } = require("../../utils/validate");
+const { deleteVm } = require("../../utils/vm/deleteVm");
 
 const prisma = getPrisma();
 
@@ -12,9 +13,6 @@ const submitCodeSchema = z.object({
     team: z.enum(["team1", "team2"]).nullable().optional(),
     teamId: z.string().optional(),
 });
-
-const MAX_ATTEMPTS = 10;
-const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 function registerExecutionHandlers(io, socket, gameService) {
 
@@ -29,25 +27,6 @@ function registerExecutionHandlers(io, socket, gameService) {
         if (!roomId) return;
 
         console.log('submitCode received for roomId:', roomId, 'with code length:', code?.length, 'and type:', type);
-        try {
-            let attempts = 0;
-            while (attempts < MAX_ATTEMPTS) {
-                const res = await fetch(`${process.env.ORCHESTRATOR_URL ?? "localhost:6969"}/request-warm-vm`, {
-                    method: "POST",
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ gameId: roomId })
-                });
-                // if (res.status === 503) return; this might be fine but not sure
-
-                if (res.status === 200) break;
-
-                await sleep(4000); // wait 4s before retrying
-                attempts++;
-            }
-        } catch (error) {
-            console.error(error);
-        }
-
         if (type === GameType.TWOPLAYER) {
             console.log('verify its a twoplayer game');
             await prisma.gameResult.update({
@@ -63,6 +42,7 @@ function registerExecutionHandlers(io, socket, gameService) {
                 // Post results to the code executor
                 let payload = {
                     // TODO: here is where we need to add roomId to request
+                    roomId,
                     language: "javascript",
                     code: btoa(code),
                     testCases: JSON.stringify(testCases),
@@ -80,19 +60,8 @@ function registerExecutionHandlers(io, socket, gameService) {
                 console.error("Error POSTing to code executor:", error);
             } finally {
                 await gameService.cleanupGameTimers(roomId);
-                await prisma.gameRoom.update({
-                    where: { id: roomId },
-                    data: { status: 'FINISHED' },
-                });
                 // deletes vm after game is over
-                fetch(`${process.env.ORCHESTRATOR_URL ?? "localhost:6969"}/delete-vm`, {
-                    method: "POST",
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ gameId })
-                })
-                    .then(res => res.json())
-                    .then(data => console.log(data))
-                    .catch(error => console.error(error));
+                deleteVm(roomId);
                 io.to(roomId).emit('gameEnded');
             }
         }
@@ -159,15 +128,7 @@ function registerExecutionHandlers(io, socket, gameService) {
                         data: { status: 'FINISHED' },
                     });
                     // deletes vm after game is over
-                    fetch(`${process.env.ORCHESTRATOR_URL ?? "localhost:6969"}/delete-vm`, {
-                        method: "POST",
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ gameId })
-                    })
-                        .then(res => res.json())
-                        .then(data => console.log(data))
-                        .catch(error => console.error(error));
-                    io.to(roomId).emit('gameEnded');
+                    deleteVm(roomId);
                     await gameService.deleteGameData(submissionKey);
                 }
             } else {
@@ -200,33 +161,13 @@ function registerExecutionHandlers(io, socket, gameService) {
         } = data;
         let payload = {
             // TODO: here is where we need to add roomId to request
+            roomId,
             language: "javascript",
             code: btoa(code),
             testCases: JSON.stringify(testCases),
             runIDs: JSON.stringify(runIDs)
         };
         // console.log(JSON.stringify(payload));
-
-        try {
-            let attempts = 0;
-            let res;
-            while (attempts < MAX_ATTEMPTS) {
-                res = await fetch(`${process.env.ORCHESTRATOR_URL ?? "localhost:6969"}/request-warm-vm`, {
-                    method: "POST",
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ gameId: roomId })
-                });
-                // if (res.status === 503) return; this might be fine but not sure
-
-                if (res.status === 200) break;
-
-                await sleep(4000); // wait 4s before retrying
-                attempts++;
-            }
-            if (res.status !== 200) return;
-        } catch (error) {
-            console.error(error);
-        }
 
         const res = await fetch("http://127.0.0.1:6969/execute", {
             method: "POST",
