@@ -8,6 +8,7 @@ import {
     type SetStateAction,
 } from "react";
 import { useSocket } from "./SocketContext";
+import { showPartyInviteNotification } from "@/components/notifications";
 
 export interface PartyMember {
     userId: string;
@@ -76,6 +77,22 @@ export const PartyProvider = ({ children }: { children: ReactNode }) => {
 
         const onPartyInviteReceived = (invite: PartyInvite) => {
             setPendingInvite(invite);
+
+            showPartyInviteNotification(
+                invite.fromDisplayName,
+                invite.fromUserId,
+                () => {
+                    socket.emit("partyInviteAccept");
+                    socket.once("partyJoined", (member: PartyMember) => {
+                        setJoinedParty(member);
+                        setPendingInvite(null);
+                    });
+                },
+                () => {
+                    socket.emit("partyInviteDecline");
+                    setPendingInvite(null);
+                },
+            );
         };
 
         const onPartyMemberLeft = () => {
