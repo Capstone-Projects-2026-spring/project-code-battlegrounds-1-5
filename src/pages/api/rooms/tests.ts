@@ -6,8 +6,8 @@ import { type TestableCase } from "@/contexts/GameTestCasesContext";
 
 export interface TestCase {
   id: string;
-  input: ParameterType[];
-  expected: ParameterType[];
+  input: unknown;
+  expected: unknown;
   source: "gameplay" | "hidden";
 }
 
@@ -79,16 +79,6 @@ function normalizeParameterArray(value: unknown): ParameterType[] {
     return value.filter(isExecutorParameter);
   }
 
-  // Backward compatibility: some stored JSON values may be serialized strings.
-  if (typeof value === "string") {
-    try {
-      const parsed = JSON.parse(value) as unknown;
-      return normalizeParameterArray(parsed);
-    } catch {
-      return [];
-    }
-  }
-
   if (isExecutorParameter(value)) {
     return [value];
   }
@@ -107,15 +97,6 @@ function normalizeExpectedParameter(value: unknown): ParameterType {
     type: "string",
     value: value === null || value === undefined ? null : String(value),
   };
-}
-
-function normalizeExpectedArray(value: unknown): ParameterType[] {
-  const normalized = normalizeParameterArray(value);
-  if (normalized.length > 0) {
-    return normalized;
-  }
-
-  return [normalizeExpectedParameter(value)];
 }
 
 function toDisplayResult(expected: unknown, actual: string | null): unknown {
@@ -330,8 +311,8 @@ export default async function handler(
 
     const gameplayFormattedTests: TestCase[] = selectedGameTests.map((test) => ({
       id: String(test.testCaseId),
-      input: normalizeParameterArray(test.functionInput),
-      expected: normalizeExpectedArray(test.expectedOutput),
+      input: test.functionInput,
+      expected: test.expectedOutput,
       source: "gameplay",
     }));
 
@@ -347,8 +328,8 @@ export default async function handler(
 
     const hiddenFormattedTests: TestCase[] = problemTests.map((test) => ({
       id: test.id,
-      input: normalizeParameterArray(test.functionInput),
-      expected: normalizeExpectedArray(test.expectedOutput),
+      input: test.functionInput,
+      expected: test.expectedOutput,
       source: "hidden",
     }));
 
