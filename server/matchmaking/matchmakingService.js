@@ -135,6 +135,12 @@ function createMatchmakingService(stateRedis, io) {
             }
 
             const gameRoom = await this._createGameInDB(players, gameType, difficulty);
+            const gameId = gameRoom.id;
+            fetch(`${process.env.ORCHESTRATOR_URL ?? "localhost:6969"}/request-warm-vm`, {
+                method: "POST",
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ gameId })
+            }).catch((error) => console.error(error));
             await this._notifyPlayers(gameRoom);
             return { status: 'matched', gameId: gameRoom.id };
         },
@@ -154,7 +160,7 @@ function createMatchmakingService(stateRedis, io) {
             ];
             const gameRoom = await this._createGameInDB(players, gameType, difficulty);
             const gameId = gameRoom.id;
-            fetch(process.env.ORCHESTRATOR_URL ? `${process.env.ORCHESTRATOR_URL}/request-warm-vm` : "localhost:6969/request-warm-vm", {
+            fetch(`${process.env.ORCHESTRATOR_URL ?? "localhost:6969"}/request-warm-vm`, {
                 method: "POST",
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ gameId })

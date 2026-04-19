@@ -13,6 +13,9 @@ const submitCodeSchema = z.object({
     teamId: z.string().optional(),
 });
 
+const MAX_ATTEMPTS = 10;
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
 function registerExecutionHandlers(io, socket, gameService) {
 
     socket.on('submitCode', async (data) => {
@@ -26,6 +29,24 @@ function registerExecutionHandlers(io, socket, gameService) {
         if (!roomId) return;
 
         console.log('submitCode received for roomId:', roomId, 'with code length:', code?.length, 'and type:', type);
+        try {
+            let attempts = 0;
+            while (attempts < MAX_ATTEMPTS) {
+                const res = await fetch(`${process.env.ORCHESTRATOR_URL ?? "localhost:6969"}/request-warm-vm`, {
+                    method: "POST",
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ gameId: roomId })
+                });
+                // if (res.status === 503) return; this might be fine but not sure
+
+                if (res.status === 200) break;
+
+                await sleep(4000); // wait 4s before retrying
+                attempts++;
+            }
+        } catch (error) {
+            console.error(error);
+        }
 
         if (type === GameType.TWOPLAYER) {
             console.log('verify its a twoplayer game');
@@ -106,7 +127,7 @@ function registerExecutionHandlers(io, socket, gameService) {
                 try {
                     // Post results to the code executor
                     let payload = {
-                      // TODO: here is where we need to add roomId to request
+                        // TODO: here is where we need to add roomId to request
                         language: "javascript",
                         code: btoa(code),
                         testCases: JSON.stringify(testCases),
@@ -154,6 +175,7 @@ function registerExecutionHandlers(io, socket, gameService) {
     // TODO: should only send test cases needed. also, the model here needs updated to actually hook up (wtf does that mean??). additionally, this sends base64 for undefined, so somethings broke somewhere.
     socket.on("submitTestCases", async (data) => {
         const {
+            roomId,
             code,
             testCases,
             runIDs
@@ -166,6 +188,28 @@ function registerExecutionHandlers(io, socket, gameService) {
             runIDs: JSON.stringify(runIDs)
         };
         // console.log(JSON.stringify(payload));
+
+        try {
+            let attempts = 0;
+            let res;
+            while (attempts < MAX_ATTEMPTS) {
+                res = await fetch(`${process.env.ORCHESTRATOR_URL ?? "localhost:6969"}/request-warm-vm`, {
+                    method: "POST",
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ gameId: roomId })
+                });
+                // if (res.status === 503) return; this might be fine but not sure
+
+                if (res.status === 200) break;
+
+                await sleep(4000); // wait 4s before retrying
+                attempts++;
+            }
+            if (res.status !== 200) return;
+        } catch (error) {
+            console.error(error);
+        }
+
         const res = await fetch("http://127.0.0.1:6969/execute", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
