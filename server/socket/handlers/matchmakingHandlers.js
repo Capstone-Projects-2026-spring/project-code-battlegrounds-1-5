@@ -1,4 +1,4 @@
-function registerMatchmakingHandlers(io, socket, matchmakingService) {
+function registerMatchmakingHandlers(io, socket, matchmakingService, gameService) {
     socket.on('joinQueue', async ({ userId, gameType, difficulty, partyId, lobbyId }) => {
     const result = await matchmakingService.joinQueue(userId, gameType, difficulty, partyId ?? lobbyId ?? null);
     socket.emit('queueStatus', result);
