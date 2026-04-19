@@ -94,6 +94,21 @@ function startExpirationListener(io, pubClient) {
         data: { status: 'FINISHED' },
       });
       await pubClient.srem('activeGames', gameId);
+      /** class DeleteVMRequest(BaseModel):
+              gameId: str
+          @app.post("/delete-vm", response_class=Response, responses={
+              200: {"description": "VM queued for deletion."},
+          }) 
+      */
+     // deletes vm after game is over
+      fetch(`${process.env.ORCHESTRATOR_URL ?? "localhost:6969"}/delete-vm`, {
+        method: "POST",
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ gameId })
+      })
+        .then(res => res.json())
+        .then(data => console.log(data))
+        .catch(error => console.error(error));
       io.to(gameId).emit('gameEnded');
     }
 

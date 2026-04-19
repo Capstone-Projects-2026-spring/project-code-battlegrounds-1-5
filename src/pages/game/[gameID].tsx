@@ -2,7 +2,7 @@ import { ActionIcon, Box, Button, Center, Group, Loader, Modal, Select, Stack, T
 import { Editor } from '@monaco-editor/react';
 import { useRouter } from 'next/router';
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { io, Socket } from 'socket.io-client';
+import { Socket } from 'socket.io-client';
 import { IconEye, IconPlayerPlay, IconPlayerTrackNextFilled, IconPlus } from '@tabler/icons-react';
 import { usePostHog } from 'posthog-js/react';
 import { Panel, Group as PanelGroup, Separator as PanelResizeHandle } from 'react-resizable-panels';

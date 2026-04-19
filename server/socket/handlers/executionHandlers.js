@@ -84,6 +84,15 @@ function registerExecutionHandlers(io, socket, gameService) {
                     where: { id: roomId },
                     data: { status: 'FINISHED' },
                 });
+                // deletes vm after game is over
+                fetch(`${process.env.ORCHESTRATOR_URL ?? "localhost:6969"}/delete-vm`, {
+                    method: "POST",
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ gameId })
+                })
+                    .then(res => res.json())
+                    .then(data => console.log(data))
+                    .catch(error => console.error(error));
                 io.to(roomId).emit('gameEnded');
             }
         }
@@ -149,6 +158,15 @@ function registerExecutionHandlers(io, socket, gameService) {
                         where: { id: roomId },
                         data: { status: 'FINISHED' },
                     });
+                    // deletes vm after game is over
+                    fetch(`${process.env.ORCHESTRATOR_URL ?? "localhost:6969"}/delete-vm`, {
+                        method: "POST",
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ gameId })
+                    })
+                        .then(res => res.json())
+                        .then(data => console.log(data))
+                        .catch(error => console.error(error));
                     io.to(roomId).emit('gameEnded');
                     await gameService.deleteGameData(submissionKey);
                 }
