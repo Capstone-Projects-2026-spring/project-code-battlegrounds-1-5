@@ -108,8 +108,7 @@ export default function AnalysisBox({ team1Code, team2Code, gameType = "FOURPLAY
           </Text>
           <Group gap="xs" className={styles.badgeGroup}>
             <Badge color="teal" variant="light" size="md" radius="sm" className={`${styles.metricBadge} ${styles.runtimeBadge}`}>
-              Runtime: {userTeamNumber === 2 && team2AverageExecutionTime !== null && team2AverageExecutionTime !== undefined ? `${team2AverageExecutionTime}ms` :
-                       userTeamNumber === 1 && team1AverageExecutionTime !== null && team1AverageExecutionTime !== undefined ? `${team1AverageExecutionTime}ms` : 'N/A'}
+              Runtime: {team1AverageExecutionTime !== null && team1AverageExecutionTime !== undefined ? `${team1AverageExecutionTime}ms` : 'N/A'}
             </Badge>
           </Group>
         </Box>

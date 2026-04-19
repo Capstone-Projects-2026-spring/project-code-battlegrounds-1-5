@@ -34,14 +34,26 @@ interface ExecutorResponse {
 
 type ResultValue = Pick<ExecutorResultItem, 'actual' | 'passed' | 'stderr' | 'execution_time_ms'>;
 export interface TestsResponse {
+  // Problem & Game Details
+  problem: {
+    id: string;
+    title: string;
+    description: string;
+    difficulty: "EASY" | "MEDIUM" | "HARD";
+    topics: string[];
+  };
+  gameType: string;
+  userTeamNumber: 1 | 2;
+  team1Code: string | null;
+  team2Code: string | null;
+
+  // Test Execution Results
   tests: TestCase[];
   team1Results: unknown[];
   team2Results: unknown[];
   team1PassedCount: number;
   team2PassedCount: number;
   totalTests: number;
-  team1ExecutionTimes: (number | null)[];
-  team2ExecutionTimes: (number | null)[];
   team1AverageExecutionTime: number | null;
   team2AverageExecutionTime: number | null;
   team1Errors: (string | null)[];
@@ -140,6 +152,7 @@ async function executeSubmission(
   }
 
   const executionData = (await response.json()) as ExecutorResponse;
+  console.log("[EXECUTOR RESPONSE]", JSON.stringify(executionData, null, 2));
   const resultsById = new Map<number, ResultValue>();
 
 
@@ -219,7 +232,14 @@ export default async function handler(
       where: { id: gameId },
       include: {
         problem: {
-          select: { slug: true },
+          select: {
+            id: true,
+            title: true,
+            description: true,
+            difficulty: true,
+            topics: true,
+            slug: true,
+          },
         },
         gameResult: {
           select: {
@@ -227,11 +247,36 @@ export default async function handler(
             team2Code: true,
           },
         },
+        teams: {
+          include: {
+            players: {
+              select: {
+                userId: true,
+              },
+            },
+          },
+          orderBy: {
+            createdAt: "asc",
+          },
+        },
       },
     });
 
     if (!gameRoom || !gameRoom.problem) {
       return res.status(404).json({ message: "Game room not found" });
+    }
+
+    // Determine which team the current user is on (1 or 2 based on creation order)
+    let userTeamNumber: 1 | 2 = 1;
+    for (let i = 0; i < gameRoom.teams.length; i++) {
+      const team = gameRoom.teams[i];
+      const userIsOnThisTeam = team.players.some(
+        (p) => p.userId === session.user.id
+      );
+      if (userIsOnThisTeam) {
+        userTeamNumber = (i + 1) as 1 | 2;
+        break;
+      }
     }
 
     // Fetch test cases for the problem using slug
@@ -320,14 +365,26 @@ export default async function handler(
     }
 
     return res.status(200).json({
+      // Problem & Game Details
+      problem: {
+        id: gameRoom.problem.id,
+        title: gameRoom.problem.title,
+        description: gameRoom.problem.description,
+        difficulty: gameRoom.problem.difficulty,
+        topics: gameRoom.problem.topics,
+      },
+      gameType: gameRoom.gameType,
+      userTeamNumber,
+      team1Code: gameRoom.gameResult?.team1Code ?? null,
+      team2Code: gameRoom.gameResult?.team2Code ?? null,
+
+      // Test Execution Results
       tests: formattedTests,
       team1Results: team1Execution.results,
       team2Results: team2Execution.results,
       team1PassedCount: team1Execution.passedCount,
       team2PassedCount: team2Execution.passedCount,
       totalTests: formattedTests.length,
-      team1ExecutionTimes: team1Execution.executionTimes,
-      team2ExecutionTimes: team2Execution.executionTimes,
       team1AverageExecutionTime: team1Execution.averageExecutionTime,
       team2AverageExecutionTime: team2Execution.averageExecutionTime,
       team1Errors: team1Execution.errors,
