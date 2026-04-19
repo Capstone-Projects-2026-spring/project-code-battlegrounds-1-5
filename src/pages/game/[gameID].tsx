@@ -102,6 +102,8 @@ function PlayGameRoom() {
   const testCaseCtx = useTestCases();
   const gameStateCtx = useGameState();
   const { socket } = useSocket();
+
+  // when setting status in the first useEffect, set it to _idle
   const { setStatus } = useMatchmaking();
 
   const [spectatorView, setSpectatorView] = useState<Role>(Role.SPECTATOR);

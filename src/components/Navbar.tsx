@@ -61,7 +61,7 @@ export default function HeaderSimple(props: HeaderProps) {
             {brandName}
           </Anchor> */}
 
-        <Brand blink />
+        <Brand blink link='/' />
         <Text fw={600} mr="auto">
 
           {props.isSpectator && (
