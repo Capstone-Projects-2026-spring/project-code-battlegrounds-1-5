@@ -174,7 +174,6 @@ async def lifespan(app: FastAPI): # ignore the warning here. mess with this line
     yield
 
 app = FastAPI(lifespan=lifespan)
-# app.add_middleware(GlobalsMiddleware)
 
 @app.get("/", response_class=PlainTextResponse)
 def root():
