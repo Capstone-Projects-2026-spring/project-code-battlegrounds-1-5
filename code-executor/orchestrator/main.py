@@ -1,13 +1,12 @@
 import json
-from typing import Optional, List, Tuple, Union, Literal
+from typing import Tuple
 
 from fastapi import FastAPI, status, Request
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import PlainTextResponse, JSONResponse
+from google.api_core.exceptions import NotFound
 from google.cloud import compute_v1
-from pydantic import BaseModel
 from enum import Enum
 from contextlib import asynccontextmanager
-# from fastapi_globals import GlobalsMiddleware
 from starlette.responses import Response
 import requests
 
@@ -19,7 +18,6 @@ from models import *
 # --allow=tcp:8000 \
 #   --source-ranges=10.8.0.0/28   # your VPC connector
 #   --target-tags=fastapi-server
-# TODO: still need enable deleting vms
 
 class Status(Enum):
     STARTING = 1
@@ -76,6 +74,21 @@ class VMProvisioner:
             print("Error fetching IP")
         return None
 
+    def delete_instance(self, name: str, zone: str):
+        try:
+            self.client.delete(
+                project=self.project_id,
+                zone=zone,
+                instance=name,
+            )
+        except NotFound:
+            # actually chill - it was prob already deleted but just somehow wasnt in state. maybe a scaling issue (NONE of this is backed by redis lol)
+            pass
+        except Exception as e:
+            msg = "Error deleting instance {name}: {e}".format(name=name,e=e)
+            print(msg)
+            return msg
+
     def create_instance(self, name: str) -> Tuple[bool, Optional[str]]:
         # tries all zones and returns (True, ip) on first accepted creation, (False, None) if none accepted
         for zone in self.zones:
@@ -101,7 +114,7 @@ class VMProvisioner:
                     {
                         # TODO: get source in startup script outta here and refer directly to location of python executable in venv
                         "key":"startup-script", # TODO: MUST REMOVE THIS GIT SWITCH AS WE MERGE. vm is already on main. while i test, i want to be on my branch
-                        "value":"#!/bin/bash\ngit config --system --add safe.directory /home/juli4fasick/project-code-battlegrounds-1-5\ncd /home/juli4fasick/project-code-battlegrounds-1-5\ngit switch feat/vm-orchestrator-fr\ngit pull\nsource ./.venv/bin/activate\ncd ./code-executor\npip3 install -r requirements.txt\ncd ./executor-api\nfastapi run --host 0.0.0.0 --port 8000",
+                        "value":"#!/bin/bash\ngit config --system --add safe.directory /home/juli4fasick/project-code-battlegrounds-1-5\ncd /home/juli4fasick/project-code-battlegrounds-1-5\ngit switch feat/execution-in-prod\ngit pull\nsource ./.venv/bin/activate\ncd ./code-executor\npip3 install -r requirements.txt\ncd ./executor-api\nfastapi run --host 0.0.0.0 --port 8000",
                     }
                 ]
                 instance.metadata = metadata
@@ -131,6 +144,16 @@ class Pool: # we're gonna make a VM per game. based on my math, if a VM is 50$ a
         self.games = {} # map gameid to vm
         self.provisioner = provisioner
 
+    def delete(self, game_id: str):
+        if game_id not in self.games:
+            return "Game {game_id} not found. Either it was never created, is still being created, was already deleted, or is a skill issue one the programmer's end.".format(game_id=game_id)
+        game = self.games[game_id]
+        chk = self.provisioner.delete_instance(game.game_id, game.zone)
+        if chk is not None:
+            return chk
+        self.games.pop(game_id)
+        return None
+
     def scale(self, game_id: str): # create VM for this game if possible
         vm = VM(game_id)
         ok, zone = self.provisioner.create_instance(vm.game_id)
@@ -151,7 +174,6 @@ async def lifespan(app: FastAPI): # ignore the warning here. mess with this line
     yield
 
 app = FastAPI(lifespan=lifespan)
-# app.add_middleware(GlobalsMiddleware)
 
 @app.get("/", response_class=PlainTextResponse)
 def root():
@@ -205,7 +227,21 @@ def request_warm_vm(payload: PrewarmRequest, req: Request):
     else:
         return Response(status_code=status.HTTP_503_SERVICE_UNAVAILABLE) # cant create in instances
 
-@app.post("/execute") # TODO: need to include a gameid endpoint here. will need to be reflected in executor image models otherwise shit will fail locally
+class DeleteVMRequest(BaseModel):
+    gameId: str
+@app.post("/delete-vm", response_class=Response, responses={
+    200: {"description": "VM queued for deletion."},
+})
+def delete_vm(payload: DeleteVMRequest, request: Request):
+    pool = request.app.state.pool
+    print("Deletion requested for gameId: " + payload.gameId)
+    chk = pool.delete(payload.gameId)
+    if chk is not None:
+        return JSONResponse(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, content={"error": chk})
+    else:
+        return JSONResponse(status_code=status.HTTP_200_OK, content={"success": "vm queued for deletion"})
+
+@app.post("/execute") # TODO: need to include a gameid endpoint here of which vm to target before falling back. this is already mirrored in executor-image.
 def execute(req: ExecutionRequest, request: Request):
     print(json.dumps(req.dict()))
 
@@ -245,7 +281,6 @@ def execute(req: ExecutionRequest, request: Request):
 
     # Forward the execute request to the executor-api running on the VM
     # payload = json.dumps(req.dict())
-    # TODO: first of all. this still is giving issues with how we are talking to the executor-api.
     try:
         # Ensure we serialize the Pydantic model correctly (supports v1 and v2)
         payload = req.model_dump(mode='json') if hasattr(req, 'model_dump') else req.dict()

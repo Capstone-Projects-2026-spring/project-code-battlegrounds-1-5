@@ -21,6 +21,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(400).json({ message: "Invalid difficulty" });
     }
 
+    if (!gameType || !Object.values(GameType).includes(gameType)) {
+        return res.status(400).json({ message: "Invalid gameType" });
+    }
+
     // check auth status
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const session = await auth.api.getSession({ headers: req.headers as any });
@@ -52,44 +56,47 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             return res.status(500).json({ message: 'Failed to select a random problem' });
         }
 
+
         // Need to make a database call to Problem table but there are no Problems in the table right now
-        if (gameType === GameType.TWOPLAYER) {
-            const gameRoom = await prisma.gameRoom.create({
-                data: {
-                    id: roomID,
-                    problemId: problem.id,
-                    gameType: GameType.TWOPLAYER,
-                    teams: {
-                        create: [{}]
-                    },
-                    gameResult: {
-                        create: {}
-                    }
-                }
-            });
-            // return generated code
-            return res.status(201).json({ gameId: gameRoom.id });
-        } else if (gameType === GameType.FOURPLAYER) {
-            const gameRoom = await prisma.gameRoom.create({
-                data: {
-                    id: roomID,
-                    problemId: problem.id,
-                    gameType: GameType.FOURPLAYER,
-                    teams: {
-                        create: [{}, {}]
-                    },
-                    gameResult: {
-                        create: {}
-                    }
-                }
-            });
-            // return generated code
-            return res.status(201).json({ gameId: gameRoom.id });
-        }
 
-        return res.status(500).json({ message: "Didn't select gametype somehow" });
+        const isTwoPlayer = gameType === GameType.TWOPLAYER;
 
-        // TODO: here, store in redis pubsub channel called "matchmaking" or such so that other players can find it. then, before generating a new room, try to join any existing rooms. if room is joined and becomes full, mark it as in progress in postgres. See CODEBAT-14 and CODEBAT-56
+        const gameRoom = await prisma.gameRoom.create({
+            data: {
+                id: roomID,
+                problemId: problem.id,
+                gameType: gameType,
+                teams: {
+                    create: isTwoPlayer ? [{}] : [{}, {}]
+                },
+                gameResult: {
+                    create: {}
+                }
+            }
+        });
+
+        /**
+         *  class PrewarmRequest(BaseModel):
+                gameId: str
+
+            @app.post("/request-warm-vm", response_class=Response, responses={
+                200: {"description": "Warm VM has been requested and is ready"},
+                201: {"description": "Warm VM creation requested"},
+                503: {"description": "VM not available in any region! Try again later."}
+            })
+         */
+
+        const gameId = gameRoom.id;
+        fetch(`${process.env.ORCHESTRATOR_URL ?? "localhost:6969"}/request-warm-vm`, {
+            method: "POST",
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ gameId })
+        }).catch((error) => console.error(error));
+
+
+        // return generated code
+        return res.status(201).json({ gameId: gameRoom.id });
+
 
     } catch (error: unknown) {
         if (error instanceof Error) {
