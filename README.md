@@ -36,7 +36,6 @@ Tech Stack:
 - Socket.io
 - Socket.io Redis Adapter
 - JavaScript
-- Playwright
 - Jest
 - BetterAuth
 - Prisma ORM
@@ -119,7 +118,8 @@ To develop, you will need a computer with Git, Node, Bun, and Docker Compose.
 - To see how the websockets are working, try opening up the game page in an incognito tab to be registered as a different client.
 
 ## Testing
-We use one testing libraries: Jest. Jest is used for individual API tests.
+We use one testing library: 
+Jest is used for individual API tests 
 
 For the Jest tests, run `bunx jest tests/api/ --forceExit`.
 ## Collaborators

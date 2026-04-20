@@ -1,4 +1,5 @@
 import { Avatar, Box, Button, Stack, Text } from "@mantine/core";
+import { notifications } from "@mantine/notifications";
 import { useFriendship } from "@/contexts/FriendshipContext";
 import { useParty } from "@/contexts/PartyContext";
 import { useSocket } from "@/contexts/SocketContext";
@@ -17,24 +18,28 @@ export function InvitesTab() {
       setJoinedParty(member);
       setPendingInvite(null);
     });
+    notifications.hide(`party-invite-${pendingInvite.fromUserId}`);
   }
 
   function handleDeclinePartyInvite() {
     if (!socket || !pendingInvite) return;
     socket.emit("partyInviteDecline");
     setPendingInvite(null);
+    notifications.hide(`party-invite-${pendingInvite.fromUserId}`);
   }
 
   function handleAcceptFriendRequest(requestId: string) {
     if (!socket) return;
     socket.emit("friendRequestAccept", { requestId });
     setFriendRequests((prev) => prev.filter((r) => r.id !== requestId));
+    notifications.hide(`friend-request-${requestId}`);
   }
 
   function handleDeclineFriendRequest(requestId: string) {
     if (!socket) return;
     socket.emit("friendRequestDecline", { requestId });
     setFriendRequests((prev) => prev.filter((r) => r.id !== requestId));
+    notifications.hide(`friend-request-${requestId}`);
   }
 
   if (!hasAnything) {
