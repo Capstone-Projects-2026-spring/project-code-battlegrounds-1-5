@@ -27,7 +27,7 @@ function createMatchmakingService(stateRedis, io) {
                 const parsed = JSON.parse(e);
                 return parsed.userId === userId;
             });
-            if (alreadyQueued) return { status: 'already_queued' };
+            if (alreadyQueued) {return { status: 'already_queued' }};
 
             // TWOPLAYER + party = instant game, no queue needed
             if (partyId && gameType === GameType.TWOPLAYER) {
@@ -219,7 +219,6 @@ function createMatchmakingService(stateRedis, io) {
                     },
                 },
                 include: {
-                    id: true,
                     teams: { include: { players: true } },
                 },
             });

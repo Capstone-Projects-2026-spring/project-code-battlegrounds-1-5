@@ -220,6 +220,7 @@ function PlayGameRoom() {
 
     socket.on('invalidGame', invalidGameHandler);
     socket.on("error", errorHandler);
+    
 
     // 6. Cleanup: disconnect the socket if the user leaves the page
     return () => {
@@ -726,13 +727,7 @@ function PlayGameRoom() {
                     <Box mb="md" p="1rem" pb={isProblemVisible ? "md" : "1rem"}>
                       <GameTimer
                         endTime={endTime}
-                        onExpire={() => {
-                          if (role === Role.CODER)
-                            socket.emit("submitCode", {
-                              roomId: gameId,
-                              code: liveCode,
-                            });
-                        }}
+                        onExpire={handleTimerExpire}
                       />
                     </Box>
                   )}
@@ -810,7 +805,7 @@ function PlayGameRoom() {
                           size="xs"
                           color="green"
                           onClick={submitFinalCode}
-                          disabled={isSpectator || isWaitingForOtherTeam}
+                          disabled={isSpectator || isWaitingForOtherTeam} // TODO: disable this for first thirty seconds
                         >
                           {isWaitingForOtherTeam
                             ? "Waiting for other team..."

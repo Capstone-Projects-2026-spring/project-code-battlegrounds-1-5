@@ -169,40 +169,45 @@ function registerExecutionHandlers(io, socket, gameService) {
         };
         // console.log(JSON.stringify(payload));
 
-        const res = await fetch("http://127.0.0.1:6969/execute", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
-        });
-        const json = await res.json();
-
-        // json.testCases should realistically only modify a single property
-        // on the existing testCases object: `computedOutput`. Syncing this
-        // back to the frontend is handled over there :)
-        console.log(JSON.stringify(json, null, 2));
-
-        /* 
-          export interface TestableCase {
-            id: number;
-            functionInput: ParameterType[];
-            expectedOutput: ParameterType;
-            computedOutput?: string | null;
-          }
-        */
-
-        const toReceive = [];
-        for (const result of json.results) {
-            const matched = testCases.find(t => t.id === result.id);
-            if (!matched) continue;
-            toReceive.push({
-                id: matched.id,
-                functionInput: matched.functionInput,
-                expectedOutput: matched.expectedOutput,
-                computedOutput: result.actual
+        try {
+            const res = await fetch("http://127.0.0.1:6969/execute", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
             });
-        }
+            const json = await res.json();
 
-        socket.emit("receiveTestCaseSync", toReceive);
+            // json.testCases should realistically only modify a single property
+            // on the existing testCases object: `computedOutput`. Syncing this
+            // back to the frontend is handled over there :)
+            console.log(JSON.stringify(json, null, 2));
+
+            /* 
+              export interface TestableCase {
+                id: number;
+                functionInput: ParameterType[];
+                expectedOutput: ParameterType;
+                computedOutput?: string | null;
+              }
+            */
+
+            const toReceive = [];
+            for (const result of json.results) {
+                const matched = testCases.find(t => t.id === result.id);
+                if (!matched) continue;
+                toReceive.push({
+                    id: matched.id,
+                    functionInput: matched.functionInput,
+                    expectedOutput: matched.expectedOutput,
+                    computedOutput: result.actual
+                });
+            }
+
+            socket.emit("receiveTestCaseSync", toReceive);
+        } catch (error) {
+            console.error(error);
+            socket.emit("errorTests", { message: "Sorry that didn't work try again in a few seconds"});
+        }
     });
 }
 

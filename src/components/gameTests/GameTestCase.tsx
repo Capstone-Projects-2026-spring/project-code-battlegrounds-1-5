@@ -32,6 +32,7 @@ export default function GameTestCase(props: GameTestCaseProps) {
   const { socket } = useSocket();
   const posthog = usePostHog();
   const { testableCase } = props;
+  const [error, setError] = useState<string | null>(null);
 
   const [running, setRunning] = useState<boolean>(false);
 
@@ -51,6 +52,18 @@ export default function GameTestCase(props: GameTestCaseProps) {
       testableCase
     });
   };
+
+  const errorTestHandler = ({ message }: { message: string }) => {
+    setTimeout(() => {setError(message)}, 4000);
+
+  };
+
+  useEffect(() => {
+    if (!socket) return;
+
+    socket.on('errorTests', errorTestHandler);
+
+  }, [socket]);
 
   useEffect(() => {
     if (!running) return;
@@ -137,7 +150,7 @@ export default function GameTestCase(props: GameTestCaseProps) {
                     });
                   }}
                   disabled={props.disabled}
-                  computedValue={testableCase.computedOutput}
+                  computedValue={testableCase.computedOutput || error}
                   flex={1}
                 />
 
