@@ -9,6 +9,7 @@ import {
 } from "react";
 import { useSocket } from "./SocketContext";
 import { showPartyInviteNotification } from "@/components/notifications";
+import { authClient } from "@/lib/auth-client";
 
 export interface PartyMember {
     userId: string;
@@ -44,6 +45,7 @@ export const PartyContext = createContext<PartyContextAPI | null>(null);
 
 export const PartyProvider = ({ children }: { children: ReactNode }) => {
     const { socket } = useSocket();
+    const { data: session, isPending } = authClient.useSession();
 
     const [partyMember, setPartyMember] = useState<PartyMember | null>(null);
     const [joinedParty, setJoinedParty] = useState<PartyMember | null>(null);
@@ -51,6 +53,7 @@ export const PartyProvider = ({ children }: { children: ReactNode }) => {
     const [partyCode, setPartyCode] = useState<string | null>(null);
 
     useEffect(() => {
+        if (!session && !isPending) return;
         fetch("/api/party")
             .then((res) => {
                 if (!res.ok) return;
@@ -66,7 +69,7 @@ export const PartyProvider = ({ children }: { children: ReactNode }) => {
             .catch((err) => {
                 console.error("Failed to fetch party status:", err);
             });
-    }, []);
+    }, [session, isPending]);
 
     useEffect(() => {
         if (!socket) return;
