@@ -21,7 +21,7 @@ export default function SignUpPage() {
 
   useEffect(() => {
       if (session && !isPending) {
-        router.push("/matchmaking");
+        router.replace("/matchmaking");
       }
     }, [session, isPending, router]);
 

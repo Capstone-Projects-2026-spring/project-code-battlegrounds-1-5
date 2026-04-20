@@ -17,7 +17,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (session && !isPending) {
-      router.push("/matchmaking");
+      router.replace("/matchmaking");
     }
   }, [session, isPending, router]);
   const [pwVisible, { toggle }] = useDisclosure();

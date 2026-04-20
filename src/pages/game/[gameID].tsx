@@ -2,8 +2,8 @@ import { ActionIcon, Box, Button, Center, Group, Loader, Modal, Select, Stack, T
 import { Editor } from '@monaco-editor/react';
 import { useRouter } from 'next/router';
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { io, Socket } from 'socket.io-client';
-import { IconEye, IconPlayerPlay, IconPlayerTrackNextFilled, IconPlus } from '@tabler/icons-react';
+import { Socket } from 'socket.io-client';
+import { IconEye, IconPlayerTrackNextFilled, IconPlus } from '@tabler/icons-react';
 import { usePostHog } from 'posthog-js/react';
 import { Panel, Group as PanelGroup, Separator as PanelResizeHandle } from 'react-resizable-panels';
 
@@ -35,8 +35,6 @@ import { useSocket } from '@/contexts/SocketContext';
 import { useMatchmaking } from '@/contexts/MatchmakingContext';
 
 import styles from "@/styles/GameRoom.module.css";
-import { convertSegmentPathToStaticExportFilename } from 'next/dist/shared/lib/segment-cache/segment-value-encoding';
-import { ReactServerDOMTurbopackServer } from 'next/dist/server/route-modules/app-page/vendored/rsc/entrypoints';
 
 interface RoomDetailsResponse {
   problem: ActiveProblem;
@@ -733,13 +731,7 @@ function PlayGameRoom() {
                     <Box mb="md" p="1rem" pb={isProblemVisible ? "md" : "1rem"}>
                       <GameTimer
                         endTime={endTime}
-                        onExpire={() => {
-                          if (role === Role.CODER)
-                            socket.emit("submitCode", {
-                              roomId: gameId,
-                              code: liveCode,
-                            });
-                        }}
+                        onExpire={handleTimerExpire}
                       />
                     </Box>
                   )}
@@ -797,22 +789,6 @@ function PlayGameRoom() {
                     />
                     {effectiveRole === Role.CODER && (
                       <>
-                        <Button
-                          size="xs"
-                          color="cyan"
-                          disabled={isSpectator || isWaitingForOtherTeam}
-                          className={styles.runButton}
-                          onClick={() =>
-                            posthog.capture("code_run_triggered", { gameId })
-                          }
-                          rightSection={
-                            <IconPlayerPlay
-                              size={"var(--mantine-font-size-md)"}
-                            />
-                          }
-                        >
-                          RUN
-                        </Button>
                         <Button
                           size="xs"
                           color="green"
