@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import Head from "next/head";
 import {
   Container,
@@ -29,6 +29,7 @@ import styles from "@/styles/Results.module.css";
 import AnalysisBox, { type AnalysisBoxProps } from "@/components/Analysisbox";
 import ProblemBox, { type ActiveProblem } from "@/components/ProblemBox";
 import TestCaseResultsBox, { type TestResultsSummary } from "@/components/TestCaseResultsBox";
+import { calculateScorePair } from "@/util/scoring";
 
 // Mock data - replace with actual data from backend
 interface TeamResult {
@@ -43,9 +44,11 @@ interface TeamResult {
 interface RoomDetailsResponse {
   problem: ActiveProblem;
   gameType: GameType;
+  userTeamNumber: 1 | 2;
   team1Code: string | null;
   team2Code: string | null;
-  userTeamNumber: 1 | 2;
+  team1AverageExecutionTime: number | null;
+  team2AverageExecutionTime: number | null;
 }
 
 // Animated counter hook
@@ -160,7 +163,7 @@ export function Results() {
 
     const loadGameData = async () => {
       try {
-        const response = await fetch(`/api/rooms/${gameId}`);
+        const response = await fetch(`/api/results/${gameId}`);
         if (!response.ok) return;
 
         const roomDetails = (await response.json()) as RoomDetailsResponse;
@@ -174,14 +177,14 @@ export function Results() {
             team2Code: roomDetails.team2Code ?? undefined,
             gameType: roomDetails.gameType,
             userTeamNumber: roomDetails.userTeamNumber,
-            team1AverageExecutionTime: null,
-            team2AverageExecutionTime: null,
+            team1AverageExecutionTime: roomDetails.team1AverageExecutionTime,
+            team2AverageExecutionTime: roomDetails.team2AverageExecutionTime,
           });
         } else {
           setAnalysisProps(null);
         }
       } catch (error) {
-        console.error("Failed to load room details for results page", error);
+        console.error("Failed to load game details", error);
       } finally {
         setIsGameDataLoading(false);
       }
@@ -192,60 +195,84 @@ export function Results() {
 
   const isCoOp = gameType === GameType.TWOPLAYER;
 
+  // Calculate team scores
+  const [team1Score, team2Score] = useMemo(() => {
+    if (!testResultsSummary || !analysisProps) return [0, 0];
+
+    return calculateScorePair(
+      testResultsSummary.yourPassedCount ?? 0,
+      testResultsSummary.otherTeamPassedCount ?? 0,
+      testResultsSummary.totalTests,
+      analysisProps.team1AverageExecutionTime ?? null,
+      analysisProps.team2AverageExecutionTime ?? null,
+      userTeamNumber === 1 ? "Your Team (Team 1)" : "Other Team (Team 1)",
+      userTeamNumber === 2 ? "Your Team (Team 2)" : "Other Team (Team 2)"
+    );
+  }, [testResultsSummary, analysisProps, userTeamNumber]);
+
   // Mock data - replace with actual fetched data
   const coOpTeam: TeamResult = {
     name: "Co-Op Crew",
-    score: 810,
-    testsPassed: 9,
-    totalTests: 10,
-    time: 236, // 3:56
+    score: team1Score,
+    testsPassed: testResultsSummary?.yourPassedCount ?? 0,
+    totalTests: testResultsSummary?.totalTests ?? 0,
+    time: 0, // Calculated later
     isWinner: true
   };
 
   const greenTeam: TeamResult = {
     name: "Green Hackers",
-    score: 850,
-    testsPassed: 8,
-    totalTests: 10,
-    time: 245, // 4:05
+    score: userTeamNumber === 1 ? team1Score : team2Score,
+    testsPassed: userTeamNumber === 1
+      ? (testResultsSummary?.yourPassedCount ?? 0)
+      : (testResultsSummary?.otherTeamPassedCount ?? 0),
+    totalTests: testResultsSummary?.totalTests ?? 0,
+    time: 0, // Calculated later
     isWinner: true
   };
 
   const redTeam: TeamResult = {
     name: "Red Coders",
-    score: 720,
-    testsPassed: 7,
-    totalTests: 10,
-    time: 312, // 5:12
+    score: userTeamNumber === 1 ? team2Score : team1Score,
+    testsPassed: userTeamNumber === 1
+      ? (testResultsSummary?.otherTeamPassedCount ?? 0)
+      : (testResultsSummary?.yourPassedCount ?? 0),
+    totalTests: testResultsSummary?.totalTests ?? 0,
+    time: 0, // Calculated later
     isWinner: false
   };
 
-  const primaryTeam = isCoOp ? coOpTeam : greenTeam;
-  const secondaryTeam = isCoOp ? null : redTeam;
+  const primaryTeam = isCoOp ? coOpTeam : (userTeamNumber === 1 ? greenTeam : redTeam);
+  const secondaryTeam = isCoOp ? null : (userTeamNumber === 1 ? redTeam : greenTeam);
 
-  const winner = secondaryTeam ? (primaryTeam.isWinner ? primaryTeam : secondaryTeam) : primaryTeam;
+  // Determine winner based on actual score comparison
+  const winner = secondaryTeam
+    ? primaryTeam.score >= secondaryTeam.score
+      ? { ...primaryTeam, isWinner: true }
+      : { ...secondaryTeam, isWinner: true }
+    : primaryTeam;
   const areTestResultsLoading = testResultsSummary === null;
   const testsPassedForMetric = testResultsSummary?.yourPassedCount ?? 0;
   const totalTestsForMetric = testResultsSummary?.totalTests ?? 0;
 
   const primaryTeamTestsPassed = !areTestResultsLoading && !isCoOp
-    ? userTeamNumber === 1
-      ? (testResultsSummary?.yourPassedCount ?? 0)
-      : (testResultsSummary?.otherTeamPassedCount ?? 0)
+    ? (testResultsSummary?.yourPassedCount ?? 0)
     : 0;
 
   const secondaryTeamTestsPassed = !areTestResultsLoading && !isCoOp
-    ? userTeamNumber === 1
-      ? (testResultsSummary?.otherTeamPassedCount ?? 0)
-      : (testResultsSummary?.yourPassedCount ?? 0)
+    ? (testResultsSummary?.otherTeamPassedCount ?? 0)
     : 0;
 
   const comparisonTotalTests = testResultsSummary?.totalTests ?? 0;
 
-  // Animated counters
-  const animatedScore = useCounter(winner.score, 2000, 200);
+  // Animated counters - show user's team metrics
+  const userTeamScore = team1Score;  // team1Score is always yourScore from calculateScorePair
+  const animatedScore = useCounter(userTeamScore, 2000, 200);
   const animatedTests = useCounter(areTestResultsLoading ? 0 : testsPassedForMetric, 1500, 400);
   const animatedTime = useCounter(winner.time, 1800, 600);
+
+  // Determine if user's team won
+  const userTeamWon = primaryTeam.score >= (secondaryTeam?.score ?? 0);
 
   if (!session) return null;
 
@@ -271,11 +298,15 @@ export function Results() {
         <div className={styles.gradient} />
 
         <Container className={styles.container} size="xl">
-          {/* Victory Banner */}
+          {/* Victory/Defeat Banner */}
           <Box className={styles.victoryBanner}>
-            <IconTrophy size={80} className={styles.trophyIcon} />
-            <h1 className={styles.victoryTitle}>
-              Victory!
+            {userTeamWon ? (
+              <IconTrophy size={80} className={styles.trophyIcon} />
+            ) : (
+              <div style={{ fontSize: '80px', fontWeight: 'bold', color: '#ff0000', lineHeight: 1 }}>L</div>
+            )}
+            <h1 className={userTeamWon ? styles.victoryTitle : styles.defeatTitle}>
+              {userTeamWon ? "Victory!" : "Defeat!"}
             </h1>
             <p className={styles.victorySubtitle}>
               <span className={styles.winnerTeamName}>{winner.name}</span>{" "}

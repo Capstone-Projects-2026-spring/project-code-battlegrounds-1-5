@@ -1,7 +1,8 @@
 import { Paper, Title, Table, Text, Box, Badge, Tooltip } from "@mantine/core";
-import { useEffect, useState } from "react";
-import { ParameterType } from "@/lib/ProblemInputOutput";
-import { IconCheck, IconX, IconAlertCircle } from "@tabler/icons-react";
+import { useEffect, useState, useCallback } from "react";
+import { ParameterType, ParameterPrimitiveType } from "@/lib/ProblemInputOutput";
+import { IconCheck, IconX } from "@tabler/icons-react";
+import deepEqual from "@/util/deepEqual";
 import styles from '@/styles/comps/TestCaseResultsBox.module.css';
 
 export interface TestResultsSummary {
@@ -69,6 +70,61 @@ export default function TestCaseResultsBox({ gameId, team1Results, team2Results,
   const team1TestResults = team1Results ?? fetchedTeam1Results;
   const team2TestResults = team2Results ?? fetchedTeam2Results;
 
+  const parseValueByType = (value: unknown, type: ParameterPrimitiveType): unknown => {
+    if (value === null || value === undefined) return value;
+
+    if (type === "boolean") {
+      return typeof value === "boolean" ? value : value === "true";
+    } else if (type === "number") {
+      return typeof value === "number" ? value : Number(value);
+    } else if (type.includes("array")) {
+      if (typeof value === "string") {
+        try {
+          // Normalize single quotes to double quotes for JSON parsing
+          let normalized = value.replace(/'/g, '"');
+          // If it doesn't start with [ or ", wrap it in brackets
+          if (!normalized.startsWith('[') && !normalized.startsWith('"')) {
+            normalized = `[${normalized}]`;
+          }
+          return JSON.parse(normalized);
+        } catch {
+          // If JSON parsing fails, return the original value
+          console.warn(`Failed to parse array value: ${value}`);
+          return value;
+        }
+      }
+      return value;
+    }
+    return value;
+  };
+
+  const extractAndCompare = useCallback((actual: unknown, expectedParams: ParameterType[]): boolean => {
+    if (!expectedParams || expectedParams.length === 0) return false;
+    if (actual === null || actual === undefined) return false;
+
+    // If actual is a ParameterType array, extract the value from it
+    let actualValue: unknown = actual;
+    if (Array.isArray(actual) && actual.length > 0 && typeof actual[0] === 'object' && 'value' in actual[0]) {
+      actualValue = (actual as ParameterType[])[0].value;
+    }
+
+    const expectedParam = expectedParams[0];
+    const type = expectedParam.type as ParameterPrimitiveType;
+
+    try {
+      const parsedExpected = parseValueByType(expectedParam.value, type);
+      const parsedActual = parseValueByType(actualValue, type);
+
+      return deepEqual(
+        parsedActual as string | number | boolean | string[] | number[] | string[][] | number[][],
+        parsedExpected as string | number | boolean | string[] | number[] | string[][] | number[][]
+      );
+    } catch (e) {
+      console.error("Error in extractAndCompare:", { actualValue, expectedValue: expectedParam.value, type, error: e });
+      return false;
+    }
+  }, []);
+
   useEffect(() => {
     if (!gameId) return;
 
@@ -78,7 +134,7 @@ export default function TestCaseResultsBox({ gameId, team1Results, team2Results,
     const fetchTests = async () => {
       setLoading(true);
       try {
-        const response = await fetch(`/api/rooms/tests?gameId=${gameId}`);
+        const response = await fetch(`/api/results/${gameId}`);
         if (!response.ok) return;
         const data = (await response.json()) as TestsApiResponse;
         if (cancelled) return;
@@ -115,20 +171,38 @@ export default function TestCaseResultsBox({ gameId, team1Results, team2Results,
   }, [gameId]);
 
   useEffect(() => {
-    if (!onSummaryChange || !hasFetchedSummary) return;
+    if (!onSummaryChange || !hasFetchedSummary || testCases.length === 0) return;
+
+    // Recalculate passed counts using deepEqual instead of relying on backend execution results
+    let team1PassedCount = 0;
+    let team2PassedCount = 0;
+
+    testCases.forEach((testCase) => {
+      const team1Result = team1TestResults?.[testCases.indexOf(testCase)];
+      const team2Result = team2TestResults?.[testCases.indexOf(testCase)];
+
+      if (team1Result !== undefined && extractAndCompare(team1Result, testCase.expected)) {
+        team1PassedCount++;
+      }
+      if (team2Result !== undefined && extractAndCompare(team2Result, testCase.expected)) {
+        team2PassedCount++;
+      }
+    });
 
     onSummaryChange({
-      yourPassedCount: userTeamNumber === 2 ? summaryCounts.team2PassedCount : summaryCounts.team1PassedCount,
-      otherTeamPassedCount: userTeamNumber === 2 ? summaryCounts.team1PassedCount : summaryCounts.team2PassedCount,
+      yourPassedCount: userTeamNumber === 2 ? team2PassedCount : team1PassedCount,
+      otherTeamPassedCount: userTeamNumber === 2 ? team1PassedCount : team2PassedCount,
       totalTests: summaryCounts.totalTests,
     });
   }, [
     onSummaryChange,
     hasFetchedSummary,
     userTeamNumber,
-    summaryCounts.team1PassedCount,
-    summaryCounts.team2PassedCount,
     summaryCounts.totalTests,
+    testCases,
+    team1TestResults,
+    team2TestResults,
+    extractAndCompare,
   ]);
 
   useEffect(() => {
@@ -168,21 +242,6 @@ export default function TestCaseResultsBox({ gameId, team1Results, team2Results,
       .trim();
   };
 
-  const isEquivalent = (a: unknown, b: unknown): boolean => {
-    const normalize = (value: unknown): string => {
-      if (value === undefined || value === null) return "";
-      if (typeof value === "string") return value.trim();
-      if (typeof value === "number" || typeof value === "boolean") return String(value);
-      try {
-        return JSON.stringify(value);
-      } catch {
-        return String(value);
-      }
-    };
-
-    return normalize(a) === normalize(b);
-  };
-
   const rows = testCases.map((element, index) => {
     // Determine which results to show based on user's team
     const yourResults = userTeamNumber === 2 ? team2TestResults : team1TestResults;
@@ -200,13 +259,13 @@ export default function TestCaseResultsBox({ gameId, team1Results, team2Results,
     const hasYourError = yourError && yourError.length > 0;
     const hasOtherTeamError = otherTeamError && otherTeamError.length > 0;
 
-    const yourResultPassed = hasYourResult && isEquivalent(yourResult, element.expected);
-    const otherTeamPassed = hasOtherTeamResult && isEquivalent(otherTeamResult, element.expected);
+    const yourResultPassed = hasYourResult && extractAndCompare(yourResult, element.expected);
+    const otherTeamPassed = hasOtherTeamResult && extractAndCompare(otherTeamResult, element.expected);
 
     return (
       <Table.Tr key={element.id} className={styles.tableRow}>
         <Table.Td>
-          <Text size="sm" fw={500} ff="monospace" className={styles.cellInput}>
+          <Text size="sm" fw={500} ff="monospace" className={styles.cellInput} style={{ maxWidth: '200px', overflow: 'auto', wordBreak: 'break-word' }}>
             {formatValue(element.input)}
           </Text>
         </Table.Td>
@@ -275,7 +334,7 @@ export default function TestCaseResultsBox({ gameId, team1Results, team2Results,
           </Table.Td>
         )}
         <Table.Td>
-          <Text size="sm" fw={500} ff="monospace" className={styles.cellInput}>
+          <Text size="sm" fw={500} ff="monospace" className={styles.cellInput} style={{ maxWidth: '200px', overflow: 'auto', wordBreak: 'break-word' }}>
             {formatValue(element.expected)}
           </Text>
         </Table.Td>
