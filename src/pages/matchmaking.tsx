@@ -137,15 +137,8 @@ export default function QueuePage() {
             </Box>
           </Stack>
 
-          <Tabs defaultValue="matchmaking">
+          <Tabs defaultValue="create-game">
             <Tabs.List grow>
-              <Tabs.Tab
-                value="matchmaking"
-                data-testid="matchmaking-tab"
-                className={classes.modeTab}
-              >
-                Find a Lobby
-              </Tabs.Tab>
               <Tabs.Tab
                 value="create-game"
                 data-testid="create-game-tab"
@@ -153,7 +146,17 @@ export default function QueuePage() {
               >
                 Create Game
               </Tabs.Tab>
+              <Tabs.Tab
+                value="matchmaking"
+                data-testid="matchmaking-tab"
+                className={classes.modeTab}
+              >
+                Matchmaking
+              </Tabs.Tab>
             </Tabs.List>
+            <Tabs.Panel value="create-game" pt="md">
+              <DifficultySection />
+            </Tabs.Panel>
 
             <Tabs.Panel value="matchmaking" pt="md">
               <FindLobbySection
@@ -169,9 +172,6 @@ export default function QueuePage() {
               />
             </Tabs.Panel>
 
-            <Tabs.Panel value="create-game" pt="md">
-              <DifficultySection />
-            </Tabs.Panel>
           </Tabs>
 
           {joinedParty === null && (
