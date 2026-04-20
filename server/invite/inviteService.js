@@ -124,11 +124,11 @@ function createInviteService(stateRedis) {
 
             const party = partyMember.party;
 
-            
+
             // If member leaves, just remove them from the party
             await prisma.partyMember.delete({ where: { userId } });
             return { status: 'left', ownerId: party.ownerId };
-            
+
         },
 
         async joinPartyByCode(userId, code) {
@@ -161,7 +161,7 @@ function createInviteService(stateRedis) {
                 avatarUrl: party.owner.image ?? null,
                 joinedAt: party.createdAt.toISOString(),
             };
-            
+
 
             // Return member + partyOwnerId so the socket handler can emit
             // partyJoined to the joiner and partyMemberJoined to the owner
@@ -189,6 +189,10 @@ function createInviteService(stateRedis) {
 
             if (existing?.status === 'ACCEPTED') return { error: 'already_friends' };
             if (existing?.status === 'PENDING') return { error: 'request_already_sent' };
+            
+            if (existing?.status === 'DECLINED') {
+                await prisma.friendship.delete({ where: { id: existing.id } });
+            }
 
             const fromUser = await prisma.user.findUnique({ where: { id: fromUserId } });
 
