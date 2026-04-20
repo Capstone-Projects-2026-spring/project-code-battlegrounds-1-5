@@ -88,9 +88,9 @@ export default function TestCaseResultsBox({ gameId, team1Results, team2Results,
           }
           return JSON.parse(normalized);
         } catch {
-          // If JSON parsing fails, return the original value
+          // If JSON parsing fails, log and return null to indicate invalid format
           console.warn(`Failed to parse array value: ${value}`);
-          return value;
+          return null;
         }
       }
       return value;
@@ -177,9 +177,9 @@ export default function TestCaseResultsBox({ gameId, team1Results, team2Results,
     let team1PassedCount = 0;
     let team2PassedCount = 0;
 
-    testCases.forEach((testCase) => {
-      const team1Result = team1TestResults?.[testCases.indexOf(testCase)];
-      const team2Result = team2TestResults?.[testCases.indexOf(testCase)];
+    testCases.forEach((testCase, index) => {
+      const team1Result = team1TestResults?.[index];
+      const team2Result = team2TestResults?.[index];
 
       if (team1Result !== undefined && extractAndCompare(team1Result, testCase.expected)) {
         team1PassedCount++;

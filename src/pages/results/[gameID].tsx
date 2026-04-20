@@ -21,6 +21,7 @@ import {
   IconArrowRight,
   // IconHome,
   IconEye,
+  IconEqual,
 } from "@tabler/icons-react";
 import { useRouter } from "next/router";
 import { authClient } from "@/lib/auth-client";
@@ -245,11 +246,35 @@ export function Results() {
   const primaryTeam = isCoOp ? coOpTeam : (userTeamNumber === 1 ? greenTeam : redTeam);
   const secondaryTeam = isCoOp ? null : (userTeamNumber === 1 ? redTeam : greenTeam);
 
+  // Helper to get team color class based on team name
+  const getTeamColorClass = (team: TeamResult) => {
+    if (team.name === "Green Hackers") return styles.teamNameGreen;
+    if (team.name === "Red Coders") return styles.teamNameRed;
+    return styles.teamName;
+  };
+
+  // Determine if it's a tie
+  const isTie = secondaryTeam ? primaryTeam.score === secondaryTeam.score : false;
+
+  // Update team winner status based on tie
+  if (isTie && secondaryTeam) {
+    primaryTeam.isWinner = false;
+    secondaryTeam.isWinner = false;
+  } else if (secondaryTeam) {
+    if (primaryTeam.score > secondaryTeam.score) {
+      primaryTeam.isWinner = true;
+      secondaryTeam.isWinner = false;
+    } else {
+      primaryTeam.isWinner = false;
+      secondaryTeam.isWinner = true;
+    }
+  }
+
   // Determine winner based on actual score comparison
   const winner = secondaryTeam
-    ? primaryTeam.score >= secondaryTeam.score
-      ? { ...primaryTeam, isWinner: true }
-      : { ...secondaryTeam, isWinner: true }
+    ? isTie
+      ? primaryTeam
+      : primaryTeam.isWinner ? primaryTeam : secondaryTeam
     : primaryTeam;
   const areTestResultsLoading = testResultsSummary === null;
   const testsPassedForMetric = testResultsSummary?.yourPassedCount ?? 0;
@@ -272,7 +297,7 @@ export function Results() {
   const animatedTime = useCounter(winner.time, 1800, 600);
 
   // Determine if user's team won
-  const userTeamWon = primaryTeam.score >= (secondaryTeam?.score ?? 0);
+  const userTeamWon = !isTie && primaryTeam.score > (secondaryTeam?.score ?? 0);
 
   if (!session) return null;
 
@@ -302,15 +327,23 @@ export function Results() {
           <Box className={styles.victoryBanner}>
             {userTeamWon ? (
               <IconTrophy size={80} className={styles.trophyIcon} />
+            ) : isTie ? (
+              <IconEqual size={80} className={styles.tieIcon} />
             ) : (
               <div style={{ fontSize: '80px', fontWeight: 'bold', color: '#ff0000', lineHeight: 1 }}>L</div>
             )}
-            <h1 className={userTeamWon ? styles.victoryTitle : styles.defeatTitle}>
-              {userTeamWon ? "Victory!" : "Defeat!"}
+            <h1 className={userTeamWon ? styles.victoryTitle : isTie ? styles.tieTitle : styles.defeatTitle}>
+              {userTeamWon ? "Victory!" : isTie ? "Perfectly Matched!" : "Defeat!"}
             </h1>
             <p className={styles.victorySubtitle}>
-              <span className={styles.winnerTeamName}>{winner.name}</span>{" "}
-              {isCoOp ? "made it out of the battleground!" : "dominated the battlefield"}
+              {isCoOp
+                ? "made it out of the battleground!"
+                : isTie
+                ? "Both teams showcased equal skill!"
+                : userTeamWon
+                ? <span><span className={styles.winnerTeamName}>{winner.name}</span> dominated the battlefield!</span>
+                : <span><span className={styles.winnerTeamName}>{winner.name}</span> dominated the battlefield!</span>
+              }
             </p>
           </Box>
 
@@ -359,14 +392,19 @@ export function Results() {
               <div className={styles.comparisonCard}>
                 <div className={styles.comparisonHeader}>
                   <div className={styles.teamHeader}>
-                    <div className={`${styles.teamName} ${primaryTeam.isWinner ? styles.teamNameWinner : styles.teamNameLoser}`}>
+                    <div className={`${styles.teamName} ${getTeamColorClass(primaryTeam)}`}>
                       {primaryTeam.name}
                     </div>
-                    <div className={`${styles.teamBadge} ${primaryTeam.isWinner ? styles.winnerBadge : styles.loserBadge}`}>
+                    <div className={`${styles.teamBadge} ${primaryTeam.isWinner ? styles.winnerBadge : isTie ? styles.tieBadge : styles.loserBadge}`}>
                       {primaryTeam.isWinner ? (
                         <>
                           <IconTrophy size={16} />
                           Winner
+                        </>
+                      ) : isTie ? (
+                        <>
+                          <IconEqual size={16} />
+                          Tied
                         </>
                       ) : (
                         "Runner-up"
@@ -377,14 +415,19 @@ export function Results() {
                   <div className={styles.vsText}>VS</div>
 
                   <div className={styles.teamHeader}>
-                    <div className={`${styles.teamName} ${secondaryTeam.isWinner ? styles.teamNameWinner : styles.teamNameLoser}`}>
+                    <div className={`${styles.teamName} ${getTeamColorClass(secondaryTeam)}`}>
                       {secondaryTeam.name}
                     </div>
-                    <div className={`${styles.teamBadge} ${secondaryTeam.isWinner ? styles.winnerBadge : styles.loserBadge}`}>
+                    <div className={`${styles.teamBadge} ${secondaryTeam.isWinner ? styles.winnerBadge : isTie ? styles.tieBadge : styles.loserBadge}`}>
                       {secondaryTeam.isWinner ? (
                         <>
                           <IconTrophy size={16} />
                           Winner
+                        </>
+                      ) : isTie ? (
+                        <>
+                          <IconEqual size={16} />
+                          Tied
                         </>
                       ) : (
                         "Runner-up"
@@ -395,11 +438,11 @@ export function Results() {
 
                 <div className={styles.comparisonBody}>
                   <div className={styles.comparisonRow}>
-                    <div className={`${styles.statValue} ${primaryTeam.score >= secondaryTeam.score ? styles.statValueWinner : styles.statValueLoser}`}>
+                    <div className={`${styles.statValue} ${isTie ? styles.statValueTie : primaryTeam.score > secondaryTeam.score ? styles.statValueWinner : styles.statValueLoser}`}>
                       {primaryTeam.score}
                     </div>
                     <div className={styles.statLabel}>Score</div>
-                    <div className={`${styles.statValue} ${secondaryTeam.score >= primaryTeam.score ? styles.statValueWinner : styles.statValueLoser}`}>
+                    <div className={`${styles.statValue} ${isTie ? styles.statValueTie : secondaryTeam.score > primaryTeam.score ? styles.statValueWinner : styles.statValueLoser}`}>
                       {secondaryTeam.score}
                     </div>
                   </div>
@@ -413,11 +456,11 @@ export function Results() {
                       </>
                     ) : (
                       <>
-                        <div className={`${styles.statValue} ${primaryTeamTestsPassed >= secondaryTeamTestsPassed ? styles.statValueWinner : styles.statValueLoser}`}>
+                        <div className={`${styles.statValue} ${primaryTeamTestsPassed === secondaryTeamTestsPassed ? styles.statValueTie : primaryTeamTestsPassed > secondaryTeamTestsPassed ? styles.statValueWinner : styles.statValueLoser}`}>
                           {primaryTeamTestsPassed}/{comparisonTotalTests}
                         </div>
                         <div className={styles.statLabel}>Tests Passed</div>
-                        <div className={`${styles.statValue} ${secondaryTeamTestsPassed >= primaryTeamTestsPassed ? styles.statValueWinner : styles.statValueLoser}`}>
+                        <div className={`${styles.statValue} ${primaryTeamTestsPassed === secondaryTeamTestsPassed ? styles.statValueTie : secondaryTeamTestsPassed > primaryTeamTestsPassed ? styles.statValueWinner : styles.statValueLoser}`}>
                           {secondaryTeamTestsPassed}/{comparisonTotalTests}
                         </div>
                       </>
@@ -425,11 +468,11 @@ export function Results() {
                   </div>
 
                   <div className={styles.comparisonRow}>
-                    <div className={`${styles.statValue} ${primaryTeam.time <= secondaryTeam.time ? styles.statValueWinner : styles.statValueLoser}`}>
+                    <div className={`${styles.statValue} ${primaryTeam.time === secondaryTeam.time ? styles.statValueTie : primaryTeam.time < secondaryTeam.time ? styles.statValueWinner : styles.statValueLoser}`}>
                       {formatTime(primaryTeam.time)}
                     </div>
                     <div className={styles.statLabel}>Time</div>
-                    <div className={`${styles.statValue} ${secondaryTeam.time <= primaryTeam.time ? styles.statValueWinner : styles.statValueLoser}`}>
+                    <div className={`${styles.statValue} ${primaryTeam.time === secondaryTeam.time ? styles.statValueTie : secondaryTeam.time < primaryTeam.time ? styles.statValueWinner : styles.statValueLoser}`}>
                       {formatTime(secondaryTeam.time)}
                     </div>
                   </div>
