@@ -264,7 +264,7 @@ function createInviteService(stateRedis) {
                 username: friendship.addressee.name,
                 displayName: friendship.addressee.name,
                 avatarUrl: friendship.addressee.image ?? null,
-                status: 'offline',
+                status: 'online',
             };
 
             // Return both shapes + requesterId so the socket handler can emit to both
