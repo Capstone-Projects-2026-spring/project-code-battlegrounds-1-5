@@ -335,12 +335,12 @@ export default async function handler(
       const dataToUpdate: Partial<{ team1TimeToPassMs: number | null; team2TimeToPassMs: number | null }> = {};
 
       // Team 1
-      if (!currentResult || currentResult.team1TimeToPassMs == null) {
+      if (!currentResult || currentResult.team1TimeToPassMs === null) {
         dataToUpdate.team1TimeToPassMs = team1Execution.averageExecutionTime;
       }
 
       // Team 2
-      if (!currentResult || currentResult.team2TimeToPassMs == null) {
+      if (!currentResult || currentResult.team2TimeToPassMs === null) {
         dataToUpdate.team2TimeToPassMs = team2Execution.averageExecutionTime;
       }
 

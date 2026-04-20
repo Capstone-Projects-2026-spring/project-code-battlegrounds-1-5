@@ -4,6 +4,7 @@ export const SCORING_WEIGHTS = {
 } as const;
 
 const RUNTIME_THRESHOLD = 0.10; // 10% difference required to award runtime points
+const MAX_REASONABLE_RUNTIME_MS = 5000; // Assumes <5000ms is max reasonable time for fallback scoring
 
 export function calculateScore(
   testsPassed: number,
@@ -19,7 +20,7 @@ export function calculateScore(
   // Inverse of runtime: faster = higher score
   // Normalize to 0-1000 scale (assuming <5000ms is max reasonable time)
   const runtimeScore = runtimeMs
-    ? Math.max(0, (1 - runtimeMs / 5000)) * 1000 * SCORING_WEIGHTS.runtime
+    ? Math.max(0, (1 - runtimeMs / MAX_REASONABLE_RUNTIME_MS)) * 1000 * SCORING_WEIGHTS.runtime
     : 0;
 
   const totalScore = Math.round(testScore + runtimeScore);
@@ -75,9 +76,9 @@ export function calculateScorePair(
     // If difference is below threshold, both get 0 runtime points
   } else if (team1RuntimeMs !== null) {
     // Fallback for 2-player: use inverse of runtime
-    runtimeScore1 = Math.max(0, (1 - team1RuntimeMs / 5000)) * 1000 * SCORING_WEIGHTS.runtime;
+    runtimeScore1 = Math.max(0, (1 - team1RuntimeMs / MAX_REASONABLE_RUNTIME_MS)) * 1000 * SCORING_WEIGHTS.runtime;
   } else if (team2RuntimeMs !== null) {
-    runtimeScore2 = Math.max(0, (1 - team2RuntimeMs / 5000)) * 1000 * SCORING_WEIGHTS.runtime;
+    runtimeScore2 = Math.max(0, (1 - team2RuntimeMs / MAX_REASONABLE_RUNTIME_MS)) * 1000 * SCORING_WEIGHTS.runtime;
   }
 
   const totalScore1 = Math.round(testScore1 + runtimeScore1);
