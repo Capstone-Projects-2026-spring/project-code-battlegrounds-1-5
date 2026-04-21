@@ -140,11 +140,6 @@ resource "google_cloud_run_service" "orchestrator" {
     spec {
       containers {
         image = "us-central1-docker.pkg.dev/code-battlegrounds/app/orchestrator:latest"
-
-        env {
-          name  = "PORT"
-          value = "8080"
-        }
       }
     }
   }
@@ -183,7 +178,7 @@ resource "google_cloud_run_service" "app" {
 
         env {
           name  = "BETTER_AUTH_URL"
-          value = "https://app-hnjkqlohiq-uc.a.run.app"
+          value = "https://app-376875580312.us-central1.run.app"
         }
 
         env {
