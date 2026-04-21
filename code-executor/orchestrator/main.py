@@ -279,7 +279,7 @@ def execute(req: ExecutionRequest, request: Request):
             for vm in pool.games.values():
                 target_ip = ensure_vm_ready(vm)
                 if target_ip:
-                    target_ip = vm.game_id
+                    target_id = vm.game_id
                     break
     if not target_ip:
         # No existing VM is ready. For minimal change, do not auto-provision here; instruct caller to prewarm.
