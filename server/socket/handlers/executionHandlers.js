@@ -41,7 +41,6 @@ function registerExecutionHandlers(io, socket, gameService) {
             try {
                 // Post results to the code executor
                 let payload = {
-                    // TODO: here is where we need to add roomId to request
                     gameId: roomId,
                     language: "javascript",
                     code: btoa(code),
@@ -49,7 +48,7 @@ function registerExecutionHandlers(io, socket, gameService) {
                     runIDs: JSON.stringify(runIDs)
                 };
                 // console.log(JSON.stringify(payload));
-                const res = await fetch("http://127.0.0.1:6969/execute", {
+                const res = await fetch(`${process.env.EXECUTOR_ADDR}/execute`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(payload),
@@ -105,7 +104,6 @@ function registerExecutionHandlers(io, socket, gameService) {
                 try {
                     // Post results to the code executor
                     let payload = {
-                        // TODO: here is where we need to add roomId to request
                         gameId: roomId,
                         language: "javascript",
                         code: btoa(code),
@@ -113,7 +111,7 @@ function registerExecutionHandlers(io, socket, gameService) {
                         runIDs: JSON.stringify(runIDs)
                     };
                     // console.log(JSON.stringify(payload));
-                    const res = await fetch("http://127.0.0.1:6969/execute", {
+                    const res = await fetch(`${process.env.EXECUTOR_ADDR}/execute`, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify(payload),
@@ -152,7 +150,6 @@ function registerExecutionHandlers(io, socket, gameService) {
      * 
      * @see GameTestCasesContext#TestableCase
      */
-    // TODO: should only send test cases needed. also, the model here needs updated to actually hook up (wtf does that mean??). additionally, this sends base64 for undefined, so somethings broke somewhere.
     socket.on("submitTestCases", async (data) => {
         const {
             roomId,
@@ -161,7 +158,6 @@ function registerExecutionHandlers(io, socket, gameService) {
             runIDs
         } = data;
         let payload = {
-            // TODO: here is where we need to add roomId to request
             gameId: roomId,
             language: "javascript",
             code: btoa(code),
@@ -171,7 +167,7 @@ function registerExecutionHandlers(io, socket, gameService) {
         // console.log(JSON.stringify(payload));
 
         try {
-            const res = await fetch("http://127.0.0.1:6969/execute", {
+            const res = await fetch(`${process.env.EXECUTOR_ADDR}/execute`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload),

@@ -1,5 +1,5 @@
 const deleteVm = (gameId) => {
-    fetch(`${process.env.ORCHESTRATOR_URL ?? "http://localhost:6969"}/delete-vm`, {
+    fetch(`${process.env.EXECUTOR_ADDR}/delete-vm`, {
         method: "POST",
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ gameId })

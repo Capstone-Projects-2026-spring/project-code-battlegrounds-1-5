@@ -1,5 +1,5 @@
 const warmVm = (gameId) => {
-    fetch(`${process.env.ORCHESTRATOR_URL ?? "http://localhost:6969"}/request-warm-vm`, {
+    fetch(`${process.env.EXECUTOR_URL}/request-warm-vm`, {
         method: "POST",
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ gameId })
