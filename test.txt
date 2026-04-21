@@ -1,0 +1,2526 @@
+diff --git a/.vscode/settings.json b/.vscode/settings.json
+index d6318b6..6a1e0b4 100644
+--- a/.vscode/settings.json
++++ b/.vscode/settings.json
+@@ -1,6 +1,6 @@
+ {
+   "typescript.tsdk": "node_modules/typescript/lib",
+   "prismaERDPreviewer.preferredTheme": "light",
+-  "python-envs.defaultEnvManager": "ms-python.python:conda",
+-  "python-envs.defaultPackageManager": "ms-python.python:conda"
++  "python-envs.defaultEnvManager": "ms-python.python:venv",
++  "python-envs.defaultPackageManager": "ms-python.python:pip"
+ }
+\ No newline at end of file
+diff --git a/README.md b/README.md
+index 1ba518f..a9661a6 100644
+--- a/README.md
++++ b/README.md
+@@ -36,6 +36,7 @@ Tech Stack:
+ - Socket.io
+ - Socket.io Redis Adapter
+ - JavaScript
++- Playwright
+ - Jest
+ - BetterAuth
+ - Prisma ORM
+@@ -90,8 +91,9 @@ To develop, you will need a computer with Git, Node, Bun, and Docker Compose.
+     REDIS_HOST=localhost
+     REDIS_PORT=6379
+    
+-   # executor image
++    # executor image
+     EXECUTOR_PORT=6969
++    EXECUTOR_ADDR=http://127.0.0.1:6969
+ 
+     # for prisma
+     DATABASE_URL=postgresql://appuser:SOME_SECRET_TOKEN@localhost:5432/appdb
+@@ -103,25 +105,27 @@ To develop, you will need a computer with Git, Node, Bun, and Docker Compose.
+    Remember to `source` as needed!
+ 3. Run `bun install` to install the dependencies.
+ 4. Run `bunx --bun prisma generate` to generate the Prisma client and database migrations.
+-5. Run `docker compose up -d` to bring up the containers (you may need to run as root).
++5. Run `docker compose -f ./dev-docker-compose.yml up -d` to bring up the containers (you may need to run as root).
+ 6. Run `bunx --bun prisma migrate dev` to bring the database up to schema.
+ 7. Run `bunx --bun prisma db seed` to add mock data to the dev database.
+ 8. Run `bun dev` to launch the development server and navigate to `localhost:3000` to view the page.
+-9. When done, `docker compose down` will bring the containers down.
++9. When done, `docker compose -f ./dev-docker-compose.yml down` will bring the containers down.
+ 
+ ### Helpful Common Commands and Tricks
+-- `docker compose down -v` will stop the containers and purge the volumes. Good if you _really_ mess something up (you WILL lose data!).
++- `docker compose -f ./dev-docker-compose.yml down -v` will stop the containers and purge the volumes. Good if you _really_ mess something up (you WILL lose data!).
+ - `bunx --bun prisma migrate reset` will drop the DB (you WILL lose data!).
+ - If your database is stuck out of sync and you can't apply migrations, run `rm -rf ./prisma/migrations/**` to remove all pending migrations. Then recreate the migration with `bunx prisma migrate dev --name dev` and apply it.
+-- Sometimes changing between calling prisma with `bunx` or `bunx --bun` or vice versa can help as well.
+-- If you want to pull new images, just run `sudo docker compose pull`.
++- If you want to pull new images, just run `sudo docker compose -f ./dev-docker-compose.yml pull`.
+ - To see how the websockets are working, try opening up the game page in an incognito tab to be registered as a different client.
+ 
+ ## Testing
+-We use one testing library: 
+-Jest is used for individual API tests 
++We use two testing libraries: Jest and Playwright. Jest is used for individual API tests while Playwright is used for end-to-end flow tests.
++
++To run the Playwright tests, ensure you have the application running and run `bunx playwright test --workers=1`.
++You may need to have Chromium headless installed.
+ 
+ For the Jest tests, run `bunx jest tests/api/ --forceExit`.
++
+ ## Collaborators
+ 
+ <div align="center">
+diff --git a/build-artifacts/Dockerfile.orchestrator b/build-artifacts/Dockerfile.orchestrator
+new file mode 100644
+index 0000000..cb68630
+--- /dev/null
++++ b/build-artifacts/Dockerfile.orchestrator
+@@ -0,0 +1,29 @@
++FROM alpine:latest
++
++RUN apk add --no-cache python3 py3-pip ca-certificates
++
++# create an unprivileged user/group with fixed UID/GID so we dont run as root
++RUN addgroup -g 99999 orchestrator && adduser -D -H -u 99999 -G orchestrator orchestrator && chmod 1777 /tmp
++
++WORKDIR /app
++
++COPY code-executor/requirements.txt /app/requirements.txt
++COPY code-executor/orchestrator/ /app/
++
++# make a venv cause its a touch cleaner and add that python executable to path
++RUN python3 -m venv /venv
++ENV PATH="/venv/bin:$PATH"
++
++RUN pip install --no-cache-dir uvicorn -r /app/requirements.txt
++
++# ensure app files are readable by the non-root user
++RUN chown -R orchestrator:orchestrator /app
++
++ENV PYTHONUNBUFFERED=1
++
++EXPOSE 8080
++
++# drop root privileges for the app process
++USER orchestrator:orchestrator
++
++CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
+\ No newline at end of file
+diff --git a/build-artifacts/cloudbuild.yml b/build-artifacts/cloudbuild.yml
+index de31565..40c78b4 100644
+--- a/build-artifacts/cloudbuild.yml
++++ b/build-artifacts/cloudbuild.yml
+@@ -1,4 +1,18 @@
+ steps:
++    # build the orchestrator container
++  - name: gcr.io/cloud-builders/docker
++    args:
++      - build
++      - -f
++      - build-artifacts/Dockerfile.orchestrator
++      - -t
++      - "us-central1-docker.pkg.dev/code-battlegrounds/app/orchestrator:latest"
++      - .
++
++  # push orchestrator image
++  - name: gcr.io/cloud-builders/docker
++    args: ["push", "us-central1-docker.pkg.dev/code-battlegrounds/app/orchestrator:latest"]
++
+   # build the rootjail container image
+   - name: gcr.io/cloud-builders/docker
+     args:
+@@ -45,4 +59,5 @@ images:
+   - "us-central1-docker.pkg.dev/code-battlegrounds/app/app:latest"
+   - "us-central1-docker.pkg.dev/code-battlegrounds/app/migrate:latest"
+   - "us-central1-docker.pkg.dev/code-battlegrounds/app/rootjail:latest"
++  - "us-central1-docker.pkg.dev/code-battlegrounds/app/orchestrator:latest"
+ timeout: "1200s" # 20 minutes
+diff --git a/build-artifacts/executor.yml b/build-artifacts/executor.yml
+deleted file mode 100644
+index b782e5c..0000000
+--- a/build-artifacts/executor.yml
++++ /dev/null
+@@ -1,19 +0,0 @@
+-steps:
+-  # build the rootjail container image
+-  - name: gcr.io/cloud-builders/docker
+-    args:
+-      - build
+-      - -f
+-      - build-artifacts/Dockerfile.executor-image
+-      - -t
+-      - "us-central1-docker.pkg.dev/code-battlegrounds/app/rootjail:latest"
+-      - .
+-
+-  # push rootjail image
+-  - name: gcr.io/cloud-builders/docker
+-    args: ["push", "us-central1-docker.pkg.dev/code-battlegrounds/app/rootjail:latest"]
+-
+-
+-images:
+-      - "us-central1-docker.pkg.dev/code-battlegrounds/app/rootjail:latest"
+-timeout: "1200s" # 20 minutes
+\ No newline at end of file
+diff --git a/code-executor/executor-api/models.py b/code-executor/executor-api/models.py
+index c63246a..ef4ac19 100644
+--- a/code-executor/executor-api/models.py
++++ b/code-executor/executor-api/models.py
+@@ -25,6 +25,7 @@ class TestableCase(BaseModel):
+ 
+ 
+ class ExecutionRequest(BaseModel):
++    gameID: Optional[str] = None
+     language: str
+     code: str
+     testCases: Union[str, List[TestableCase]] = None
+diff --git a/code-executor/executor-image/main.py b/code-executor/executor-image/main.py
+index 7ae8f0f..817a9d3 100644
+--- a/code-executor/executor-image/main.py
++++ b/code-executor/executor-image/main.py
+@@ -2,7 +2,7 @@ import base64
+ 
+ from fastapi import FastAPI
+ from fastapi.responses import JSONResponse, PlainTextResponse
+-from pydantic import BaseModel, ValidationError
++from pydantic import ValidationError
+ from starlette import status
+ from starlette.responses import Response
+ 
+@@ -29,7 +29,7 @@ class DeleteVMRequest(BaseModel):
+ @app.post("/delete-vm", response_class=Response, responses={
+     200: {"description": "VM queued for deletion"},
+ })
+-def request_warm_vm(payload: DeleteVMRequest):
++def delete_vm(payload: DeleteVMRequest):
+     return Response(status_code=status.HTTP_200_OK)
+ 
+ 
+diff --git a/code-executor/executor-image/models.py b/code-executor/executor-image/models.py
+index c63246a..ef4ac19 100644
+--- a/code-executor/executor-image/models.py
++++ b/code-executor/executor-image/models.py
+@@ -25,6 +25,7 @@ class TestableCase(BaseModel):
+ 
+ 
+ class ExecutionRequest(BaseModel):
++    gameID: Optional[str] = None
+     language: str
+     code: str
+     testCases: Union[str, List[TestableCase]] = None
+diff --git a/code-executor/orchestrator/main.py b/code-executor/orchestrator/main.py
+index 37c7b6e..ca2d678 100644
+--- a/code-executor/orchestrator/main.py
++++ b/code-executor/orchestrator/main.py
+@@ -1,13 +1,12 @@
+ import json
+-from typing import Optional, List, Tuple, Union, Literal
++from typing import Tuple
+ 
+ from fastapi import FastAPI, status, Request
+-from fastapi.responses import PlainTextResponse
++from fastapi.responses import PlainTextResponse, JSONResponse
++from google.api_core.exceptions import NotFound
+ from google.cloud import compute_v1
+-from pydantic import BaseModel
+ from enum import Enum
+ from contextlib import asynccontextmanager
+-# from fastapi_globals import GlobalsMiddleware
+ from starlette.responses import Response
+ import requests
+ 
+@@ -19,11 +18,10 @@ from models import *
+ # --allow=tcp:8000 \
+ #   --source-ranges=10.8.0.0/28   # your VPC connector
+ #   --target-tags=fastapi-server
+-# TODO: still need enable deleting vms
+ 
+ class Status(Enum):
+     STARTING = 1
+-    READY= 2
++    READY = 2
+     BUSY = 3
+     KMS = 4
+     ERROR = 5
+@@ -76,6 +74,21 @@ class VMProvisioner:
+             print("Error fetching IP")
+         return None
+ 
++    def delete_instance(self, name: str, zone: str):
++        try:
++            self.client.delete(
++                project=self.project_id,
++                zone=zone,
++                instance=name,
++            )
++        except NotFound:
++            # actually chill - it was prob already deleted but just somehow wasnt in state. maybe a scaling issue (NONE of this is backed by redis lol)
++            pass
++        except Exception as e:
++            msg = "Error deleting instance {name}: {e}".format(name=name,e=e)
++            print(msg)
++            return msg
++
+     def create_instance(self, name: str) -> Tuple[bool, Optional[str]]:
+         # tries all zones and returns (True, ip) on first accepted creation, (False, None) if none accepted
+         for zone in self.zones:
+@@ -101,7 +114,7 @@ class VMProvisioner:
+                     {
+                         # TODO: get source in startup script outta here and refer directly to location of python executable in venv
+                         "key":"startup-script", # TODO: MUST REMOVE THIS GIT SWITCH AS WE MERGE. vm is already on main. while i test, i want to be on my branch
+-                        "value":"#!/bin/bash\ngit config --system --add safe.directory /home/juli4fasick/project-code-battlegrounds-1-5\ncd /home/juli4fasick/project-code-battlegrounds-1-5\ngit switch feat/vm-orchestrator-fr\ngit pull\nsource ./.venv/bin/activate\ncd ./code-executor\npip3 install -r requirements.txt\ncd ./executor-api\nfastapi run --host 0.0.0.0 --port 8000",
++                        "value":"#!/bin/bash\ngit config --system --add safe.directory /home/juli4fasick/project-code-battlegrounds-1-5\ncd /home/juli4fasick/project-code-battlegrounds-1-5\ngit switch feat/execution-in-prod\ngit pull\nsource ./.venv/bin/activate\ncd ./code-executor\npip3 install -r requirements.txt\ncd ./executor-api\nfastapi run --host 0.0.0.0 --port 8000",
+                     }
+                 ]
+                 instance.metadata = metadata
+@@ -131,6 +144,17 @@ class Pool: # we're gonna make a VM per game. based on my math, if a VM is 50$ a
+         self.games = {} # map gameid to vm
+         self.provisioner = provisioner
+ 
++    def delete(self, game_id: str):
++        if game_id not in self.games:
++            return "Game {game_id} not found. Either it was never created, is still being created, was already deleted, or is a skill issue on the programmer's end.".format(game_id=game_id)
++        game = self.games[game_id]
++        game.status = Status.KMS
++        chk = self.provisioner.delete_instance(game.game_id, game.zone)
++        if chk is not None:
++            return chk
++        self.games.pop(game_id)
++        return None
++
+     def scale(self, game_id: str): # create VM for this game if possible
+         vm = VM(game_id)
+         ok, zone = self.provisioner.create_instance(vm.game_id)
+@@ -151,7 +175,6 @@ async def lifespan(app: FastAPI): # ignore the warning here. mess with this line
+     yield
+ 
+ app = FastAPI(lifespan=lifespan)
+-# app.add_middleware(GlobalsMiddleware)
+ 
+ @app.get("/", response_class=PlainTextResponse)
+ def root():
+@@ -205,9 +228,23 @@ def request_warm_vm(payload: PrewarmRequest, req: Request):
+     else:
+         return Response(status_code=status.HTTP_503_SERVICE_UNAVAILABLE) # cant create in instances
+ 
+-@app.post("/execute") # TODO: need to include a gameid endpoint here. will need to be reflected in executor image models otherwise shit will fail locally
++class DeleteVMRequest(BaseModel):
++    gameId: str
++@app.post("/delete-vm", response_class=Response, responses={
++    200: {"description": "VM queued for deletion."},
++})
++def delete_vm(payload: DeleteVMRequest, request: Request):
++    pool = request.app.state.pool
++    print("Deletion requested for gameId: " + payload.gameId)
++    chk = pool.delete(payload.gameId)
++    if chk is not None:
++        return JSONResponse(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, content={"error": chk})
++    else:
++        return JSONResponse(status_code=status.HTTP_200_OK, content={"success": "vm queued for deletion"})
++
++@app.post("/execute") # TODO: need to include a gameid endpoint here of which vm to target before falling back. this is already mirrored in executor-image.
+ def execute(req: ExecutionRequest, request: Request):
+-    print(json.dumps(req.dict()))
++    # print(json.dumps(req.dict()))
+ 
+     # Use the application-level pool to find a READY VM with a reachable executor-api
+     pool = getattr(request.app.state, "pool", None)
+@@ -222,6 +259,8 @@ def execute(req: ExecutionRequest, request: Request):
+             vm.ip = pool.provisioner.fetch_ip(vm.game_id, vm.zone)
+         if not vm.ip:
+             return None
++        # if vm.status != Status.READY:
++        #     return None
+         # health check
+         try:
+             r = requests.get(f"http://{vm.ip}:8000/health", timeout=2)
+@@ -232,22 +271,50 @@ def execute(req: ExecutionRequest, request: Request):
+             pass
+         return None
+ 
+-    # Try any existing VM first
+     target_ip = None
+-    for vm in pool.games.values():
+-        target_ip = ensure_vm_ready(vm)
+-        if target_ip:
+-            break
+-
++    target_id = None
++    # check if our dedicated vm is ready
++    if req.gameId in pool.games.keys():
++        target_id = req.gameId
++        target_ip = ensure_vm_ready(pool.games[req.gameId])
++        if target_ip is None:
++            print("Requested vm " + req.gameId + " exists but is not ready!")
++            # if not, try any other vm
++            for vm in pool.games.values():
++                target_ip = ensure_vm_ready(vm)
++                if target_ip:
++                    target_id = vm.game_id
++                    print("Sending execution request to vm " + target_id + " at " + target_ip)
++                    break
++    else:
++        # client must request a warm VM first, we havent received a request to warm this vm
++        return JSONResponse(
++            status_code=status.HTTP_404_NOT_FOUND,
++            content={
++                "error": "VM for gameId not found",
++                "gameId": req.gameId,
++                "action": "Call /request-warm-vm to create and warm a VM, then wait a few seconds and retry /execute",
++                "hint": "POST /request-warm-vm with JSON {\"gameId\": \"<your-game-id>\"}"
++            }
++        )
+     if not target_ip:
+-        # No existing VM is ready. For minimal change, do not auto-provision here; instruct caller to prewarm.
+-        return Response(status_code=status.HTTP_503_SERVICE_UNAVAILABLE)
++        # no ready vm found.
++        return JSONResponse(
++            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
++            content={
++                "error": "No ready VMs available to execute request. This does not mean it doesn't exist (see below) but rather that it is still booting up.",
++                "gameId": req.gameId,
++                "availableVMs": list(pool.games.keys()),
++                "action": "If you haven't yet, call /request-warm-vm for this gameId, then poll /request-warm-vm until 200 before retrying /execute",
++                "hint": "POST /request-warm-vm with JSON {\"gameId\": \"<your-game-id>\"}"
++            }
++        )
+ 
+-    # Forward the execute request to the executor-api running on the VM
+-    # payload = json.dumps(req.dict())
+-    # TODO: first of all. this still is giving issues with how we are talking to the executor-api.
++    # now we can finally send the execution request
+     try:
+-        # Ensure we serialize the Pydantic model correctly (supports v1 and v2)
++        vm = pool.games[target_id]
++        # vm.status = Status.BUSY # mark this vm as busy right now
++        # serialize quite carefully as this was breaking things earlier
+         payload = req.model_dump(mode='json') if hasattr(req, 'model_dump') else req.dict()
+         if isinstance(payload["testCases"], str):
+             payload["testCases"] = json.loads(payload["testCases"])
+@@ -262,6 +329,7 @@ def execute(req: ExecutionRequest, request: Request):
+             headers={"Content-Type": "application/json"},
+             timeout=60,
+         )
++        # vm.status = Status.READY
+         print(f"Executor API response {resp.status_code}: {resp.text[:800]}")
+         # mirror status code and response
+         content_type = resp.headers.get("content-type", "")
+diff --git a/code-executor/orchestrator/models.py b/code-executor/orchestrator/models.py
+index c63246a..9175ddd 100644
+--- a/code-executor/orchestrator/models.py
++++ b/code-executor/orchestrator/models.py
+@@ -25,6 +25,7 @@ class TestableCase(BaseModel):
+ 
+ 
+ class ExecutionRequest(BaseModel):
++    gameId: str
+     language: str
+     code: str
+     testCases: Union[str, List[TestableCase]] = None
+diff --git a/docker-compose.yml b/docker-compose.yml
+deleted file mode 100644
+index ec5c34a..0000000
+--- a/docker-compose.yml
++++ /dev/null
+@@ -1,31 +0,0 @@
+-services:
+-  postgres:
+-    container_name: "battlegrounds-postgres"
+-    image: postgres:15
+-    ports:
+-      - "${POSTGRES_PORT}:5432"
+-    environment:
+-      POSTGRES_USER: ${POSTGRES_USER}
+-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+-      POSTGRES_DB: ${POSTGRES_DB}
+-    volumes:
+-      - postgres_data:/var/lib/postgresql/data
+-
+-  redis:
+-    container_name: "battlegrounds-redis"
+-    image: redis:7
+-    ports:
+-      - "${REDIS_PORT}:6379"
+-
+-  executor:
+-    container_name: "battlegrounds-executor"
+-    image: us-central1-docker.pkg.dev/code-battlegrounds/app/rootjail:latest
+-    security_opt: # if youre not familiar with the wonders of seccomp, you can read up here: https://en.wikipedia.org/wiki/Seccomp. tl;dr, docker filters certain syscalls that our container needs to run rootjails in a container. this is why we treat these containers as disposable in prod, running one code execution per container before trashing it.
+-      - seccomp:unconfined
+-    cap_add: # similarly to above, the container needs access to some namespace and cgroup primitives. again, this would be a security risk IF we don't treat containers as disposible and set a reasonable ttl on the vms that spawn them themselves
+-      - SYS_ADMIN
+-    ports:
+-      - "${EXECUTOR_PORT}:8000"
+-
+-volumes:
+-  postgres_data:
+\ No newline at end of file
+diff --git a/infra/modules/app/main.tf b/infra/modules/app/main.tf
+index 7271a43..e702aa6 100644
+--- a/infra/modules/app/main.tf
++++ b/infra/modules/app/main.tf
+@@ -85,6 +85,45 @@ resource "google_cloud_run_v2_job" "migrate" {
+     }
+   }
+ }
++# orchestrator Cloud Run service for code execution
++# public for simplicity; tighten IAM in production
++resource "google_cloud_run_service" "orchestrator" {
++  name     = "orchestrator"
++  location = var.region
++
++  template {
++    metadata {
++      annotations = {
++        "run.googleapis.com/vpc-access-connector" = var.vpc_connector_name
++        "run.googleapis.com/vpc-access-egress"    = "private-ranges-only"
++      }
++    }
++
++    spec {
++      containers {
++        image = "us-central1-docker.pkg.dev/code-battlegrounds/app/orchestrator:latest"
++
++        env {
++          name  = "PORT"
++          value = "8080"
++        }
++      }
++    }
++  }
++
++  traffic {
++    percent         = 100
++    latest_revision = true
++  }
++}
++
++# make orchestrator service public (so app can call it easily). this will need to change after testing
++resource "google_cloud_run_service_iam_member" "orchestrator_public" {
++  service  = google_cloud_run_service.orchestrator.name
++  location = google_cloud_run_service.orchestrator.location
++  role     = "roles/run.invoker"
++  member   = "allUsers"
++}
+ 
+ # cloud run itself for the app
+ resource "google_cloud_run_service" "app" {
+@@ -145,6 +184,22 @@ resource "google_cloud_run_service" "app" {
+           name  = "REDIS_PORT"
+           value = "6379"
+         }
++
++        # posthog config
++        env {
++          name  = "NEXT_PUBLIC_POSTHOG_KEY"
++          value = "phc_Io7LeSThy8dz3wDLgPJCcKsWny6zZkapNnyrnPRI1gN"
++        }
++        env {
++          name  = "NEXT_PUBLIC_POSTHOG_HOST"
++          value = "https://cbt.strange.boats"
++        }
++
++        # execution addr
++        env {
++          name  = "EXECUTOR_ADDR"
++          value = "${google_cloud_run_service.orchestrator.status[0].url}:8080"
++        }
+       }
+     }
+   }
+diff --git a/prisma/migrations/20260419003015_persists_game_tests/migration.sql b/prisma/migrations/20260419003015_persists_game_tests/migration.sql
+deleted file mode 100644
+index 6076885..0000000
+--- a/prisma/migrations/20260419003015_persists_game_tests/migration.sql
++++ /dev/null
+@@ -1,27 +0,0 @@
+--- CreateTable
+-CREATE TABLE "GameTest" (
+-    "id" TEXT NOT NULL,
+-    "gameResultId" TEXT NOT NULL,
+-    "teamNumber" INTEGER NOT NULL,
+-    "position" INTEGER NOT NULL,
+-    "testCaseId" INTEGER NOT NULL,
+-    "functionInput" JSONB NOT NULL,
+-    "expectedOutput" JSONB NOT NULL,
+-
+-    CONSTRAINT "GameTest_pkey" PRIMARY KEY ("id")
+-);
+-
+--- CreateIndex
+-CREATE INDEX "GameTest_gameResultId_idx" ON "GameTest"("gameResultId");
+-
+--- CreateIndex
+-CREATE INDEX "GameTest_gameResultId_teamNumber_idx" ON "GameTest"("gameResultId", "teamNumber");
+-
+--- CreateIndex
+-CREATE UNIQUE INDEX "GameTest_gameResultId_teamNumber_position_key" ON "GameTest"("gameResultId", "teamNumber", "position");
+-
+--- CreateIndex
+-CREATE UNIQUE INDEX "GameTest_gameResultId_teamNumber_testCaseId_key" ON "GameTest"("gameResultId", "teamNumber", "testCaseId");
+-
+--- AddForeignKey
+-ALTER TABLE "GameTest" ADD CONSTRAINT "GameTest_gameResultId_fkey" FOREIGN KEY ("gameResultId") REFERENCES "GameResult"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+diff --git a/prisma/schema.prisma b/prisma/schema.prisma
+index 099ad83..ffa4d83 100644
+--- a/prisma/schema.prisma
++++ b/prisma/schema.prisma
+@@ -25,10 +25,10 @@ model User {
+   players       TeamPlayer[]
+ 
+   // Friendship
+-  friendCode           String       @unique @default(uuid())
++  friendCode    String    @unique @default(uuid())
+   friendshipsInitiated Friendship[] @relation("FriendshipRequester")
+   friendshipsReceived  Friendship[] @relation("FriendshipAddressee")
+-
++  
+   ownedParty  Party?       @relation("PartyOwner")
+   partyMember PartyMember? // the slot they occupy in someone
+ 
+@@ -92,7 +92,7 @@ model InfraTestKv {
+ }
+ 
+ enum FriendshipStatus {
+-  PENDING // requester sent, addressee hasn't responded
++  PENDING  // requester sent, addressee hasn't responded
+   ACCEPTED
+   DECLINED // kept for cooldown / block logic
+ }
+@@ -114,6 +114,7 @@ model Friendship {
+   @@map("friendship")
+ }
+ 
++
+ model Party {
+   id        String   @id @default(uuid())
+   ownerId   String   @unique // 1-to-1 with User — you own exactly one party
+@@ -184,11 +185,11 @@ enum Role {
+ }
+ 
+ model TeamPlayer {
+-  teamId String
+-  userId String
+-  role   Role
+-  team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
++  teamId      String
++  userId      String
++  role        Role
++  team        Team    @relation(fields: [teamId], references: [id], onDelete: Cascade)
++  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+ 
+   @@unique([teamId, userId])
+   @@index([teamId])
+@@ -236,34 +237,16 @@ model ProblemTest {
+   problem Problem @relation(fields: [problemId], references: [slug], onDelete: Cascade)
+ }
+ 
+-model GameTest {
+-  id             String @id @default(uuid())
+-  gameResultId   String
+-  teamNumber     Int
+-  position       Int
+-  testCaseId     Int
+-  functionInput  Json
+-  expectedOutput Json
+-
+-  gameResult GameResult @relation(fields: [gameResultId], references: [id], onDelete: Cascade)
+-
+-  @@index([gameResultId])
+-  @@index([gameResultId, teamNumber])
+-  @@unique([gameResultId, teamNumber, position])
+-  @@unique([gameResultId, teamNumber, testCaseId])
+-}
+-
+ model GameResult {
+-  id                String  @id @default(uuid())
+-  gameRoomId        String  @unique
+-  winningTeamId     String? @unique
+-  team1Code         String?
+-  team2Code         String?
++  id            String @id @default(uuid())
++  gameRoomId    String @unique
++  winningTeamId String? @unique
++  team1Code      String?
++  team2Code      String?
+   team1TimeToPassMs Int?
+   team2TimeToPassMs Int?
+-  gameTests         GameTest[]
+ 
+-  winningTeam Team?    @relation("WinningTeamRelation", fields: [winningTeamId], references: [id])
++  winningTeam Team?     @relation("WinningTeamRelation", fields: [winningTeamId], references: [id])
+   gameRoom    GameRoom @relation(fields: [gameRoomId], references: [id], onDelete: Cascade)
+ 
+   @@index([winningTeamId])
+diff --git a/server/game/expirationListener.js b/server/game/expirationListener.js
+index 9922716..921e8b3 100644
+--- a/server/game/expirationListener.js
++++ b/server/game/expirationListener.js
+@@ -1,5 +1,6 @@
+ const { getPrisma } = require('../prisma/index');
+ const { Role } = require('@prisma/client');
++const { deleteVm } = require('../utils/vm/deleteVm');
+ 
+ function startExpirationListener(io, pubClient) {
+   const sub = pubClient.duplicate();
+@@ -94,6 +95,14 @@ function startExpirationListener(io, pubClient) {
+         data: { status: 'FINISHED' },
+       });
+       await pubClient.srem('activeGames', gameId);
++      /** class DeleteVMRequest(BaseModel):
++              gameId: str
++          @app.post("/delete-vm", response_class=Response, responses={
++              200: {"description": "VM queued for deletion."},
++          }) 
++      */
++     // deletes vm after game is over
++      deleteVm(gameId);
+       io.to(gameId).emit('gameEnded');
+     }
+ 
+diff --git a/server/index.js b/server/index.js
+index 1cc8e73..bda505e 100644
+--- a/server/index.js
++++ b/server/index.js
+@@ -1,4 +1,3 @@
+-/* eslint-disable @typescript-eslint/no-require-imports */
+ const { createServer } = require('http');
+ const next = require('next');
+ const { startExpirationListener } = require('./game/expirationListener');
+@@ -26,15 +25,15 @@ app.prepare().then(async () => {
+ 
+   // Initialize Socket.IO, wire adapter + handlers + game timer
+   const io = initSocket(httpServer, redis);
+-  
++
+   // set redis to notify us of events and start listening. note that in production, this line will stop the deploy as it will not return correctly. instead, this config needs to be set in memorystore config.
+   if (process.env.NODE_ENV === "development") {
+-    console.log("In dev mode. Setting Redis NOTIFY_KEYSPACE_EVENTS to Ex.")
++    console.log("In dev mode. Setting Redis NOTIFY_KEYSPACE_EVENTS to Ex.");
+     await redis.pubClient.config('SET', 'notify-keyspace-events', 'Ex');
+   } else if (process.env.NODE_ENV === "production") {
+-    console.log("In prod mode. Assume Memorystore is properly configured")
++    console.log("In prod mode. Assume Memorystore is properly configured");
+   }
+-  startExpirationListener(io,redis.pubClient);
++  startExpirationListener(io, redis.pubClient);
+ 
+   // Start listening
+   httpServer.listen(port, () => {
+diff --git a/server/invite/inviteService.js b/server/invite/inviteService.js
+index a3477ee..0734d5e 100644
+--- a/server/invite/inviteService.js
++++ b/server/invite/inviteService.js
+@@ -124,11 +124,11 @@ function createInviteService(stateRedis) {
+ 
+             const party = partyMember.party;
+ 
+-
++            
+             // If member leaves, just remove them from the party
+             await prisma.partyMember.delete({ where: { userId } });
+             return { status: 'left', ownerId: party.ownerId };
+-
++            
+         },
+ 
+         async joinPartyByCode(userId, code) {
+@@ -161,7 +161,7 @@ function createInviteService(stateRedis) {
+                 avatarUrl: party.owner.image ?? null,
+                 joinedAt: party.createdAt.toISOString(),
+             };
+-
++            
+ 
+             // Return member + partyOwnerId so the socket handler can emit
+             // partyJoined to the joiner and partyMemberJoined to the owner
+@@ -189,10 +189,6 @@ function createInviteService(stateRedis) {
+ 
+             if (existing?.status === 'ACCEPTED') return { error: 'already_friends' };
+             if (existing?.status === 'PENDING') return { error: 'request_already_sent' };
+-            
+-            if (existing?.status === 'DECLINED') {
+-                await prisma.friendship.delete({ where: { id: existing.id } });
+-            }
+ 
+             const fromUser = await prisma.user.findUnique({ where: { id: fromUserId } });
+ 
+@@ -268,7 +264,7 @@ function createInviteService(stateRedis) {
+                 username: friendship.addressee.name,
+                 displayName: friendship.addressee.name,
+                 avatarUrl: friendship.addressee.image ?? null,
+-                status: 'online',
++                status: 'offline',
+             };
+ 
+             // Return both shapes + requesterId so the socket handler can emit to both
+diff --git a/server/matchmaking/matchmakingService.js b/server/matchmaking/matchmakingService.js
+index 78167f6..556c027 100644
+--- a/server/matchmaking/matchmakingService.js
++++ b/server/matchmaking/matchmakingService.js
+@@ -1,8 +1,9 @@
+ const { getPrisma } = require('../prisma/index');
+ const { GameType, Role, ProblemDifficulty } = require('@prisma/client');
+-const { nanoid } = require('nanoid');
++const { nanoid } = require('../utils/nanoid');
+ const { readFileSync } = require('node:fs');
+ const { join } = require('node:path');
++const { warmVm } = require('../utils/vm/warmVm');
+ 
+ const QUEUE_KEY = (gameType, difficulty) => `queue:${gameType}:${difficulty}`;
+ const REQUIRED_PLAYERS = {
+@@ -26,7 +27,7 @@ function createMatchmakingService(stateRedis, io) {
+                 const parsed = JSON.parse(e);
+                 return parsed.userId === userId;
+             });
+-            if (alreadyQueued) return { status: 'already_queued' };
++            if (alreadyQueued) {return { status: 'already_queued' }};
+ 
+             // TWOPLAYER + party = instant game, no queue needed
+             if (partyId && gameType === GameType.TWOPLAYER) {
+@@ -135,6 +136,8 @@ function createMatchmakingService(stateRedis, io) {
+             }
+ 
+             const gameRoom = await this._createGameInDB(players, gameType, difficulty);
++            const gameId = gameRoom.id;
++            warmVm(gameId);
+             await this._notifyPlayers(gameRoom);
+             return { status: 'matched', gameId: gameRoom.id };
+         },
+@@ -153,7 +156,8 @@ function createMatchmakingService(stateRedis, io) {
+                 { userId: party.member.userId, partyId },
+             ];
+             const gameRoom = await this._createGameInDB(players, gameType, difficulty);
+-            await this._notifyPlayers(gameRoom);
++            const gameId = gameRoom.id;
++            warmVm(gameId);
+             return { status: 'matched', gameId: gameRoom.id };
+         },
+ 
+diff --git a/server/prisma/index.js b/server/prisma/index.js
+index a352a8b..2df2e1a 100644
+--- a/server/prisma/index.js
++++ b/server/prisma/index.js
+@@ -14,4 +14,4 @@ function getPrisma() {
+    return prisma;
+ }
+ 
+-module.exports = { getPrisma }
+\ No newline at end of file
++module.exports = { getPrisma };
+\ No newline at end of file
+diff --git a/server/redis/index.js b/server/redis/index.js
+index 7dd315d..8b98707 100644
+--- a/server/redis/index.js
++++ b/server/redis/index.js
+@@ -1,4 +1,3 @@
+-/* eslint-disable @typescript-eslint/no-require-imports */
+ const { createAdapter } = require('@socket.io/redis-adapter');
+ const Redis = require('ioredis');
+ 
+diff --git a/server/socket/handlers/executionHandlers.js b/server/socket/handlers/executionHandlers.js
+index a8106d9..1d7a18c 100644
+--- a/server/socket/handlers/executionHandlers.js
++++ b/server/socket/handlers/executionHandlers.js
+@@ -1,7 +1,8 @@
+ const { z } = require("zod");
+ const { GameType } = require("@prisma/client");
+ const { getPrisma } = require("../../prisma");
+-const { validate } = require("./utils");
++const { validate } = require("../../utils/validate");
++const { deleteVm } = require("../../utils/vm/deleteVm");
+ 
+ const prisma = getPrisma();
+ 
+@@ -26,7 +27,6 @@ function registerExecutionHandlers(io, socket, gameService) {
+         if (!roomId) return;
+ 
+         console.log('submitCode received for roomId:', roomId, 'with code length:', code?.length, 'and type:', type);
+-
+         if (type === GameType.TWOPLAYER) {
+             console.log('verify its a twoplayer game');
+             await prisma.gameResult.update({
+@@ -41,13 +41,14 @@ function registerExecutionHandlers(io, socket, gameService) {
+             try {
+                 // Post results to the code executor
+                 let payload = {
++                    gameId: roomId,
+                     language: "javascript",
+                     code: btoa(code),
+                     testCases: JSON.stringify(testCases),
+                     runIDs: JSON.stringify(runIDs)
+                 };
+                 // console.log(JSON.stringify(payload));
+-                const res = await fetch("http://127.0.0.1:6969/execute", {
++                const res = await fetch(`${process.env.EXECUTOR_ADDR}/execute`, {
+                     method: "POST",
+                     headers: { "Content-Type": "application/json" },
+                     body: JSON.stringify(payload),
+@@ -58,10 +59,8 @@ function registerExecutionHandlers(io, socket, gameService) {
+                 console.error("Error POSTing to code executor:", error);
+             } finally {
+                 await gameService.cleanupGameTimers(roomId);
+-                await prisma.gameRoom.update({
+-                    where: { id: roomId },
+-                    data: { status: 'FINISHED' },
+-                });
++                // deletes vm after game is over
++                deleteVm(roomId);
+                 io.to(roomId).emit('gameEnded');
+             }
+         }
+@@ -105,13 +104,14 @@ function registerExecutionHandlers(io, socket, gameService) {
+                 try {
+                     // Post results to the code executor
+                     let payload = {
++                        gameId: roomId,
+                         language: "javascript",
+                         code: btoa(code),
+                         testCases: JSON.stringify(testCases),
+                         runIDs: JSON.stringify(runIDs)
+                     };
+                     // console.log(JSON.stringify(payload));
+-                    const res = await fetch("http://127.0.0.1:6969/execute", {
++                    const res = await fetch(`${process.env.EXECUTOR_ADDR}/execute`, {
+                         method: "POST",
+                         headers: { "Content-Type": "application/json" },
+                         body: JSON.stringify(payload),
+@@ -126,7 +126,8 @@ function registerExecutionHandlers(io, socket, gameService) {
+                         where: { id: roomId },
+                         data: { status: 'FINISHED' },
+                     });
+-                    io.to(roomId).emit('gameEnded');
++                    // deletes vm after game is over
++                    deleteVm(roomId);
+                     await gameService.deleteGameData(submissionKey);
+                 }
+             } else {
+@@ -149,54 +150,61 @@ function registerExecutionHandlers(io, socket, gameService) {
+      * 
+      * @see GameTestCasesContext#TestableCase
+      */
+-    // TODO: should only send test cases needed. also, the model here needs updated to actually hook up (wtf does that mean??). additionally, this sends base64 for undefined, so somethings broke somewhere.
+     socket.on("submitTestCases", async (data) => {
+         const {
++            roomId,
+             code,
+             testCases,
+             runIDs
+         } = data;
+         let payload = {
++            gameId: roomId,
+             language: "javascript",
+             code: btoa(code),
+             testCases: JSON.stringify(testCases),
+             runIDs: JSON.stringify(runIDs)
+         };
+         // console.log(JSON.stringify(payload));
+-        const res = await fetch("http://127.0.0.1:6969/execute", {
+-            method: "POST",
+-            headers: { "Content-Type": "application/json" },
+-            body: JSON.stringify(payload),
+-        });
+-        const json = await res.json();
+-
+-        // json.testCases should realistically only modify a single property
+-        // on the existing testCases object: `computedOutput`. Syncing this
+-        // back to the frontend is handled over there :)
+-        console.log(JSON.stringify(json, null, 2));
+-
+-        /* 
+-          export interface TestableCase {
+-            id: number;
+-            functionInput: ParameterType[];
+-            expectedOutput: ParameterType;
+-            computedOutput?: string | null;
+-          }
+-        */
+-
+-        const toReceive = [];
+-        for (const result of json.results) {
+-            const matched = testCases.find(t => t.id === result.id);
+-            if (!matched) continue;
+-            toReceive.push({
+-                id: matched.id,
+-                functionInput: matched.functionInput,
+-                expectedOutput: matched.expectedOutput,
+-                computedOutput: result.actual
++
++        try {
++            const res = await fetch(`${process.env.EXECUTOR_ADDR}/execute`, {
++                method: "POST",
++                headers: { "Content-Type": "application/json" },
++                body: JSON.stringify(payload),
+             });
+-        }
++            const json = await res.json();
++
++            // json.testCases should realistically only modify a single property
++            // on the existing testCases object: `computedOutput`. Syncing this
++            // back to the frontend is handled over there :)
++            console.log(JSON.stringify(json, null, 2));
++
++            /* 
++              export interface TestableCase {
++                id: number;
++                functionInput: ParameterType[];
++                expectedOutput: ParameterType;
++                computedOutput?: string | null;
++              }
++            */
++
++            const toReceive = [];
++            for (const result of json.results) {
++                const matched = testCases.find(t => t.id === result.id);
++                if (!matched) continue;
++                toReceive.push({
++                    id: matched.id,
++                    functionInput: matched.functionInput,
++                    expectedOutput: matched.expectedOutput,
++                    computedOutput: result.actual
++                });
++            }
+ 
+-        socket.emit("receiveTestCaseSync", toReceive);
++            socket.emit("receiveTestCaseSync", toReceive);
++        } catch (error) {
++            console.error(error);
++            socket.emit("errorTests", { message: "Sorry that didn't work try again in a few seconds"});
++        }
+     });
+ }
+ 
+diff --git a/server/socket/handlers/gameHandlers.js b/server/socket/handlers/gameHandlers.js
+index 413a0d8..9d336b7 100644
+--- a/server/socket/handlers/gameHandlers.js
++++ b/server/socket/handlers/gameHandlers.js
+@@ -1,6 +1,6 @@
+ const { GameType } = require("@prisma/client");
+ const { z } = require("zod");
+-const { validate } = require("./utils");
++const { validate } = require("../../utils/validate");
+ 
+ const ParameterPrimitive = z.union([
+     z.literal("string"),
+diff --git a/server/socket/handlers/index.js b/server/socket/handlers/index.js
+index 269cb26..b2da989 100644
+--- a/server/socket/handlers/index.js
++++ b/server/socket/handlers/index.js
+@@ -9,7 +9,7 @@ function registerSocketHandlers(io, socket, services) {
+ 
+   registerGameHandlers(io, socket, gameService);
+   registerExecutionHandlers(io, socket, gameService);
+-  registerMatchmakingHandlers(io, socket, matchmakingService, gameService);
++  registerMatchmakingHandlers(io, socket, matchmakingService);
+   registerInviteHandlers(io, socket, inviteService, gameService);
+ 
+   socket.on('disconnect', async () => {
+diff --git a/server/socket/handlers/inviteHandlers.js b/server/socket/handlers/inviteHandlers.js
+index 2bf6fd6..2019120 100644
+--- a/server/socket/handlers/inviteHandlers.js
++++ b/server/socket/handlers/inviteHandlers.js
+@@ -1,5 +1,5 @@
+ const { z } = require("zod");
+-const { validate } = require("./utils");
++const { validate } = require("../../utils/validate");
+ 
+ const partyInviteSchema = z.object({
+     toUserId: z.string(),
+@@ -144,7 +144,7 @@ function registerInviteHandlers(io, socket, inviteService, gameService) {
+         // Notify the addressee so their InvitesTab updates immediately
+         const toSocketId = await gameService.getSocketId(result.addresseeId);
+         if (toSocketId) {
+-            io.to(toSocketId).emit('friendRequestReceived', { ...result.incomingRequest, direction: 'incoming' });
++            io.to(toSocketId).emit('friendRequestReceived', { ...result.request, direction: 'incoming' });
+         }
+     });
+ 
+diff --git a/server/socket/handlers/matchmakingHandlers.js b/server/socket/handlers/matchmakingHandlers.js
+index 3ce76cb..ed2da04 100644
+--- a/server/socket/handlers/matchmakingHandlers.js
++++ b/server/socket/handlers/matchmakingHandlers.js
+@@ -1,4 +1,4 @@
+-function registerMatchmakingHandlers(io, socket, matchmakingService, gameService) {
++function registerMatchmakingHandlers(io, socket, matchmakingService) {
+     socket.on('joinQueue', async ({ userId, gameType, difficulty, partyId, lobbyId }) => {
+     const result = await matchmakingService.joinQueue(userId, gameType, difficulty, partyId ?? lobbyId ?? null);
+     socket.emit('queueStatus', result);
+diff --git a/server/utils/nanoid.js b/server/utils/nanoid.js
+new file mode 100644
+index 0000000..d39056b
+--- /dev/null
++++ b/server/utils/nanoid.js
+@@ -0,0 +1,5 @@
++const { customAlphabet } = require("nanoid");
++
++const nanoid = customAlphabet("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789", 21);
++
++module.exports = { nanoid };
+\ No newline at end of file
+diff --git a/server/socket/handlers/utils.js b/server/utils/validate.js
+similarity index 100%
+rename from server/socket/handlers/utils.js
+rename to server/utils/validate.js
+diff --git a/server/utils/vm/deleteVm.js b/server/utils/vm/deleteVm.js
+new file mode 100644
+index 0000000..6a1205b
+--- /dev/null
++++ b/server/utils/vm/deleteVm.js
+@@ -0,0 +1,12 @@
++const deleteVm = (gameId) => {
++    fetch(`${process.env.EXECUTOR_ADDR}/delete-vm`, {
++        method: "POST",
++        headers: { 'Content-Type': 'application/json' },
++        body: JSON.stringify({ gameId })
++    })
++    .then(res => res.json())
++    .then(data => console.log(data))
++    .catch(error => console.error(error));
++};
++
++module.exports = { deleteVm };
+\ No newline at end of file
+diff --git a/server/utils/vm/warmVm.js b/server/utils/vm/warmVm.js
+new file mode 100644
+index 0000000..a416777
+--- /dev/null
++++ b/server/utils/vm/warmVm.js
+@@ -0,0 +1,12 @@
++const warmVm = (gameId) => {
++    fetch(`${process.env.EXECUTOR_ADDR}/request-warm-vm`, {
++        method: "POST",
++        headers: { 'Content-Type': 'application/json' },
++        body: JSON.stringify({ gameId })
++    })
++    .then(res => res.json())
++    .then(data => console.log(data))
++    .catch((error) => console.error(error));
++};
++
++module.exports = { warmVm };
+\ No newline at end of file
+diff --git a/src/components/Analysisbox.tsx b/src/components/Analysisbox.tsx
+index 49e64d1..b6fffd4 100644
+--- a/src/components/Analysisbox.tsx
++++ b/src/components/Analysisbox.tsx
+@@ -108,7 +108,8 @@ export default function AnalysisBox({ team1Code, team2Code, gameType = "FOURPLAY
+           </Text>
+           <Group gap="xs" className={styles.badgeGroup}>
+             <Badge color="teal" variant="light" size="md" radius="sm" className={`${styles.metricBadge} ${styles.runtimeBadge}`}>
+-              Runtime: {team1AverageExecutionTime !== null && team1AverageExecutionTime !== undefined ? `${team1AverageExecutionTime}ms` : 'N/A'}
++              Runtime: {userTeamNumber === 2 && team2AverageExecutionTime !== null && team2AverageExecutionTime !== undefined ? `${team2AverageExecutionTime}ms` :
++                       userTeamNumber === 1 && team1AverageExecutionTime !== null && team1AverageExecutionTime !== undefined ? `${team1AverageExecutionTime}ms` : 'N/A'}
+             </Badge>
+           </Group>
+         </Box>
+diff --git a/src/components/Navbar.tsx b/src/components/Navbar.tsx
+index 8dc573a..3da0813 100644
+--- a/src/components/Navbar.tsx
++++ b/src/components/Navbar.tsx
+@@ -61,7 +61,7 @@ export default function HeaderSimple(props: HeaderProps) {
+             {brandName}
+           </Anchor> */}
+ 
+-        <Brand blink link='/' />
++        <Brand blink />
+         <Text fw={600} mr="auto">
+ 
+           {props.isSpectator && (
+diff --git a/src/components/TestCaseResultsBox.tsx b/src/components/TestCaseResultsBox.tsx
+index 837d016..a8a4570 100644
+--- a/src/components/TestCaseResultsBox.tsx
++++ b/src/components/TestCaseResultsBox.tsx
+@@ -1,8 +1,7 @@
+ import { Paper, Title, Table, Text, Box, Badge, Tooltip } from "@mantine/core";
+-import { useEffect, useState, useCallback } from "react";
+-import { ParameterType, ParameterPrimitiveType } from "@/lib/ProblemInputOutput";
+-import { IconCheck, IconX } from "@tabler/icons-react";
+-import deepEqual from "@/util/deepEqual";
++import { useEffect, useState } from "react";
++import { ParameterType } from "@/lib/ProblemInputOutput";
++import { IconCheck, IconX, IconAlertCircle } from "@tabler/icons-react";
+ import styles from '@/styles/comps/TestCaseResultsBox.module.css';
+ 
+ export interface TestResultsSummary {
+@@ -70,61 +69,6 @@ export default function TestCaseResultsBox({ gameId, team1Results, team2Results,
+   const team1TestResults = team1Results ?? fetchedTeam1Results;
+   const team2TestResults = team2Results ?? fetchedTeam2Results;
+ 
+-  const parseValueByType = (value: unknown, type: ParameterPrimitiveType): unknown => {
+-    if (value === null || value === undefined) return value;
+-
+-    if (type === "boolean") {
+-      return typeof value === "boolean" ? value : value === "true";
+-    } else if (type === "number") {
+-      return typeof value === "number" ? value : Number(value);
+-    } else if (type.includes("array")) {
+-      if (typeof value === "string") {
+-        try {
+-          // Normalize single quotes to double quotes for JSON parsing
+-          let normalized = value.replace(/'/g, '"');
+-          // If it doesn't start with [ or ", wrap it in brackets
+-          if (!normalized.startsWith('[') && !normalized.startsWith('"')) {
+-            normalized = `[${normalized}]`;
+-          }
+-          return JSON.parse(normalized);
+-        } catch {
+-          // If JSON parsing fails, return the original value
+-          console.warn(`Failed to parse array value: ${value}`);
+-          return value;
+-        }
+-      }
+-      return value;
+-    }
+-    return value;
+-  };
+-
+-  const extractAndCompare = useCallback((actual: unknown, expectedParams: ParameterType[]): boolean => {
+-    if (!expectedParams || expectedParams.length === 0) return false;
+-    if (actual === null || actual === undefined) return false;
+-
+-    // If actual is a ParameterType array, extract the value from it
+-    let actualValue: unknown = actual;
+-    if (Array.isArray(actual) && actual.length > 0 && typeof actual[0] === 'object' && 'value' in actual[0]) {
+-      actualValue = (actual as ParameterType[])[0].value;
+-    }
+-
+-    const expectedParam = expectedParams[0];
+-    const type = expectedParam.type as ParameterPrimitiveType;
+-
+-    try {
+-      const parsedExpected = parseValueByType(expectedParam.value, type);
+-      const parsedActual = parseValueByType(actualValue, type);
+-
+-      return deepEqual(
+-        parsedActual as string | number | boolean | string[] | number[] | string[][] | number[][],
+-        parsedExpected as string | number | boolean | string[] | number[] | string[][] | number[][]
+-      );
+-    } catch (e) {
+-      console.error("Error in extractAndCompare:", { actualValue, expectedValue: expectedParam.value, type, error: e });
+-      return false;
+-    }
+-  }, []);
+-
+   useEffect(() => {
+     if (!gameId) return;
+ 
+@@ -134,7 +78,7 @@ export default function TestCaseResultsBox({ gameId, team1Results, team2Results,
+     const fetchTests = async () => {
+       setLoading(true);
+       try {
+-        const response = await fetch(`/api/results/${gameId}`);
++        const response = await fetch(`/api/rooms/tests?gameId=${gameId}`);
+         if (!response.ok) return;
+         const data = (await response.json()) as TestsApiResponse;
+         if (cancelled) return;
+@@ -171,38 +115,20 @@ export default function TestCaseResultsBox({ gameId, team1Results, team2Results,
+   }, [gameId]);
+ 
+   useEffect(() => {
+-    if (!onSummaryChange || !hasFetchedSummary || testCases.length === 0) return;
+-
+-    // Recalculate passed counts using deepEqual instead of relying on backend execution results
+-    let team1PassedCount = 0;
+-    let team2PassedCount = 0;
+-
+-    testCases.forEach((testCase) => {
+-      const team1Result = team1TestResults?.[testCases.indexOf(testCase)];
+-      const team2Result = team2TestResults?.[testCases.indexOf(testCase)];
+-
+-      if (team1Result !== undefined && extractAndCompare(team1Result, testCase.expected)) {
+-        team1PassedCount++;
+-      }
+-      if (team2Result !== undefined && extractAndCompare(team2Result, testCase.expected)) {
+-        team2PassedCount++;
+-      }
+-    });
++    if (!onSummaryChange || !hasFetchedSummary) return;
+ 
+     onSummaryChange({
+-      yourPassedCount: userTeamNumber === 2 ? team2PassedCount : team1PassedCount,
+-      otherTeamPassedCount: userTeamNumber === 2 ? team1PassedCount : team2PassedCount,
++      yourPassedCount: userTeamNumber === 2 ? summaryCounts.team2PassedCount : summaryCounts.team1PassedCount,
++      otherTeamPassedCount: userTeamNumber === 2 ? summaryCounts.team1PassedCount : summaryCounts.team2PassedCount,
+       totalTests: summaryCounts.totalTests,
+     });
+   }, [
+     onSummaryChange,
+     hasFetchedSummary,
+     userTeamNumber,
++    summaryCounts.team1PassedCount,
++    summaryCounts.team2PassedCount,
+     summaryCounts.totalTests,
+-    testCases,
+-    team1TestResults,
+-    team2TestResults,
+-    extractAndCompare,
+   ]);
+ 
+   useEffect(() => {
+@@ -242,6 +168,21 @@ export default function TestCaseResultsBox({ gameId, team1Results, team2Results,
+       .trim();
+   };
+ 
++  const isEquivalent = (a: unknown, b: unknown): boolean => {
++    const normalize = (value: unknown): string => {
++      if (value === undefined || value === null) return "";
++      if (typeof value === "string") return value.trim();
++      if (typeof value === "number" || typeof value === "boolean") return String(value);
++      try {
++        return JSON.stringify(value);
++      } catch {
++        return String(value);
++      }
++    };
++
++    return normalize(a) === normalize(b);
++  };
++
+   const rows = testCases.map((element, index) => {
+     // Determine which results to show based on user's team
+     const yourResults = userTeamNumber === 2 ? team2TestResults : team1TestResults;
+@@ -259,13 +200,13 @@ export default function TestCaseResultsBox({ gameId, team1Results, team2Results,
+     const hasYourError = yourError && yourError.length > 0;
+     const hasOtherTeamError = otherTeamError && otherTeamError.length > 0;
+ 
+-    const yourResultPassed = hasYourResult && extractAndCompare(yourResult, element.expected);
+-    const otherTeamPassed = hasOtherTeamResult && extractAndCompare(otherTeamResult, element.expected);
++    const yourResultPassed = hasYourResult && isEquivalent(yourResult, element.expected);
++    const otherTeamPassed = hasOtherTeamResult && isEquivalent(otherTeamResult, element.expected);
+ 
+     return (
+       <Table.Tr key={element.id} className={styles.tableRow}>
+         <Table.Td>
+-          <Text size="sm" fw={500} ff="monospace" className={styles.cellInput} style={{ maxWidth: '200px', overflow: 'auto', wordBreak: 'break-word' }}>
++          <Text size="sm" fw={500} ff="monospace" className={styles.cellInput}>
+             {formatValue(element.input)}
+           </Text>
+         </Table.Td>
+@@ -334,7 +275,7 @@ export default function TestCaseResultsBox({ gameId, team1Results, team2Results,
+           </Table.Td>
+         )}
+         <Table.Td>
+-          <Text size="sm" fw={500} ff="monospace" className={styles.cellInput} style={{ maxWidth: '200px', overflow: 'auto', wordBreak: 'break-word' }}>
++          <Text size="sm" fw={500} ff="monospace" className={styles.cellInput}>
+             {formatValue(element.expected)}
+           </Text>
+         </Table.Td>
+diff --git a/src/components/gameTests/GameTestCase.tsx b/src/components/gameTests/GameTestCase.tsx
+index e522b27..7f726b8 100644
+--- a/src/components/gameTests/GameTestCase.tsx
++++ b/src/components/gameTests/GameTestCase.tsx
+@@ -32,6 +32,7 @@ export default function GameTestCase(props: GameTestCaseProps) {
+   const { socket } = useSocket();
+   const posthog = usePostHog();
+   const { testableCase } = props;
++  const [error, setError] = useState<string | null>(null);
+ 
+   const [running, setRunning] = useState<boolean>(false);
+ 
+@@ -52,6 +53,18 @@ export default function GameTestCase(props: GameTestCaseProps) {
+     });
+   };
+ 
++  const errorTestHandler = ({ message }: { message: string }) => {
++    setTimeout(() => {setError(message)}, 4000);
++
++  };
++
++  useEffect(() => {
++    if (!socket) return;
++
++    socket.on('errorTests', errorTestHandler);
++
++  }, [socket]);
++
+   useEffect(() => {
+     if (!running) return;
+ 
+@@ -137,7 +150,7 @@ export default function GameTestCase(props: GameTestCaseProps) {
+                     });
+                   }}
+                   disabled={props.disabled}
+-                  computedValue={testableCase.computedOutput}
++                  computedValue={testableCase.computedOutput || error}
+                   flex={1}
+                 />
+ 
+diff --git a/src/components/notifications.tsx b/src/components/notifications.tsx
+index ceeca59..f3dfd50 100644
+--- a/src/components/notifications.tsx
++++ b/src/components/notifications.tsx
+@@ -1,30 +1,5 @@
+ import { notifications } from '@mantine/notifications';
+-import { Button, Group } from '@mantine/core';
+ import { Role } from '@prisma/client';
+-import classes from '../styles/comps/notifications.module.css';
+-
+-const gradientClassNames = {
+-  root: classes.gradientRoot,
+-  title: classes.title,
+-  description: classes.description,
+-  closeButton: classes.closeButton,
+-};
+-
+-const proClassNames = {
+-  root: classes.proRoot,
+-  title: classes.proTitle,
+-  description: classes.proDescription,
+-  closeButton: classes.proCloseButton,
+-};
+-
+-export function showNotification(title: string, message: string) {
+-  notifications.show({
+-    title,
+-    message,
+-    autoClose: 5000,
+-    classNames: proClassNames,
+-  });
+-}
+ 
+ export function showRoleSwapWarning(role: Role) {
+ 
+@@ -41,80 +16,5 @@ export function showRoleSwapWarning(role: Role) {
+     message: 'Make sure you are ready to swap to ' + swapRole,
+     color: 'yellow',
+     autoClose: 7000,
+-    classNames: proClassNames,
+-  });
+-}
+-
+-export function showErrorNotification(message: string, title: string = 'Error') {
+-  notifications.show({
+-    title,
+-    message,
+-    color: 'red',
+-    autoClose: 5000,
+-    classNames: classes,
+-  });
+-}
+-
+-export function showFriendRequestNotification(
+-  displayName: string,
+-  requestId: string,
+-  onAccept: () => void,
+-  onDecline: () => void,
+-) {
+-  const id = `friend-request-${requestId}`;
+-  const close = () => notifications.hide(id);
+-
+-  notifications.show({
+-    id,
+-    title: 'Friend Request',
+-    message: (
+-      <>
+-        <span style={{ display: 'block', marginBottom: 8 }}>
+-          {displayName} wants to be your friend!
+-        </span>
+-        <Group gap="xs">
+-          <Button size="xs" color="green" onClick={() => { onAccept(); close(); }}>
+-            Accept
+-          </Button>
+-          <Button size="xs" color="red" onClick={() => { onDecline(); close(); }}>
+-            Decline
+-          </Button>
+-        </Group>
+-      </>
+-    ),
+-    autoClose: false,
+-    classNames: proClassNames,
+-  });
+-}
+-
+-export function showPartyInviteNotification(
+-  fromDisplayName: string,
+-  fromUserId: string,
+-  onAccept: () => void,
+-  onDecline: () => void,
+-) {
+-  const id = `party-invite-${fromUserId}`;
+-  const close = () => notifications.hide(id);
+-
+-  notifications.show({
+-    id,
+-    title: 'Party Invite',
+-    message: (
+-      <>
+-        <span style={{ display: 'block', marginBottom: 8 }}>
+-          {fromDisplayName} invited you to their party!
+-        </span>
+-        <Group gap="xs">
+-          <Button size="xs" color="green" onClick={() => { onAccept(); close(); }}>
+-            Accept
+-          </Button>
+-          <Button size="xs" color="red" onClick={() => { onDecline(); close(); }}>
+-            Decline
+-          </Button>
+-        </Group>
+-      </>
+-    ),
+-    autoClose: false,
+-    classNames: proClassNames,
+   });
+ }
+diff --git a/src/components/sidebar/InvitesTab.tsx b/src/components/sidebar/InvitesTab.tsx
+index 35f4c23..fdcaa40 100644
+--- a/src/components/sidebar/InvitesTab.tsx
++++ b/src/components/sidebar/InvitesTab.tsx
+@@ -1,5 +1,4 @@
+ import { Avatar, Box, Button, Stack, Text } from "@mantine/core";
+-import { notifications } from "@mantine/notifications";
+ import { useFriendship } from "@/contexts/FriendshipContext";
+ import { useParty } from "@/contexts/PartyContext";
+ import { useSocket } from "@/contexts/SocketContext";
+@@ -18,28 +17,24 @@ export function InvitesTab() {
+       setJoinedParty(member);
+       setPendingInvite(null);
+     });
+-    notifications.hide(`party-invite-${pendingInvite.fromUserId}`);
+   }
+ 
+   function handleDeclinePartyInvite() {
+     if (!socket || !pendingInvite) return;
+     socket.emit("partyInviteDecline");
+     setPendingInvite(null);
+-    notifications.hide(`party-invite-${pendingInvite.fromUserId}`);
+   }
+ 
+   function handleAcceptFriendRequest(requestId: string) {
+     if (!socket) return;
+     socket.emit("friendRequestAccept", { requestId });
+     setFriendRequests((prev) => prev.filter((r) => r.id !== requestId));
+-    notifications.hide(`friend-request-${requestId}`);
+   }
+ 
+   function handleDeclineFriendRequest(requestId: string) {
+     if (!socket) return;
+     socket.emit("friendRequestDecline", { requestId });
+     setFriendRequests((prev) => prev.filter((r) => r.id !== requestId));
+-    notifications.hide(`friend-request-${requestId}`);
+   }
+ 
+   if (!hasAnything) {
+diff --git a/src/contexts/FriendshipContext.tsx b/src/contexts/FriendshipContext.tsx
+index 93c4a8f..d5c58a3 100644
+--- a/src/contexts/FriendshipContext.tsx
++++ b/src/contexts/FriendshipContext.tsx
+@@ -8,8 +8,6 @@ import {
+   type SetStateAction,
+ } from "react";
+ import { useSocket } from "./SocketContext";
+-import { showFriendRequestNotification } from "@/components/notifications";
+-import { authClient } from "@/lib/auth-client";
+ 
+ export type PresenceStatus = "online" | "away" | "offline";
+ 
+@@ -51,14 +49,12 @@ export const FriendshipContext = createContext<FriendshipContextAPI | null>(null
+ 
+ export const FriendshipProvider = ({ children }: { children: ReactNode }) => {
+   const { socket } = useSocket();
+-  const { data: session, isPending } = authClient.useSession();
+ 
+   const [friends, setFriends] = useState<Friend[]>([]);
+   const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([]);
+   const [friendCode, setFriendCode] = useState<string | null>(null);
+ 
+   useEffect(() => {
+-    if (!session && !isPending) return;
+     fetch("/api/friends")
+       .then((res) => {
+         if (!res.ok) return;
+@@ -74,7 +70,7 @@ export const FriendshipProvider = ({ children }: { children: ReactNode }) => {
+       .catch((err) => {
+         console.error("Failed to fetch friends:", err);
+       });
+-  }, [session, isPending]);
++  }, []);
+ 
+   useEffect(() => {
+     if (!socket) return;
+@@ -84,19 +80,6 @@ export const FriendshipProvider = ({ children }: { children: ReactNode }) => {
+         if (prev.some((r) => r.id === request.id)) return prev;
+         return [...prev, { ...request, direction: "incoming" }];
+       });
+-
+-      showFriendRequestNotification(
+-        request.displayName,
+-        request.id,
+-        () => {
+-          socket.emit("friendRequestAccept", { requestId: request.id });
+-          setFriendRequests((prev) => prev.filter((r) => r.id !== request.id));
+-        },
+-        () => {
+-          socket.emit("friendRequestDecline", { requestId: request.id });
+-          setFriendRequests((prev) => prev.filter((r) => r.id !== request.id));
+-        },
+-      );
+     };
+ 
+     const onFriendRequestAccepted = (friend: Friend) => {
+diff --git a/src/contexts/PartyContext.tsx b/src/contexts/PartyContext.tsx
+index 17df670..7330d6e 100644
+--- a/src/contexts/PartyContext.tsx
++++ b/src/contexts/PartyContext.tsx
+@@ -8,8 +8,6 @@ import {
+     type SetStateAction,
+ } from "react";
+ import { useSocket } from "./SocketContext";
+-import { showPartyInviteNotification } from "@/components/notifications";
+-import { authClient } from "@/lib/auth-client";
+ 
+ export interface PartyMember {
+     userId: string;
+@@ -45,7 +43,6 @@ export const PartyContext = createContext<PartyContextAPI | null>(null);
+ 
+ export const PartyProvider = ({ children }: { children: ReactNode }) => {
+     const { socket } = useSocket();
+-    const { data: session, isPending } = authClient.useSession();
+ 
+     const [partyMember, setPartyMember] = useState<PartyMember | null>(null);
+     const [joinedParty, setJoinedParty] = useState<PartyMember | null>(null);
+@@ -53,7 +50,6 @@ export const PartyProvider = ({ children }: { children: ReactNode }) => {
+     const [partyCode, setPartyCode] = useState<string | null>(null);
+ 
+     useEffect(() => {
+-        if (!session && !isPending) return;
+         fetch("/api/party")
+             .then((res) => {
+                 if (!res.ok) return;
+@@ -69,7 +65,7 @@ export const PartyProvider = ({ children }: { children: ReactNode }) => {
+             .catch((err) => {
+                 console.error("Failed to fetch party status:", err);
+             });
+-    }, [session, isPending]);
++    }, []);
+ 
+     useEffect(() => {
+         if (!socket) return;
+@@ -80,22 +76,6 @@ export const PartyProvider = ({ children }: { children: ReactNode }) => {
+ 
+         const onPartyInviteReceived = (invite: PartyInvite) => {
+             setPendingInvite(invite);
+-
+-            showPartyInviteNotification(
+-                invite.fromDisplayName,
+-                invite.fromUserId,
+-                () => {
+-                    socket.emit("partyInviteAccept");
+-                    socket.once("partyJoined", (member: PartyMember) => {
+-                        setJoinedParty(member);
+-                        setPendingInvite(null);
+-                    });
+-                },
+-                () => {
+-                    socket.emit("partyInviteDecline");
+-                    setPendingInvite(null);
+-                },
+-            );
+         };
+ 
+         const onPartyMemberLeft = () => {
+diff --git a/src/lib/auth.ts b/src/lib/auth.ts
+index aeaa4df..63718e0 100644
+--- a/src/lib/auth.ts
++++ b/src/lib/auth.ts
+@@ -1,7 +1,7 @@
+ import { betterAuth } from "better-auth";
+ import { createAuthMiddleware } from "better-auth/api";
+ import { prismaAdapter } from "better-auth/adapters/prisma";
+-import { nanoid } from "nanoid";
++import { nanoid } from "@/lib/nanoid";
+ 
+ import { prisma } from "./prisma";
+ 
+@@ -19,7 +19,7 @@ export const auth = betterAuth({
+                 if (newSession) {
+                     await prisma.user.update({
+                         where: { id: newSession.user.id },
+-                        data: { friendCode: nanoid(8) }
++                        data: { friendCode: nanoid(6) }
+                     });
+                     await prisma.party.create({
+                         data: {
+diff --git a/src/lib/nanoid.ts b/src/lib/nanoid.ts
+new file mode 100644
+index 0000000..40955c1
+--- /dev/null
++++ b/src/lib/nanoid.ts
+@@ -0,0 +1,3 @@
++import { customAlphabet } from "nanoid";
++
++export const nanoid = customAlphabet("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789", 21);
+diff --git a/src/pages/api/friends.ts b/src/pages/api/friends.ts
+index 719f0b3..b40a50e 100644
+--- a/src/pages/api/friends.ts
++++ b/src/pages/api/friends.ts
+@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
+ import { auth } from "@/lib/auth";
+ import { prisma } from "@/lib/prisma";
+ import type { Friend, FriendRequest } from "@/contexts/FriendshipContext";
+-import { nanoid } from "nanoid";
++import { nanoid } from "@/lib/nanoid";
+ 
+ export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+   const session = await auth.api.getSession({ headers: req.headers as Record<string, string> });
+diff --git a/src/pages/api/rooms/create.ts b/src/pages/api/rooms/create.ts
+index 7b43dc8..ff04cba 100644
+--- a/src/pages/api/rooms/create.ts
++++ b/src/pages/api/rooms/create.ts
+@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
+ import { auth } from "@/lib/auth";
+ import { prisma } from "@/lib/prisma";
+ import { ProblemDifficulty, GameType } from "@prisma/client";
+-import { nanoid } from "nanoid";
++import { nanoid } from "@/lib/nanoid";
+ /**
+  * API route handler for creating a new game room.
+  * This endpoint is called when the user clicks the "Create Game Room" button on the landing page.
+@@ -21,6 +21,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
+         return res.status(400).json({ message: "Invalid difficulty" });
+     }
+ 
++    if (!gameType || !Object.values(GameType).includes(gameType)) {
++        return res.status(400).json({ message: "Invalid gameType" });
++    }
++
+     // check auth status
+     // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     const session = await auth.api.getSession({ headers: req.headers as any });
+@@ -52,44 +56,50 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
+             return res.status(500).json({ message: 'Failed to select a random problem' });
+         }
+ 
++
+         // Need to make a database call to Problem table but there are no Problems in the table right now
+-        if (gameType === GameType.TWOPLAYER) {
+-            const gameRoom = await prisma.gameRoom.create({
+-                data: {
+-                    id: roomID,
+-                    problemId: problem.id,
+-                    gameType: GameType.TWOPLAYER,
+-                    teams: {
+-                        create: [{}]
+-                    },
+-                    gameResult: {
+-                        create: {}
+-                    }
+-                }
+-            });
+-            // return generated code
+-            return res.status(201).json({ gameId: gameRoom.id });
+-        } else if (gameType === GameType.FOURPLAYER) {
+-            const gameRoom = await prisma.gameRoom.create({
+-                data: {
+-                    id: roomID,
+-                    problemId: problem.id,
+-                    gameType: GameType.FOURPLAYER,
+-                    teams: {
+-                        create: [{}, {}]
+-                    },
+-                    gameResult: {
+-                        create: {}
+-                    }
++
++        const isTwoPlayer = gameType === GameType.TWOPLAYER;
++
++        const gameRoom = await prisma.gameRoom.create({
++            data: {
++                id: roomID,
++                problemId: problem.id,
++                gameType: gameType,
++                teams: {
++                    create: isTwoPlayer ? [{}] : [{}, {}]
++                },
++                gameResult: {
++                    create: {}
+                 }
+-            });
+-            // return generated code
+-            return res.status(201).json({ gameId: gameRoom.id });
+-        }
++            }
++        });
++
++        /**
++         *  class PrewarmRequest(BaseModel):
++                gameId: str
++
++            @app.post("/request-warm-vm", response_class=Response, responses={
++                200: {"description": "Warm VM has been requested and is ready"},
++                201: {"description": "Warm VM creation requested"},
++                503: {"description": "VM not available in any region! Try again later."}
++            })
++         */
++
++        const gameId = gameRoom.id; // warm vm
++        fetch(`${process.env.ORCHESTRATOR_URL ?? "localhost:6969"}/request-warm-vm`, {
++            method: "POST",
++            headers: { 'Content-Type': 'application/json' },
++            body: JSON.stringify({ gameId })
++        })
++            .then(res => res.json())
++            .then(data => console.log(data))
++            .catch((error) => console.error(error));
++
+ 
+-        return res.status(500).json({ message: "Didn't select gametype somehow" });
++        // return generated code
++        return res.status(201).json({ gameId: gameRoom.id });
+ 
+-        // TODO: here, store in redis pubsub channel called "matchmaking" or such so that other players can find it. then, before generating a new room, try to join any existing rooms. if room is joined and becomes full, mark it as in progress in postgres. See CODEBAT-14 and CODEBAT-56
+ 
+     } catch (error: unknown) {
+         if (error instanceof Error) {
+diff --git a/src/pages/api/results/[gameId].ts b/src/pages/api/rooms/tests.ts
+similarity index 84%
+rename from src/pages/api/results/[gameId].ts
+rename to src/pages/api/rooms/tests.ts
+index 9764803..38f828f 100644
+--- a/src/pages/api/results/[gameId].ts
++++ b/src/pages/api/rooms/tests.ts
+@@ -34,26 +34,14 @@ interface ExecutorResponse {
+ 
+ type ResultValue = Pick<ExecutorResultItem, 'actual' | 'passed' | 'stderr' | 'execution_time_ms'>;
+ export interface TestsResponse {
+-  // Problem & Game Details
+-  problem: {
+-    id: string;
+-    title: string;
+-    description: string;
+-    difficulty: "EASY" | "MEDIUM" | "HARD";
+-    topics: string[];
+-  };
+-  gameType: string;
+-  userTeamNumber: 1 | 2;
+-  team1Code: string | null;
+-  team2Code: string | null;
+-
+-  // Test Execution Results
+   tests: TestCase[];
+   team1Results: unknown[];
+   team2Results: unknown[];
+   team1PassedCount: number;
+   team2PassedCount: number;
+   totalTests: number;
++  team1ExecutionTimes: (number | null)[];
++  team2ExecutionTimes: (number | null)[];
+   team1AverageExecutionTime: number | null;
+   team2AverageExecutionTime: number | null;
+   team1Errors: (string | null)[];
+@@ -130,9 +118,7 @@ async function executeSubmission(
+     return emptyExecution(tests.length);
+   }
+ 
+-  const executorUrl =
+-    process.env.CODE_EXECUTOR_URL ??
+-    `http://127.0.0.1:${process.env.EXECUTOR_PORT ?? "6969"}/execute`;
++  const executorUrl = `${process.env.EXECUTOR_ADDR}/execute`;
+ 
+   const payload = {
+     language: "javascript",
+@@ -152,7 +138,6 @@ async function executeSubmission(
+   }
+ 
+   const executionData = (await response.json()) as ExecutorResponse;
+-  console.log("[EXECUTOR RESPONSE]", JSON.stringify(executionData, null, 2));
+   const resultsById = new Map<number, ResultValue>();
+ 
+ 
+@@ -232,14 +217,7 @@ export default async function handler(
+       where: { id: gameId },
+       include: {
+         problem: {
+-          select: {
+-            id: true,
+-            title: true,
+-            description: true,
+-            difficulty: true,
+-            topics: true,
+-            slug: true,
+-          },
++          select: { slug: true },
+         },
+         gameResult: {
+           select: {
+@@ -247,18 +225,6 @@ export default async function handler(
+             team2Code: true,
+           },
+         },
+-        teams: {
+-          include: {
+-            players: {
+-              select: {
+-                userId: true,
+-              },
+-            },
+-          },
+-          orderBy: {
+-            createdAt: "asc",
+-          },
+-        },
+       },
+     });
+ 
+@@ -266,19 +232,6 @@ export default async function handler(
+       return res.status(404).json({ message: "Game room not found" });
+     }
+ 
+-    // Determine which team the current user is on (1 or 2 based on creation order)
+-    let userTeamNumber: 1 | 2 = 1;
+-    for (let i = 0; i < gameRoom.teams.length; i++) {
+-      const team = gameRoom.teams[i];
+-      const userIsOnThisTeam = team.players.some(
+-        (p) => p.userId === session.user.id
+-      );
+-      if (userIsOnThisTeam) {
+-        userTeamNumber = (i + 1) as 1 | 2;
+-        break;
+-      }
+-    }
+-
+     // Fetch test cases for the problem using slug
+     const tests = await prisma.problemTest.findMany({
+       where: { problemId: gameRoom.problem.slug },
+@@ -365,26 +318,14 @@ export default async function handler(
+     }
+ 
+     return res.status(200).json({
+-      // Problem & Game Details
+-      problem: {
+-        id: gameRoom.problem.id,
+-        title: gameRoom.problem.title,
+-        description: gameRoom.problem.description,
+-        difficulty: gameRoom.problem.difficulty,
+-        topics: gameRoom.problem.topics,
+-      },
+-      gameType: gameRoom.gameType,
+-      userTeamNumber,
+-      team1Code: gameRoom.gameResult?.team1Code ?? null,
+-      team2Code: gameRoom.gameResult?.team2Code ?? null,
+-
+-      // Test Execution Results
+       tests: formattedTests,
+       team1Results: team1Execution.results,
+       team2Results: team2Execution.results,
+       team1PassedCount: team1Execution.passedCount,
+       team2PassedCount: team2Execution.passedCount,
+       totalTests: formattedTests.length,
++      team1ExecutionTimes: team1Execution.executionTimes,
++      team2ExecutionTimes: team2Execution.executionTimes,
+       team1AverageExecutionTime: team1Execution.averageExecutionTime,
+       team2AverageExecutionTime: team2Execution.averageExecutionTime,
+       team1Errors: team1Execution.errors,
+diff --git a/src/pages/game/[gameID].tsx b/src/pages/game/[gameID].tsx
+index 44098e4..f865b6b 100644
+--- a/src/pages/game/[gameID].tsx
++++ b/src/pages/game/[gameID].tsx
+@@ -3,7 +3,7 @@ import { Editor } from '@monaco-editor/react';
+ import { useRouter } from 'next/router';
+ import { useEffect, useState, useRef, useCallback } from 'react';
+ import { Socket } from 'socket.io-client';
+-import { IconEye, IconPlayerTrackNextFilled, IconPlus } from '@tabler/icons-react';
++import { IconEye, IconPlayerPlay, IconPlayerTrackNextFilled, IconPlus } from '@tabler/icons-react';
+ import { usePostHog } from 'posthog-js/react';
+ import { Panel, Group as PanelGroup, Separator as PanelResizeHandle } from 'react-resizable-panels';
+ 
+@@ -89,7 +89,7 @@ function PlayGameRoom() {
+   const [problem, setProblem] = useState<ActiveProblem | null>(null);
+   const [teams, setTeams] = useState<TeamCount[]>([]);
+   const [teamSelected, setTeamSelected] = useState<string | null>(null);
+-  const [liveCode, setLiveCode] = useState<string>("// Make sure your function is named solution \nfunction solution(a, b) { \n\treturn a + b;\n}");
++  const [liveCode, setLiveCode] = useState<string>("function solution(a, b) { \n\treturn a + b;\n}");
+   const [activeTestId, setActiveTestId] = useState<number>(0);
+   const [gameType, setGameType] = useState<GameType | null>(null);
+   const [isWaitingForOtherTeam, setIsWaitingForOtherTeam] = useState(false);
+@@ -100,8 +100,6 @@ function PlayGameRoom() {
+   const testCaseCtx = useTestCases();
+   const gameStateCtx = useGameState();
+   const { socket } = useSocket();
+-
+-  // when setting status in the first useEffect, set it to _idle
+   const { setStatus } = useMatchmaking();
+ 
+   const [spectatorView, setSpectatorView] = useState<Role>(Role.SPECTATOR);
+@@ -144,12 +142,8 @@ function PlayGameRoom() {
+ 
+   // ONLY HAPPENS ON PAGE LAUNCH
+   useEffect(() => {
+-
+-
+     if (!session?.user.id || !gameId || !socket) return;
+ 
+-    setStatus('idle');
+-
+     gameStateCtx.setGameId(gameId);
+ 
+     const loadRoomDetails = async () => {
+@@ -226,6 +220,7 @@ function PlayGameRoom() {
+ 
+     socket.on('invalidGame', invalidGameHandler);
+     socket.on("error", errorHandler);
++    
+ 
+     // 6. Cleanup: disconnect the socket if the user leaves the page
+     return () => {
+@@ -551,6 +546,7 @@ function PlayGameRoom() {
+ 
+     setRunningAllTests(true);
+     socket.emit("submitTestCases", {
++      roomId: gameId,
+       code: liveCode,
+       testCases: testCaseCtx.cases,
+       runIDs: testCaseCtx.cases.map((t) => t.id), // all of em!
+@@ -789,11 +785,27 @@ function PlayGameRoom() {
+                     />
+                     {effectiveRole === Role.CODER && (
+                       <>
++                        <Button
++                          size="xs"
++                          color="cyan"
++                          disabled={isSpectator || isWaitingForOtherTeam}
++                          className={styles.runButton}
++                          onClick={() =>
++                            posthog.capture("code_run_triggered", { gameId })
++                          }
++                          rightSection={
++                            <IconPlayerPlay
++                              size={"var(--mantine-font-size-md)"}
++                            />
++                          }
++                        >
++                          RUN
++                        </Button>
+                         <Button
+                           size="xs"
+                           color="green"
+                           onClick={submitFinalCode}
+-                          disabled={isSpectator || isWaitingForOtherTeam}
++                          disabled={isSpectator || isWaitingForOtherTeam} // TODO: disable this for first thirty seconds
+                         >
+                           {isWaitingForOtherTeam
+                             ? "Waiting for other team..."
+diff --git a/src/pages/index.tsx b/src/pages/index.tsx
+index d3a28a1..0002b85 100644
+--- a/src/pages/index.tsx
++++ b/src/pages/index.tsx
+@@ -21,6 +21,14 @@ const CTASection = dynamic(() => import("@/components/home/CTASection"), {
+ });
+ 
+ export default function Home() {
++  const router = useRouter();
++  const { data: session, isPending } = authClient.useSession();
++  useEffect(() => {
++      if (session && !isPending) {
++        router.push("/matchmaking");
++      }
++    }, [session, isPending, router]);
++
+   const posthog = usePostHog();
+ 
+   useEffect(() => {
+diff --git a/src/pages/login.tsx b/src/pages/login.tsx
+index da1bb5c..19700ae 100644
+--- a/src/pages/login.tsx
++++ b/src/pages/login.tsx
+@@ -5,7 +5,6 @@ import { useForm } from "@mantine/form";
+ import { Button, Card, Flex, PasswordInput, TextInput, Title, Text, Anchor } from "@mantine/core";
+ import { useDisclosure } from "@mantine/hooks";
+ import { usePostHog } from "posthog-js/react";
+-import { showErrorNotification } from "@/components/notifications";
+ import Brand from "@/components/Brand";
+ import greenTheme from "@/styles/shared/GreenTheme.module.css";
+ import styles from "@/styles/Login.module.css";
+@@ -17,7 +16,7 @@ export default function LoginPage() {
+ 
+   useEffect(() => {
+     if (session && !isPending) {
+-      router.replace("/matchmaking");
++      router.push("/matchmaking");
+     }
+   }, [session, isPending, router]);
+   const [pwVisible, { toggle }] = useDisclosure();
+@@ -50,7 +49,7 @@ export default function LoginPage() {
+ 
+     if (error) {
+       posthog.capture("user_login_failure");
+-      showErrorNotification(error.message ?? 'An unexpected error occurred', 'Login Failed')
++      alert(error.message);
+       setLoading(false);
+       return;
+     }
+diff --git a/src/pages/matchmaking.tsx b/src/pages/matchmaking.tsx
+index ff1892d..6dd8a21 100644
+--- a/src/pages/matchmaking.tsx
++++ b/src/pages/matchmaking.tsx
+@@ -137,26 +137,23 @@ export default function QueuePage() {
+             </Box>
+           </Stack>
+ 
+-          <Tabs defaultValue="create-game">
++          <Tabs defaultValue="matchmaking">
+             <Tabs.List grow>
+               <Tabs.Tab
+-                value="create-game"
+-                data-testid="create-game-tab"
++                value="matchmaking"
++                data-testid="matchmaking-tab"
+                 className={classes.modeTab}
+               >
+-                Create Game
++                Find a Lobby
+               </Tabs.Tab>
+               <Tabs.Tab
+-                value="matchmaking"
+-                data-testid="matchmaking-tab"
++                value="create-game"
++                data-testid="create-game-tab"
+                 className={classes.modeTab}
+               >
+-                Matchmaking
++                Create Game
+               </Tabs.Tab>
+             </Tabs.List>
+-            <Tabs.Panel value="create-game" pt="md">
+-              <DifficultySection />
+-            </Tabs.Panel>
+ 
+             <Tabs.Panel value="matchmaking" pt="md">
+               <FindLobbySection
+@@ -172,6 +169,9 @@ export default function QueuePage() {
+               />
+             </Tabs.Panel>
+ 
++            <Tabs.Panel value="create-game" pt="md">
++              <DifficultySection />
++            </Tabs.Panel>
+           </Tabs>
+ 
+           {joinedParty === null && (
+diff --git a/src/pages/results/[gameID].tsx b/src/pages/results/[gameID].tsx
+index b3d2097..3668d33 100644
+--- a/src/pages/results/[gameID].tsx
++++ b/src/pages/results/[gameID].tsx
+@@ -1,4 +1,4 @@
+-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
++import { useState, useEffect, useRef, useCallback } from "react";
+ import Head from "next/head";
+ import {
+   Container,
+@@ -29,7 +29,6 @@ import styles from "@/styles/Results.module.css";
+ import AnalysisBox, { type AnalysisBoxProps } from "@/components/Analysisbox";
+ import ProblemBox, { type ActiveProblem } from "@/components/ProblemBox";
+ import TestCaseResultsBox, { type TestResultsSummary } from "@/components/TestCaseResultsBox";
+-import { calculateScorePair } from "@/util/scoring";
+ 
+ // Mock data - replace with actual data from backend
+ interface TeamResult {
+@@ -44,11 +43,9 @@ interface TeamResult {
+ interface RoomDetailsResponse {
+   problem: ActiveProblem;
+   gameType: GameType;
+-  userTeamNumber: 1 | 2;
+   team1Code: string | null;
+   team2Code: string | null;
+-  team1AverageExecutionTime: number | null;
+-  team2AverageExecutionTime: number | null;
++  userTeamNumber: 1 | 2;
+ }
+ 
+ // Animated counter hook
+@@ -163,7 +160,7 @@ export function Results() {
+ 
+     const loadGameData = async () => {
+       try {
+-        const response = await fetch(`/api/results/${gameId}`);
++        const response = await fetch(`/api/rooms/${gameId}`);
+         if (!response.ok) return;
+ 
+         const roomDetails = (await response.json()) as RoomDetailsResponse;
+@@ -177,14 +174,14 @@ export function Results() {
+             team2Code: roomDetails.team2Code ?? undefined,
+             gameType: roomDetails.gameType,
+             userTeamNumber: roomDetails.userTeamNumber,
+-            team1AverageExecutionTime: roomDetails.team1AverageExecutionTime,
+-            team2AverageExecutionTime: roomDetails.team2AverageExecutionTime,
++            team1AverageExecutionTime: null,
++            team2AverageExecutionTime: null,
+           });
+         } else {
+           setAnalysisProps(null);
+         }
+       } catch (error) {
+-        console.error("Failed to load game details", error);
++        console.error("Failed to load room details for results page", error);
+       } finally {
+         setIsGameDataLoading(false);
+       }
+@@ -195,85 +192,61 @@ export function Results() {
+ 
+   const isCoOp = gameType === GameType.TWOPLAYER;
+ 
+-  // Calculate team scores
+-  const [team1Score, team2Score] = useMemo(() => {
+-    if (!testResultsSummary || !analysisProps) return [0, 0];
+-
+-    return calculateScorePair(
+-      testResultsSummary.yourPassedCount ?? 0,
+-      testResultsSummary.otherTeamPassedCount ?? 0,
+-      testResultsSummary.totalTests,
+-      analysisProps.team1AverageExecutionTime ?? null,
+-      analysisProps.team2AverageExecutionTime ?? null,
+-      userTeamNumber === 1 ? "Your Team (Team 1)" : "Other Team (Team 1)",
+-      userTeamNumber === 2 ? "Your Team (Team 2)" : "Other Team (Team 2)"
+-    );
+-  }, [testResultsSummary, analysisProps, userTeamNumber]);
+-
+   // Mock data - replace with actual fetched data
+   const coOpTeam: TeamResult = {
+     name: "Co-Op Crew",
+-    score: team1Score,
+-    testsPassed: testResultsSummary?.yourPassedCount ?? 0,
+-    totalTests: testResultsSummary?.totalTests ?? 0,
+-    time: 0, // Calculated later
++    score: 810,
++    testsPassed: 9,
++    totalTests: 10,
++    time: 236, // 3:56
+     isWinner: true
+   };
+ 
+   const greenTeam: TeamResult = {
+     name: "Green Hackers",
+-    score: userTeamNumber === 1 ? team1Score : team2Score,
+-    testsPassed: userTeamNumber === 1
+-      ? (testResultsSummary?.yourPassedCount ?? 0)
+-      : (testResultsSummary?.otherTeamPassedCount ?? 0),
+-    totalTests: testResultsSummary?.totalTests ?? 0,
+-    time: 0, // Calculated later
++    score: 850,
++    testsPassed: 8,
++    totalTests: 10,
++    time: 245, // 4:05
+     isWinner: true
+   };
+ 
+   const redTeam: TeamResult = {
+     name: "Red Coders",
+-    score: userTeamNumber === 1 ? team2Score : team1Score,
+-    testsPassed: userTeamNumber === 1
+-      ? (testResultsSummary?.otherTeamPassedCount ?? 0)
+-      : (testResultsSummary?.yourPassedCount ?? 0),
+-    totalTests: testResultsSummary?.totalTests ?? 0,
+-    time: 0, // Calculated later
++    score: 720,
++    testsPassed: 7,
++    totalTests: 10,
++    time: 312, // 5:12
+     isWinner: false
+   };
+ 
+-  const primaryTeam = isCoOp ? coOpTeam : (userTeamNumber === 1 ? greenTeam : redTeam);
+-  const secondaryTeam = isCoOp ? null : (userTeamNumber === 1 ? redTeam : greenTeam);
++  const primaryTeam = isCoOp ? coOpTeam : greenTeam;
++  const secondaryTeam = isCoOp ? null : redTeam;
+ 
+-  // Determine winner based on actual score comparison
+-  const winner = secondaryTeam
+-    ? primaryTeam.score >= secondaryTeam.score
+-      ? { ...primaryTeam, isWinner: true }
+-      : { ...secondaryTeam, isWinner: true }
+-    : primaryTeam;
++  const winner = secondaryTeam ? (primaryTeam.isWinner ? primaryTeam : secondaryTeam) : primaryTeam;
+   const areTestResultsLoading = testResultsSummary === null;
+   const testsPassedForMetric = testResultsSummary?.yourPassedCount ?? 0;
+   const totalTestsForMetric = testResultsSummary?.totalTests ?? 0;
+ 
+   const primaryTeamTestsPassed = !areTestResultsLoading && !isCoOp
+-    ? (testResultsSummary?.yourPassedCount ?? 0)
++    ? userTeamNumber === 1
++      ? (testResultsSummary?.yourPassedCount ?? 0)
++      : (testResultsSummary?.otherTeamPassedCount ?? 0)
+     : 0;
+ 
+   const secondaryTeamTestsPassed = !areTestResultsLoading && !isCoOp
+-    ? (testResultsSummary?.otherTeamPassedCount ?? 0)
++    ? userTeamNumber === 1
++      ? (testResultsSummary?.otherTeamPassedCount ?? 0)
++      : (testResultsSummary?.yourPassedCount ?? 0)
+     : 0;
+ 
+   const comparisonTotalTests = testResultsSummary?.totalTests ?? 0;
+ 
+-  // Animated counters - show user's team metrics
+-  const userTeamScore = team1Score;  // team1Score is always yourScore from calculateScorePair
+-  const animatedScore = useCounter(userTeamScore, 2000, 200);
++  // Animated counters
++  const animatedScore = useCounter(winner.score, 2000, 200);
+   const animatedTests = useCounter(areTestResultsLoading ? 0 : testsPassedForMetric, 1500, 400);
+   const animatedTime = useCounter(winner.time, 1800, 600);
+ 
+-  // Determine if user's team won
+-  const userTeamWon = primaryTeam.score >= (secondaryTeam?.score ?? 0);
+-
+   if (!session) return null;
+ 
+   if (isGameDataLoading) {
+@@ -298,15 +271,11 @@ export function Results() {
+         <div className={styles.gradient} />
+ 
+         <Container className={styles.container} size="xl">
+-          {/* Victory/Defeat Banner */}
++          {/* Victory Banner */}
+           <Box className={styles.victoryBanner}>
+-            {userTeamWon ? (
+-              <IconTrophy size={80} className={styles.trophyIcon} />
+-            ) : (
+-              <div style={{ fontSize: '80px', fontWeight: 'bold', color: '#ff0000', lineHeight: 1 }}>L</div>
+-            )}
+-            <h1 className={userTeamWon ? styles.victoryTitle : styles.defeatTitle}>
+-              {userTeamWon ? "Victory!" : "Defeat!"}
++            <IconTrophy size={80} className={styles.trophyIcon} />
++            <h1 className={styles.victoryTitle}>
++              Victory!
+             </h1>
+             <p className={styles.victorySubtitle}>
+               <span className={styles.winnerTeamName}>{winner.name}</span>{" "}
+diff --git a/src/pages/signup.tsx b/src/pages/signup.tsx
+index b85a7d1..b8d3716 100644
+--- a/src/pages/signup.tsx
++++ b/src/pages/signup.tsx
+@@ -5,7 +5,6 @@ import { useForm } from "@mantine/form";
+ import { Button, Card, Flex, PasswordInput, TextInput, Title, Text, Anchor } from "@mantine/core";
+ import { useDisclosure } from "@mantine/hooks";
+ import { usePostHog } from "posthog-js/react";
+-import { showErrorNotification } from "@/components/notifications";
+ import Brand from "@/components/Brand";
+ import greenTheme from "@/styles/shared/GreenTheme.module.css";
+ import styles from "@/styles/Signup.module.css";
+@@ -21,7 +20,7 @@ export default function SignUpPage() {
+ 
+   useEffect(() => {
+       if (session && !isPending) {
+-        router.replace("/matchmaking");
++        router.push("/matchmaking");
+       }
+     }, [session, isPending, router]);
+ 
+@@ -55,7 +54,8 @@ export default function SignUpPage() {
+       },
+       onError: (ctx) => {
+         posthog.capture("user_signup_failure");
+-        showErrorNotification(ctx.error.message, 'Sign Up Failed');
++        // display the error message
++        alert(ctx.error.message);
+         setLoading(false);
+       },
+     });
+diff --git a/src/styles/Results.module.css b/src/styles/Results.module.css
+index b8080ed..c1a3fd6 100644
+--- a/src/styles/Results.module.css
++++ b/src/styles/Results.module.css
+@@ -75,23 +75,6 @@
+   animation: victoryPulse 2s ease-in-out infinite;
+ }
+ 
+-.defeatTitle {
+-  font-size: clamp(2.5rem, 6vw, 4rem);
+-  font-weight: 800;
+-  background: linear-gradient(135deg, #ff4444, #cc0000);
+-  -webkit-background-clip: text;
+-  -webkit-text-fill-color: transparent;
+-  background-clip: text;
+-  text-shadow: 0 0 30px rgba(255, 68, 68, 0.3);
+-  margin-bottom: 0.5rem;
+-  animation: defeatPulse 2s ease-in-out infinite;
+-}
+-
+-@keyframes defeatPulse {
+-  0%, 100% { opacity: 1; transform: scale(1); }
+-  50% { opacity: 0.8; transform: scale(0.98); }
+-}
+-
+ .victorySubtitle {
+   font-size: clamp(1.25rem, 3vw, 1.75rem);
+   color: var(--mantine-color-dimmed);
+diff --git a/src/styles/comps/notifications.module.css b/src/styles/comps/notifications.module.css
+deleted file mode 100644
+index 24be33e..0000000
+--- a/src/styles/comps/notifications.module.css
++++ /dev/null
+@@ -1,62 +0,0 @@
+-.root {
+-  background-color: var(--notification-color, var(--mantine-primary-color-filled));
+-
+-  &::before {
+-    background-color: var(--mantine-color-white);
+-  }
+-}
+-
+-.gradientRoot {
+-  background: linear-gradient(to right, #000000, var(--mantine-color-console-4));
+-  border: none;
+-
+-  &::before {
+-    background-color: var(--mantine-color-console-4);
+-  }
+-}
+-
+-.proRoot {
+-  background: light-dark(#f4fff2, #0a140a);
+-  border: 1px solid light-dark(rgba(49, 176, 0, 0.25), rgba(49, 176, 0, 0.18));
+-  box-shadow:
+-    0 4px 24px light-dark(rgba(0, 0, 0, 0.07), rgba(0, 0, 0, 0.55)),
+-    inset 0 1px 0 light-dark(rgba(255, 255, 255, 0.8), rgba(113, 211, 73, 0.04));
+-
+-  &::before {
+-    background: var(--mantine-color-console-4);
+-    box-shadow: 0 0 10px rgba(49, 176, 0, 0.55);
+-  }
+-}
+-
+-.proTitle {
+-  color: light-dark(#111, #fff);
+-  font-weight: 600;
+-  letter-spacing: 0.01em;
+-}
+-
+-.proDescription {
+-  color: light-dark(#444, rgba(255, 255, 255, 0.62));
+-}
+-
+-.proCloseButton {
+-  color: light-dark(#999, rgba(255, 255, 255, 0.35));
+-  transition: color 0.15s ease, background-color 0.15s ease;
+-
+-  &:hover {
+-    background-color: rgba(49, 176, 0, 0.12);
+-    color: var(--mantine-color-console-4);
+-  }
+-}
+-
+-.description,
+-.title {
+-  color: var(--mantine-color-white);
+-}
+-
+-.closeButton {
+-  color: var(--mantine-color-white);
+-
+-  &:hover {
+-    background-color: rgba(0, 0, 0, 0.1);
+-  }
+-}
+diff --git a/src/util/scoring.ts b/src/util/scoring.ts
+deleted file mode 100644
+index 050059b..0000000
+--- a/src/util/scoring.ts
++++ /dev/null
+@@ -1,95 +0,0 @@
+-export const SCORING_WEIGHTS = {
+-  testsPassed: 0.8,    // 80% - heavy weighting
+-  runtime: 0.2,        // 20% - light weighting
+-} as const;
+-
+-const RUNTIME_THRESHOLD = 0.10; // 10% difference required to award runtime points
+-
+-export function calculateScore(
+-  testsPassed: number,
+-  totalTests: number,
+-  runtimeMs: number | null,
+-  teamLabel: string = "Team"
+-): number {
+-  if (totalTests === 0) return 0;
+-
+-  const testsRatio = testsPassed / totalTests;
+-  const testScore = testsRatio * 1000 * SCORING_WEIGHTS.testsPassed;
+-
+-  // Inverse of runtime: faster = higher score
+-  // Normalize to 0-1000 scale (assuming <5000ms is max reasonable time)
+-  const runtimeScore = runtimeMs
+-    ? Math.max(0, (1 - runtimeMs / 5000)) * 1000 * SCORING_WEIGHTS.runtime
+-    : 0;
+-
+-  const totalScore = Math.round(testScore + runtimeScore);
+-
+-  console.log(
+-    `[${teamLabel}] Score Breakdown: Tests=${testScore.toFixed(2)}, Runtime=${runtimeScore.toFixed(2)}, Total=${totalScore}`
+-  );
+-
+-  return totalScore;
+-}
+-
+-/**
+- * Calculate scores for both teams with percentage-based runtime threshold
+- * Only awards runtime points if the runtime difference exceeds the threshold
+- */
+-export function calculateScorePair(
+-  team1TestsPassed: number,
+-  team2TestsPassed: number,
+-  totalTests: number,
+-  team1RuntimeMs: number | null,
+-  team2RuntimeMs: number | null,
+-  team1Label: string = "Team 1",
+-  team2Label: string = "Team 2"
+-): [number, number] {
+-  // Calculate test scores
+-  const testsRatio1 = totalTests > 0 ? team1TestsPassed / totalTests : 0;
+-  const testScore1 = testsRatio1 * 1000 * SCORING_WEIGHTS.testsPassed;
+-
+-  const testsRatio2 = totalTests > 0 ? team2TestsPassed / totalTests : 0;
+-  const testScore2 = testsRatio2 * 1000 * SCORING_WEIGHTS.testsPassed;
+-
+-  // Calculate runtime scores with percentage threshold
+-  let runtimeScore1 = 0;
+-  let runtimeScore2 = 0;
+-
+-  if (team1RuntimeMs !== null && team2RuntimeMs !== null) {
+-    const runtimeDiff = Math.abs(team1RuntimeMs - team2RuntimeMs);
+-    const maxRuntime = Math.max(team1RuntimeMs, team2RuntimeMs);
+-    const requiredDifference = maxRuntime * RUNTIME_THRESHOLD;
+-
+-    if (runtimeDiff > requiredDifference) {
+-      // Only award runtime points if difference exceeds threshold
+-      const baseScore = 1000 * SCORING_WEIGHTS.runtime;
+-
+-      if (team1RuntimeMs < team2RuntimeMs) {
+-        runtimeScore1 = baseScore;
+-        runtimeScore2 = 0;
+-      } else {
+-        runtimeScore1 = 0;
+-        runtimeScore2 = baseScore;
+-      }
+-    }
+-    // If difference is below threshold, both get 0 runtime points
+-  } else if (team1RuntimeMs !== null) {
+-    // Fallback for 2-player: use inverse of runtime
+-    runtimeScore1 = Math.max(0, (1 - team1RuntimeMs / 5000)) * 1000 * SCORING_WEIGHTS.runtime;
+-  } else if (team2RuntimeMs !== null) {
+-    runtimeScore2 = Math.max(0, (1 - team2RuntimeMs / 5000)) * 1000 * SCORING_WEIGHTS.runtime;
+-  }
+-
+-  const totalScore1 = Math.round(testScore1 + runtimeScore1);
+-  const totalScore2 = Math.round(testScore2 + runtimeScore2);
+-
+-  console.log(
+-    `[${team1Label}] Score Breakdown: Tests=${testScore1.toFixed(2)}, Runtime=${runtimeScore1.toFixed(2)}, Total=${totalScore1}`
+-  );
+-  console.log(
+-    `[${team2Label}] Score Breakdown: Tests=${testScore2.toFixed(2)}, Runtime=${runtimeScore2.toFixed(2)}, Total=${totalScore2}`
+-  );
+-
+-  return [totalScore1, totalScore2];
+-}
+-
+diff --git a/tests/api/create.spec.ts b/tests/api/create.spec.ts
+index 7878ec0..5ad5ace 100644
+--- a/tests/api/create.spec.ts
++++ b/tests/api/create.spec.ts
+@@ -24,7 +24,7 @@ jest.mock("@/lib/prisma", () => ({
+ }));
+ 
+ // Fake ID generator: always returns "abcd1234" so test assertions are predictable.
+-jest.mock("nanoid", () => ({
++jest.mock("@/lib/nanoid", () => ({
+     nanoid: jest.fn(() => "abcd1234"),
+  }));
+ 
