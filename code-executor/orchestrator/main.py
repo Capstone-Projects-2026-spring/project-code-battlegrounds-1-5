@@ -146,7 +146,7 @@ class Pool: # we're gonna make a VM per game. based on my math, if a VM is 50$ a
 
     def delete(self, game_id: str):
         if game_id not in self.games:
-            return "Game {game_id} not found. Either it was never created, is still being created, was already deleted, or is a skill issue one the programmer's end.".format(game_id=game_id)
+            return "Game {game_id} not found. Either it was never created, is still being created, was already deleted, or is a skill issue on the programmer's end.".format(game_id=game_id)
         game = self.games[game_id]
         chk = self.provisioner.delete_instance(game.game_id, game.zone)
         if chk is not None:
@@ -275,21 +275,41 @@ def execute(req: ExecutionRequest, request: Request):
         target_id = req.gameId
         target_ip = ensure_vm_ready(pool.games[req.gameId])
         if target_ip is None:
+            print("Requested vm " + req.gameId + " exists but is not ready!")
             # if not, try any other vm
             for vm in pool.games.values():
                 target_ip = ensure_vm_ready(vm)
                 if target_ip:
                     target_id = vm.game_id
+                    print("Sending execution request to vm " + target_id + " at " + target_ip)
                     break
+    else:
+        # client must request a warm VM first, we havent received a request to warm this vm
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content={
+                "error": "VM for gameId not found",
+                "gameId": req.gameId,
+                "action": "Call /request-warm-vm to create and warm a VM, then wait a few seconds and retry /execute",
+                "hint": "POST /request-warm-vm with JSON {\"gameId\": \"<your-game-id>\"}"
+            }
+        )
     if not target_ip:
-        # No existing VM is ready. For minimal change, do not auto-provision here; instruct caller to prewarm.
-        return Response(status_code=status.HTTP_503_SERVICE_UNAVAILABLE)
+        # no ready vm found.
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content={
+                "error": "No ready VMs available to execute request",
+                "gameId": req.gameId,
+                "availableVMs": list(pool.games.keys()),
+                "action": "If you haven't yet, call /request-warm-vm for this gameId, then poll /request-warm-vm until 200 before retrying /execute",
+                "hint": "POST /request-warm-vm with JSON {\"gameId\": \"<your-game-id>\"}"
+            }
+        )
 
-    # Forward the execute request to the executor-api running on the VM
-    # payload = json.dumps(req.dict())
-    print("sending execution request to vm " + target_id + " at " + target_ip)
+    # now we can finally send the execution request
     try:
-        # Ensure we serialize the Pydantic model correctly (supports v1 and v2)
+        # serialize quite carefully as this was breaking things earlier
         payload = req.model_dump(mode='json') if hasattr(req, 'model_dump') else req.dict()
         if isinstance(payload["testCases"], str):
             payload["testCases"] = json.loads(payload["testCases"])
