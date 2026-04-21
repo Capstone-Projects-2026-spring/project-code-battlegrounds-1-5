@@ -252,14 +252,22 @@ const toRemove = [
   "actors-and-directors-who-cooperated-at-least-three-times",
   "article-views-i",
   "top-travellers",
+  "add-two-numbers",
+  "4sum-ii",
+  "rank-transform-of-a-matrix",
+  "partition-array-into-disjoint-intervals",
+  "print-foobar-alternatively",
+  "find-the-city-with-the-smallest-number-of-neighbors-at-a-threshold-distance",
+  "number-of-ways-where-square-of-number-is-equal-to-product-of-two-numbers",
+  "time-based-key-value-store"
 ];
 
 import * as Bun from "bun";
 let cases = await (Bun.file("./public/test-cases.json")).json();
 
-console.log("Cases before", cases.length)
+console.log("Cases before", cases.length);
 for (const c of cases) {
-  const t = toRemove.find(t => t === c.problemId)
+  const t = toRemove.find(t => t === c.problemId);
   if (t)
     // @ts-expect-error // oh fuck off
     cases = cases.filter(c => c.problemId !== t);
