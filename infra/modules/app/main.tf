@@ -11,6 +11,11 @@ data "google_secret_manager_secret_version" "postgres_password" {
   version = "latest"
 }
 
+data "google_secret_manager_secret_version" "test_accs_password" {
+  secret  = "test-accs-password"
+  version = "latest"
+}
+
 # cloud sql
 resource "google_sql_database_instance" "postgres" {
   name                = "app-postgres"
@@ -100,6 +105,17 @@ resource "google_cloud_run_v2_job" "db-seed" {
           name  = "DATABASE_URL"
           value = "postgresql://${var.db_user}:${data.google_secret_manager_secret_version.postgres_password.secret_data}@localhost/appdb?host=%2Fcloudsql%2F${google_sql_database_instance.postgres.connection_name}"
         }
+
+        env {
+          name = "TEST_ACCS_PASSWORD"
+          value = data.google_secret_manager_secret_version.test_accs_password.secret_data
+        }
+
+        env {
+          name = "DEMO_MODE"
+          value = "true"
+        }
+
         command = ["npx"]
         args    = ["prisma", "db", "seed"]
         resources {

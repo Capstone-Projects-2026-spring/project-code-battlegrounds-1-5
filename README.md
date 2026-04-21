@@ -70,16 +70,19 @@ To develop, you will need a computer with Git, Node, Bun, and Docker Compose.
 
 ### Environment Setup
 1. Clone the repository.
-2. Create a `.env` file and populate it with the following (filling the tokens as needed, they shouldn't matter too much for local development):
+2. Create a `.env` file and populate it with the following (filling the tokens as needed, they shouldn't matter too much
+   for local development):
     ```
     # config
     PORT=3000
     NODE_ENV=development
    
     # db seeding configs
-    TEST_ACCS_PASSWORD=password123 # password for test accounts. make sure to set this to something secure in prod!
-    DEMO_MODE=false # if you ever want to seed the db with a single problem (two sum), set this to true.
-    
+    # password for the test accounts. in prod, ensure we inject this into the db script with something secure
+    TEST_ACCS_PASSWORD=password123
+    # if you ever want to seed the db with a single problem (two sum), uncomment this line
+    #DEMO_MODE=false
+   
     # better auth
     BETTER_AUTH_SECRET=SOME_SECRET_TOKEN
     BETTER_AUTH_URL=http://localhost:3000
