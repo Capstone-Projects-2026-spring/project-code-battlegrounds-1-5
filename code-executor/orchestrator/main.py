@@ -21,7 +21,7 @@ from models import *
 
 class Status(Enum):
     STARTING = 1
-    READY= 2
+    READY = 2
     BUSY = 3
     KMS = 4
     ERROR = 5
@@ -148,6 +148,7 @@ class Pool: # we're gonna make a VM per game. based on my math, if a VM is 50$ a
         if game_id not in self.games:
             return "Game {game_id} not found. Either it was never created, is still being created, was already deleted, or is a skill issue on the programmer's end.".format(game_id=game_id)
         game = self.games[game_id]
+        game.status = Status.KMS
         chk = self.provisioner.delete_instance(game.game_id, game.zone)
         if chk is not None:
             return chk
@@ -258,6 +259,8 @@ def execute(req: ExecutionRequest, request: Request):
             vm.ip = pool.provisioner.fetch_ip(vm.game_id, vm.zone)
         if not vm.ip:
             return None
+        # if vm.status != Status.READY:
+        #     return None
         # health check
         try:
             r = requests.get(f"http://{vm.ip}:8000/health", timeout=2)
@@ -309,6 +312,8 @@ def execute(req: ExecutionRequest, request: Request):
 
     # now we can finally send the execution request
     try:
+        vm = pool.games[target_id]
+        # vm.status = Status.BUSY # mark this vm as busy right now
         # serialize quite carefully as this was breaking things earlier
         payload = req.model_dump(mode='json') if hasattr(req, 'model_dump') else req.dict()
         if isinstance(payload["testCases"], str):
@@ -324,6 +329,7 @@ def execute(req: ExecutionRequest, request: Request):
             headers={"Content-Type": "application/json"},
             timeout=60,
         )
+        # vm.status = Status.READY
         print(f"Executor API response {resp.status_code}: {resp.text[:800]}")
         # mirror status code and response
         content_type = resp.headers.get("content-type", "")
