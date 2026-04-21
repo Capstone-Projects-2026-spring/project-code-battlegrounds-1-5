@@ -64937,63 +64937,6 @@
     "optimalTimeMs": 12
   },
   {
-    "problemId": "print-foobar-alternately",
-    "functionInput": [
-      {
-        "name": "n",
-        "type": "number",
-        "value": "1"
-      }
-    ],
-    "expectedOutput": [
-      {
-        "name": "result",
-        "type": "string",
-        "value": "FooBar"
-      }
-    ],
-    "language": "javascript",
-    "optimalTimeMs": 5
-  },
-  {
-    "problemId": "print-foobar-alternately",
-    "functionInput": [
-      {
-        "name": "n",
-        "type": "number",
-        "value": "3"
-      }
-    ],
-    "expectedOutput": [
-      {
-        "name": "result",
-        "type": "string",
-        "value": "FooBarFooBarFooBar"
-      }
-    ],
-    "language": "javascript",
-    "optimalTimeMs": 10
-  },
-  {
-    "problemId": "print-foobar-alternately",
-    "functionInput": [
-      {
-        "name": "n",
-        "type": "number",
-        "value": "5"
-      }
-    ],
-    "expectedOutput": [
-      {
-        "name": "result",
-        "type": "string",
-        "value": "FooBarFooBarFooBarFooBarFooBar"
-      }
-    ],
-    "language": "javascript",
-    "optimalTimeMs": 15
-  },
-  {
     "problemId": "walking-robot-simulation",
     "functionInput": [
       {

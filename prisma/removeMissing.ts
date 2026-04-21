@@ -256,7 +256,7 @@ const toRemove = [
   "4sum-ii",
   "rank-transform-of-a-matrix",
   "partition-array-into-disjoint-intervals",
-  "print-foobar-alternatively",
+  "print-foobar-alternately",
   "find-the-city-with-the-smallest-number-of-neighbors-at-a-threshold-distance",
   "number-of-ways-where-square-of-number-is-equal-to-product-of-two-numbers",
   "time-based-key-value-store"
