@@ -103,7 +103,7 @@ async function main() {
     });
   }
 
-  await prisma.problem.createMany({ data: problemsData });
+  await prisma.problem.createMany({ data: problemsData, skipDuplicates: true });
   console.log(`Problems created: ${problemsData.length}`);
 
   // ── Problem Tests from JSON ──
