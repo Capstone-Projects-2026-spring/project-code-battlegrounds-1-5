@@ -117,7 +117,8 @@ resource "google_cloud_run_v2_job" "db-seed" {
         }
 
         command = ["npx"]
-        args    = ["prisma", "db", "seed"]
+        args    = ["tsx", "prisma/seed.txt"]
+
         resources {
           limits = {
             memory = "1024Mi"
