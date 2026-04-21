@@ -75,6 +75,10 @@ To develop, you will need a computer with Git, Node, Bun, and Docker Compose.
     # config
     PORT=3000
     NODE_ENV=development
+   
+    # db seeding configs
+    TEST_ACCS_PASSWORD=password123 # password for test accounts. make sure to set this to something secure in prod!
+    DEMO_MODE=false # if you ever want to seed the db with a single problem (two sum), set this to true.
     
     # better auth
     BETTER_AUTH_SECRET=SOME_SECRET_TOKEN

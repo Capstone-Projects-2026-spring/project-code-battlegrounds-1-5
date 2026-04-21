@@ -35,9 +35,10 @@ async function main() {
     { name: "Erik", email: "erik@test.com" }
   ];
 
+  const password = process.env.TEST_ACCS_PASSWORD ?? "password123"
   for (const u of userDefs) {
     await auth.api
-      .signUpEmail({ body: { ...u, password: "password123" } })
+      .signUpEmail({ body: { ...u, password: password } })
       .catch(() => console.log(`${u.name} already exists, skipping...`));
   }
 
@@ -73,7 +74,7 @@ async function main() {
   }[] = [];
 
   const seenSlugs = new Set<string>();
-
+  const DEMO_MODE = process.env.DEMO_MODE ?? false
   for await (const row of parser) {
     const slug = row["Question Slug"];
     if (seenSlugs.has(slug)) {
@@ -81,7 +82,10 @@ async function main() {
       continue;
     }
     seenSlugs.add(slug);
-
+    // if demo mode is set and slug is not two sum skip
+    if (DEMO_MODE && slug !== "two-sum") {
+      continue;
+    }
     problemsData.push({
       title: row["Question Title"],
       slug,
@@ -200,11 +204,11 @@ async function main() {
   console.log("Game result created");
   console.log("Seeding complete!");
   console.log("");
-  console.log("   alice@test.com   / password123");
-  console.log("   bob@test.com     / password123");
-  console.log("   charlie@test.com / password123");
-  console.log("   diana@test.com   / password123");
-  console.log("   erik@test.com    / password123");
+  console.log("   alice@test.com");
+  console.log("   bob@test.com");
+  console.log("   charlie@test.com");
+  console.log("   diana@test.com");
+  console.log("   erik@test.com");
 }
 
 main()
