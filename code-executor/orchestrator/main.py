@@ -268,19 +268,26 @@ def execute(req: ExecutionRequest, request: Request):
             pass
         return None
 
-    # Try any existing VM first
     target_ip = None
-    for vm in pool.games.values():
-        target_ip = ensure_vm_ready(vm)
-        if target_ip:
-            break
-
+    target_id = None
+    # check if our dedicated vm is ready
+    if req.gameId in pool.games.keys():
+        target_id = req.gameId
+        target_ip = ensure_vm_ready(pool.games[req.gameId])
+        if target_ip is None:
+            # if not, try any other vm
+            for vm in pool.games.values():
+                target_ip = ensure_vm_ready(vm)
+                if target_ip:
+                    target_ip = vm.game_id
+                    break
     if not target_ip:
         # No existing VM is ready. For minimal change, do not auto-provision here; instruct caller to prewarm.
         return Response(status_code=status.HTTP_503_SERVICE_UNAVAILABLE)
 
     # Forward the execute request to the executor-api running on the VM
     # payload = json.dumps(req.dict())
+    print("sending execution request to vm " + target_id + " at " + target_ip)
     try:
         # Ensure we serialize the Pydantic model correctly (supports v1 and v2)
         payload = req.model_dump(mode='json') if hasattr(req, 'model_dump') else req.dict()
