@@ -85,6 +85,45 @@ resource "google_cloud_run_v2_job" "migrate" {
     }
   }
 }
+# orchestrator Cloud Run service for code execution
+# public for simplicity; tighten IAM in production
+resource "google_cloud_run_service" "orchestrator" {
+  name     = "orchestrator"
+  location = var.region
+
+  template {
+    metadata {
+      annotations = {
+        "run.googleapis.com/vpc-access-connector" = var.vpc_connector_name
+        "run.googleapis.com/vpc-access-egress"    = "private-ranges-only"
+      }
+    }
+
+    spec {
+      containers {
+        image = "us-central1-docker.pkg.dev/code-battlegrounds/app/orchestrator:latest"
+
+        env {
+          name  = "PORT"
+          value = "8080"
+        }
+      }
+    }
+  }
+
+  traffic {
+    percent         = 100
+    latest_revision = true
+  }
+}
+
+# make orchestrator service public (so app can call it easily). this will need to change after testing
+resource "google_cloud_run_service_iam_member" "orchestrator_public" {
+  service  = google_cloud_run_service.orchestrator.name
+  location = google_cloud_run_service.orchestrator.location
+  role     = "roles/run.invoker"
+  member   = "allUsers"
+}
 
 # cloud run itself for the app
 resource "google_cloud_run_service" "app" {
@@ -144,6 +183,22 @@ resource "google_cloud_run_service" "app" {
         env {
           name  = "REDIS_PORT"
           value = "6379"
+        }
+
+        # posthog config
+        env {
+          name  = "NEXT_PUBLIC_POSTHOG_KEY"
+          value = "phc_Io7LeSThy8dz3wDLgPJCcKsWny6zZkapNnyrnPRI1gN"
+        }
+        env {
+          name  = "NEXT_PUBLIC_POSTHOG_HOST"
+          value = "https://cbt.strange.boats"
+        }
+
+        # execution addr
+        env {
+          name  = "EXECUTOR_ADDR"
+          value = "${google_cloud_run_service.orchestrator.status[0].url}:8080"
         }
       }
     }
