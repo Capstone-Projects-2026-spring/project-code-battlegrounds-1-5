@@ -85,6 +85,44 @@ resource "google_cloud_run_v2_job" "migrate" {
     }
   }
 }
+
+# cloud run db seed job to apply db seeds
+# execute with: gcloud run jobs execute db-seed-job --region ${var.region}
+resource "google_cloud_run_v2_job" "db-seed" {
+  name     = "db-seed-job"
+  location = var.region
+
+  template {
+    template {
+      containers {
+        image = "us-central1-docker.pkg.dev/code-battlegrounds/app/migrate:latest"
+        env {
+          name  = "DATABASE_URL"
+          value = "postgresql://${var.db_user}:${data.google_secret_manager_secret_version.postgres_password.secret_data}@localhost/appdb?host=%2Fcloudsql%2F${google_sql_database_instance.postgres.connection_name}"
+        }
+        command = ["npx"]
+        args    = ["prisma", "db", "seed"]
+        resources {
+          limits = {
+            memory = "1024Mi"
+          }
+        }
+      }
+      vpc_access {
+        connector = var.vpc_connector_id
+        egress    = "PRIVATE_RANGES_ONLY"
+      }
+
+      volumes {
+        name = "cloudsql"
+        cloud_sql_instance {
+          instances = [google_sql_database_instance.postgres.connection_name]
+        }
+      }
+    }
+  }
+}
+
 # orchestrator Cloud Run service for code execution
 # public for simplicity; tighten IAM in production
 resource "google_cloud_run_service" "orchestrator" {
