@@ -123,7 +123,12 @@ async function main() {
     console.log("Successfully parsed test cases");
   }
 
-  const mapped = testCases.map((tc) => ({
+  // only create test cases for slug two-sum when demo mode is enabled
+  const filteredTestCases = DEMO_MODE
+    ? testCases.filter((tc) => tc.problemId === "two-sum")
+    : testCases;
+
+  const mapped = filteredTestCases.map((tc) => ({
     problemId: tc.problemId,
     functionInput: tc.functionInput,
     expectedOutput: tc.expectedOutput,
