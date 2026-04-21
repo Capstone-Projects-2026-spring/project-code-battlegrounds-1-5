@@ -243,7 +243,7 @@ def delete_vm(payload: DeleteVMRequest, request: Request):
 
 @app.post("/execute") # TODO: need to include a gameid endpoint here of which vm to target before falling back. this is already mirrored in executor-image.
 def execute(req: ExecutionRequest, request: Request):
-    print(json.dumps(req.dict()))
+    # print(json.dumps(req.dict()))
 
     # Use the application-level pool to find a READY VM with a reachable executor-api
     pool = getattr(request.app.state, "pool", None)
@@ -299,7 +299,7 @@ def execute(req: ExecutionRequest, request: Request):
         return JSONResponse(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             content={
-                "error": "No ready VMs available to execute request",
+                "error": "No ready VMs available to execute request. This does not mean it doesn't exist (see below) but rather that it is still booting up.",
                 "gameId": req.gameId,
                 "availableVMs": list(pool.games.keys()),
                 "action": "If you haven't yet, call /request-warm-vm for this gameId, then poll /request-warm-vm until 200 before retrying /execute",
