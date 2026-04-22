@@ -116,8 +116,8 @@ resource "google_cloud_run_v2_job" "db-seed" {
           value = "true"
         }
 
-        command = ["bun"]
-        args    = ["prisma", "db", "seed"]
+        command = ["sh"]
+        args    = ["-lc", "bun prisma migrate deploy && bun prisma db seed"]
 
         resources {
           limits = {
@@ -195,7 +195,7 @@ resource "google_cloud_run_service" "app" {
 
         env {
           name  = "BETTER_AUTH_URL"
-          value = "https://app-hnjkqlohiq-uc.a.run.app"
+          value = "https://app-376875580312.us-central1.run.app/"
         }
 
         env {

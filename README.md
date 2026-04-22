@@ -133,6 +133,20 @@ You may need to have Chromium headless installed.
 
 For the Jest tests, run `bunx jest tests/api/ --forceExit`.
 
+## Infrastructure Development
+To develop the infrastructure or deploy the app, you must have a Google Cloud account. While I won't supply specific instructions (trust me, if you want to deploy on this - you will have to be precocious and persistent), the basic flow is that you will need to create a service account and store it's credentials in your cloud environment, then edit the main.tf file to reference it.
+
+There are some more specific commands in the /infra/README.md file to help get you started.
+
+Estimated deployment costs are ~40$/month dependent on usage. This is primarily due to the cost of Memorystore for Redis.
+
+Check out the /build-artifacts folder for the Docker files and cloudbuild configs.
+
+## Code Executor Development
+The code executor is a 3 layer system for production. Code is sent by the application to a VM orchestrator, which spins up and maintains a pool of Compute Engines as needed. The VMs in turn spin up Docker containers running an Alpine image, which pivot to new rootfs via a nsjail rootjail where the code is actually executed. There are a lot of moving parts to this system. For more info, take a look ath the /code-executor/README.md file.
+
+It is build on Python's fastapi for relatively easy development and integration with Google's compute APIs.
+
 ## Collaborators
 
 <div align="center">
