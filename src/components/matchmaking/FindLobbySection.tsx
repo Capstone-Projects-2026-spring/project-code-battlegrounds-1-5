@@ -11,7 +11,7 @@ import {
   ThemeIcon,
   Box,
 } from "@mantine/core";
-import { IconTrophy, IconUser, IconUsers } from "@tabler/icons-react";
+import { IconSwords, IconTrophy, IconUser, IconUsers } from "@tabler/icons-react";
 import { GameType, ProblemDifficulty } from "@prisma/client";
 import classes from "@/styles/Matchmaking.module.css";
 import { useParty } from "@/contexts/PartyContext";
@@ -92,7 +92,7 @@ export default function FindLobbySection({
               {
                 label: (
                   <Center style={{ gap: 8 }}>
-                    <IconUsers size={16} />
+                    <IconSwords size={16} />
                     <span data-testid="mode-ranked">Ranked</span>
                   </Center>
                 ),
