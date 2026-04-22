@@ -37,8 +37,7 @@ async function main() {
     { name: "Erik", email: "erik@test.com" }
   ];
 
-  const password = process.env.TEST_ACCS_PASSWORD as string;
-  const hashedPassword = await hashPassword(password);
+  const password = process.env.TEST_ACCS_PASSWORD ?? "password123";
   for (const u of userDefs) {
     await auth.api
       .signUpEmail({ body: { ...u, password: password } })
@@ -51,6 +50,7 @@ async function main() {
       if (existing) {
         return existing;
       }
+      const hashedPassword = await hashPassword(password);
 
       const userId = randomUUID();
       const created = await prisma.user.create({

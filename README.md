@@ -108,9 +108,6 @@ To develop, you will need a computer with Git, Node, Bun, and Docker Compose.
     # for posthog
     NEXT_PUBLIC_POSTHOG_KEY=phc_Io7LeSThy8dz3wDLgPJCcKsWny6zZkapNnyrnPRI1gN
     NEXT_PUBLIC_POSTHOG_HOST=https://cbt.strange.boats
-
-   # for seed script
-   TEST_ACCS_PASSWORD=password123
     ```
    Remember to `source` as needed!
 3. Run `bun install` to install the dependencies.
