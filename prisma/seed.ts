@@ -54,6 +54,7 @@ async function main() {
           id: randomUUID(),
           name: u.name,
           email: u.email,
+          password: password
         },
       });
       console.log(`Created user ${u.email} directly in DB (fallback).`);
