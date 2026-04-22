@@ -1,5 +1,5 @@
 const { z } = require("zod");
-const { validate } = require("./utils");
+const { validate } = require("../../utils/validate");
 
 const partyInviteSchema = z.object({
     toUserId: z.string(),

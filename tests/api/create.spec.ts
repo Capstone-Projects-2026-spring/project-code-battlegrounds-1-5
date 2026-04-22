@@ -24,7 +24,7 @@ jest.mock("@/lib/prisma", () => ({
 }));
 
 // Fake ID generator: always returns "abcd1234" so test assertions are predictable.
-jest.mock("nanoid", () => ({
+jest.mock("@/lib/nanoid", () => ({
     nanoid: jest.fn(() => "abcd1234"),
  }));
 

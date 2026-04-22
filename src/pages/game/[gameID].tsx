@@ -3,7 +3,7 @@ import { Editor } from '@monaco-editor/react';
 import { useRouter } from 'next/router';
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { Socket } from 'socket.io-client';
-import { IconEye, IconPlayerTrackNextFilled, IconPlus } from '@tabler/icons-react';
+import { IconEye, IconPlayerPlay, IconPlayerTrackNextFilled, IconPlus } from '@tabler/icons-react';
 import { usePostHog } from 'posthog-js/react';
 import { Panel, Group as PanelGroup, Separator as PanelResizeHandle } from 'react-resizable-panels';
 
@@ -100,8 +100,6 @@ function PlayGameRoom() {
   const testCaseCtx = useTestCases();
   const gameStateCtx = useGameState();
   const { socket } = useSocket();
-
-  // when setting status in the first useEffect, set it to _idle
   const { setStatus } = useMatchmaking();
 
   const [spectatorView, setSpectatorView] = useState<Role>(Role.SPECTATOR);
@@ -144,8 +142,6 @@ function PlayGameRoom() {
 
   // ONLY HAPPENS ON PAGE LAUNCH
   useEffect(() => {
-
-
     if (!session?.user.id || !gameId || !socket) return;
 
     setStatus('idle');
@@ -551,6 +547,7 @@ function PlayGameRoom() {
 
     setRunningAllTests(true);
     socket.emit("submitTestCases", {
+      roomId: gameId,
       code: liveCode,
       testCases: testCaseCtx.cases,
       runIDs: testCaseCtx.cases.map((t) => t.id), // all of em!
@@ -791,9 +788,25 @@ function PlayGameRoom() {
                       <>
                         <Button
                           size="xs"
+                          color="cyan"
+                          disabled={isSpectator || isWaitingForOtherTeam}
+                          className={styles.runButton}
+                          onClick={() =>
+                            posthog.capture("code_run_triggered", { gameId })
+                          }
+                          rightSection={
+                            <IconPlayerPlay
+                              size={"var(--mantine-font-size-md)"}
+                            />
+                          }
+                        >
+                          RUN
+                        </Button>
+                        <Button
+                          size="xs"
                           color="green"
                           onClick={submitFinalCode}
-                          disabled={isSpectator || isWaitingForOtherTeam}
+                          disabled={isSpectator || isWaitingForOtherTeam} // TODO: disable this for first thirty seconds
                         >
                           {isWaitingForOtherTeam
                             ? "Waiting for other team..."

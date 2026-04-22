@@ -9,6 +9,11 @@ const cookie = require('cookie');
 function initSocket(httpServer, redis) {
     const io = new Server(httpServer, {
         // transports/cors options could go here
+        cors: {
+            origin: process.env.BETTER_AUTH_URL,
+            methods: ["GET", "POST"],
+            credentials: true
+        }
     });
 
     // Attach Redis adapter for cluster support
@@ -19,6 +24,7 @@ function initSocket(httpServer, redis) {
     const matchmakingService = createMatchmakingService(redis.stateRedis, io);
     const inviteService = createInviteService(redis.stateRedis);
 
+    /*
     io.use(async (socket, next) => {
         try {
             const cookieHeader = socket.handshake.headers.cookie;
@@ -48,6 +54,7 @@ function initSocket(httpServer, redis) {
         }
         
     });
+    */
 
     // Register per-connection handlers
     io.on('connection', (socket) => {

@@ -1,6 +1,6 @@
 const { GameType } = require("@prisma/client");
 const { z } = require("zod");
-const { validate } = require("./utils");
+const { validate } = require("../../utils/validate");
 
 const ParameterPrimitive = z.union([
     z.literal("string"),
@@ -66,6 +66,11 @@ const requestTeamUpdateSchema = z.object({
 });
 
 function registerGameHandlers(io, socket, gameService) {
+
+    socket.on('register', async (data) => {
+        socket.userId = data.userId;
+        await gameService.registerSocketToUser(data.userId, socket.id);
+    });
 
     socket.on('joinGame', async (data) => {
         const payload = validate(joinGameSchema, data);

@@ -130,9 +130,7 @@ async function executeSubmission(
     return emptyExecution(tests.length);
   }
 
-  const executorUrl =
-    process.env.CODE_EXECUTOR_URL ??
-    `http://127.0.0.1:${process.env.EXECUTOR_PORT ?? "6969"}/execute`;
+  const executorUrl = `${process.env.EXECUTOR_ADDR}/execute`;
 
   const payload = {
     language: "javascript",

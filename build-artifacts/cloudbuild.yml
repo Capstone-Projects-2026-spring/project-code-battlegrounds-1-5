@@ -1,4 +1,18 @@
 steps:
+    # build the orchestrator container
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -f
+      - build-artifacts/Dockerfile.orchestrator
+      - -t
+      - "us-central1-docker.pkg.dev/code-battlegrounds/app/orchestrator:latest"
+      - .
+
+  # push orchestrator image
+  - name: gcr.io/cloud-builders/docker
+    args: ["push", "us-central1-docker.pkg.dev/code-battlegrounds/app/orchestrator:latest"]
+
   # build the rootjail container image
   - name: gcr.io/cloud-builders/docker
     args:
@@ -45,4 +59,5 @@ images:
   - "us-central1-docker.pkg.dev/code-battlegrounds/app/app:latest"
   - "us-central1-docker.pkg.dev/code-battlegrounds/app/migrate:latest"
   - "us-central1-docker.pkg.dev/code-battlegrounds/app/rootjail:latest"
+  - "us-central1-docker.pkg.dev/code-battlegrounds/app/orchestrator:latest"
 timeout: "1200s" # 20 minutes

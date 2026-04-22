@@ -1,7 +1,8 @@
 const { z } = require("zod");
 const { GameType } = require("@prisma/client");
 const { getPrisma } = require("../../prisma");
-const { validate } = require("./utils");
+const { validate } = require("../../utils/validate");
+const { deleteVm } = require("../../utils/vm/deleteVm");
 
 const prisma = getPrisma();
 
@@ -26,7 +27,6 @@ function registerExecutionHandlers(io, socket, gameService) {
         if (!roomId) return;
 
         console.log('submitCode received for roomId:', roomId, 'with code length:', code?.length, 'and type:', type);
-
         if (type === GameType.TWOPLAYER) {
             console.log('verify its a twoplayer game');
             await prisma.gameResult.update({
@@ -41,13 +41,14 @@ function registerExecutionHandlers(io, socket, gameService) {
             try {
                 // Post results to the code executor
                 let payload = {
+                    gameId: roomId,
                     language: "javascript",
                     code: btoa(code),
                     testCases: JSON.stringify(testCases),
                     runIDs: JSON.stringify(runIDs)
                 };
                 // console.log(JSON.stringify(payload));
-                const res = await fetch("http://127.0.0.1:6969/execute", {
+                const res = await fetch(`${process.env.EXECUTOR_ADDR}/execute`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(payload),
@@ -58,10 +59,8 @@ function registerExecutionHandlers(io, socket, gameService) {
                 console.error("Error POSTing to code executor:", error);
             } finally {
                 await gameService.cleanupGameTimers(roomId);
-                await prisma.gameRoom.update({
-                    where: { id: roomId },
-                    data: { status: 'FINISHED' },
-                });
+                // deletes vm after game is over
+                deleteVm(roomId);
                 io.to(roomId).emit('gameEnded');
             }
         }
@@ -105,13 +104,14 @@ function registerExecutionHandlers(io, socket, gameService) {
                 try {
                     // Post results to the code executor
                     let payload = {
+                        gameId: roomId,
                         language: "javascript",
                         code: btoa(code),
                         testCases: JSON.stringify(testCases),
                         runIDs: JSON.stringify(runIDs)
                     };
                     // console.log(JSON.stringify(payload));
-                    const res = await fetch("http://127.0.0.1:6969/execute", {
+                    const res = await fetch(`${process.env.EXECUTOR_ADDR}/execute`, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify(payload),
@@ -126,7 +126,8 @@ function registerExecutionHandlers(io, socket, gameService) {
                         where: { id: roomId },
                         data: { status: 'FINISHED' },
                     });
-                    io.to(roomId).emit('gameEnded');
+                    // deletes vm after game is over
+                    deleteVm(roomId);
                     await gameService.deleteGameData(submissionKey);
                 }
             } else {
@@ -149,54 +150,61 @@ function registerExecutionHandlers(io, socket, gameService) {
      * 
      * @see GameTestCasesContext#TestableCase
      */
-    // TODO: should only send test cases needed. also, the model here needs updated to actually hook up (wtf does that mean??). additionally, this sends base64 for undefined, so somethings broke somewhere.
     socket.on("submitTestCases", async (data) => {
         const {
+            roomId,
             code,
             testCases,
             runIDs
         } = data;
         let payload = {
+            gameId: roomId,
             language: "javascript",
             code: btoa(code),
             testCases: JSON.stringify(testCases),
             runIDs: JSON.stringify(runIDs)
         };
         // console.log(JSON.stringify(payload));
-        const res = await fetch("http://127.0.0.1:6969/execute", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
-        });
-        const json = await res.json();
 
-        // json.testCases should realistically only modify a single property
-        // on the existing testCases object: `computedOutput`. Syncing this
-        // back to the frontend is handled over there :)
-        console.log(JSON.stringify(json, null, 2));
-
-        /* 
-          export interface TestableCase {
-            id: number;
-            functionInput: ParameterType[];
-            expectedOutput: ParameterType;
-            computedOutput?: string | null;
-          }
-        */
-
-        const toReceive = [];
-        for (const result of json.results) {
-            const matched = testCases.find(t => t.id === result.id);
-            if (!matched) continue;
-            toReceive.push({
-                id: matched.id,
-                functionInput: matched.functionInput,
-                expectedOutput: matched.expectedOutput,
-                computedOutput: result.actual
+        try {
+            const res = await fetch(`${process.env.EXECUTOR_ADDR}/execute`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
             });
-        }
+            const json = await res.json();
 
-        socket.emit("receiveTestCaseSync", toReceive);
+            // json.testCases should realistically only modify a single property
+            // on the existing testCases object: `computedOutput`. Syncing this
+            // back to the frontend is handled over there :)
+            console.log(JSON.stringify(json, null, 2));
+
+            /* 
+              export interface TestableCase {
+                id: number;
+                functionInput: ParameterType[];
+                expectedOutput: ParameterType;
+                computedOutput?: string | null;
+              }
+            */
+
+            const toReceive = [];
+            for (const result of json.results) {
+                const matched = testCases.find(t => t.id === result.id);
+                if (!matched) continue;
+                toReceive.push({
+                    id: matched.id,
+                    functionInput: matched.functionInput,
+                    expectedOutput: matched.expectedOutput,
+                    computedOutput: result.actual
+                });
+            }
+
+            socket.emit("receiveTestCaseSync", toReceive);
+        } catch (error) {
+            console.error(error);
+            socket.emit("errorTests", { message: "Sorry that didn't work try again in a few seconds"});
+        }
     });
 }
 

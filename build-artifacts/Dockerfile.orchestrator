@@ -1,0 +1,29 @@
+FROM alpine:latest
+
+RUN apk add --no-cache python3 py3-pip ca-certificates
+
+# create an unprivileged user/group with fixed UID/GID so we dont run as root
+RUN addgroup -g 99999 orchestrator && adduser -D -H -u 99999 -G orchestrator orchestrator && chmod 1777 /tmp
+
+WORKDIR /app
+
+COPY code-executor/requirements.txt /app/requirements.txt
+COPY code-executor/orchestrator/ /app/
+
+# make a venv cause its a touch cleaner and add that python executable to path
+RUN python3 -m venv /venv
+ENV PATH="/venv/bin:$PATH"
+
+RUN pip install --no-cache-dir uvicorn -r /app/requirements.txt
+
+# ensure app files are readable by the non-root user
+RUN chown -R orchestrator:orchestrator /app
+
+ENV PYTHONUNBUFFERED=1
+
+EXPOSE 8080
+
+# drop root privileges for the app process
+USER orchestrator:orchestrator
+
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]

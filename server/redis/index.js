@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-require-imports */
 const { createAdapter } = require('@socket.io/redis-adapter');
 const Redis = require('ioredis');
 
