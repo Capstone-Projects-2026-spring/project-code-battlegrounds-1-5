@@ -134,7 +134,11 @@ class VMProvisioner:
 
 class VM:
     def __init__(self, game_id):
-        self.game_id = "{game_id}".format(game_id=game_id)
+        # need vm name to start with vm. but dont expect client to send it. looks like i already use it everywhere else and the raw req gameid is still dict key so this should be all we need tpo enforce that
+        normalized = str(game_id)
+        if not normalized.startswith("vm-"):
+            normalized = f"vm-{normalized}"
+        self.game_id = normalized
         self.ip = None
         self.zone = None
         self.status = Status.STARTING
