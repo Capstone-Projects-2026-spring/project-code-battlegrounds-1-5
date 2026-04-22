@@ -12,7 +12,7 @@
     "prisma:init": "prisma migrate reset --force && prisma generate && prisma db seed"
   },
   "prisma": {
-    "seed": "npx tsx prisma/seed.ts"
+    "seed": "tsx prisma/seed.ts"
   },
   "jest": {
     "testEnvironment": "node",
