@@ -1,17 +1,3 @@
-/**
- * components/rank/RankBadge.tsx
- *
- * Reusable rank badge. Pure display — no click handlers.
- * Badge chrome is custom (canvas-style hex tile); text uses Mantine primitives.
- *
- * Usage:
- *   import { RankBadge } from "@/components/rank/RankBadge";
- *   import { getRankForElo } from "@/lib/ranks";
- *
- *   const rank = getRankForElo(user.elo);
- *   <RankBadge rank={rank} size="md" active />
- */
-
 import { Stack, Text } from "@mantine/core";
 import type { RankDefinition } from "@/lib/ranks";
 
