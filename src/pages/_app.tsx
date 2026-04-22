@@ -59,7 +59,7 @@ const theme = createTheme({
 export default function App({ Component, pageProps }: AppProps) {
   const router = useRouter();
 
-  const showNavbar = router.pathname !== '/' && router.pathname !== '/login';
+  const showNavbar = router.pathname !== '/' && router.pathname !== '/login' && router.pathname !== '/signup';
 
   useEffect(() => {
     posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY as string, {
