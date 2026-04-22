@@ -248,7 +248,7 @@ resource "google_cloud_run_service" "app" {
         # execution addr
         env {
           name  = "EXECUTOR_ADDR"
-          value = "${google_cloud_run_service.orchestrator.status[0].url}:8080"
+          value = google_cloud_run_service.orchestrator.status[0].url
         }
       }
     }
