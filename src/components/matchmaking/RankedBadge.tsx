@@ -7,16 +7,15 @@ type SizeTokens = {
   outer: number;
   icon: number;
   label: number;
-  sub: number;
   gap: number;
   borderWidth: number;
 };
 
 const SIZE_MAP: Record<RankBadgeSize, SizeTokens> = {
-  xs: { outer: 36,  icon: 13, label: 8,  sub: 6,  gap: 2, borderWidth: 1.5 },
-  sm: { outer: 52,  icon: 18, label: 10, sub: 7,  gap: 4, borderWidth: 1.5 },
-  md: { outer: 68,  icon: 23, label: 12, sub: 9,  gap: 5, borderWidth: 2   },
-  lg: { outer: 92,  icon: 31, label: 16, sub: 11, gap: 7, borderWidth: 2.5 },
+  xs: { outer: 36,  icon: 13, label: 8,   gap: 2, borderWidth: 1.5 },
+  sm: { outer: 52,  icon: 18, label: 10,  gap: 4, borderWidth: 1.5 },
+  md: { outer: 68,  icon: 23, label: 12,  gap: 5, borderWidth: 2   },
+  lg: { outer: 92,  icon: 31, label: 16,  gap: 7, borderWidth: 2.5 },
 };
 
 /** Converts a hex colour + alpha (0-1) to rgba() */
@@ -102,18 +101,6 @@ export function RankBadge({ rank, size = "md", active = false }: RankBadgeProps)
           }}
         >
           {rank.label}
-        </Text>
-        <Text
-          size={`${s.sub}px`}
-          ff="monospace"
-          style={{
-            letterSpacing: "0.04em",
-            color: active ? hexAlpha(rank.color, 0.7) : "var(--mantine-color-dark-3)",
-            transition: "color 0.2s ease",
-            lineHeight: 1.2,
-          }}
-        >
-          {rank.sublabel}
         </Text>
       </Stack>
     </Stack>

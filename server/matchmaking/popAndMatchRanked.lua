@@ -8,16 +8,17 @@ local members = {}
 for i = 1, #entries, 2 do
   local data = entries[i]
   local elo = tonumber(entries[i+1])
-  local joinedAt = tonumber(string.match(data, '"joinedAt":(%d+)'))
+  local joinedAt = tonumber(string.match(data, '"joinedAt":(%d+)')) or now
   local isParty = string.find(data, '"partyId"') ~= nil
   local playerCount = isParty and 2 or 1
   local waitSeconds = (now - joinedAt) / 1000
 
   local tolerance
-  if waitSeconds < 30 then tolerance = 100
-  elseif waitSeconds < 60 then tolerance = 200
-  elseif waitSeconds < 120 then tolerance = 400
-  else tolerance = 600
+  if waitSeconds < 30 then tolerance = 400
+  elseif waitSeconds < 60 then tolerance = 800
+  elseif waitSeconds < 120 then tolerance = 1200
+  elseif waitSeconds < 240 then tolerance = 2000
+  else tolerance = 5000
   end
 
   table.insert(members, { data = data, elo = elo, tolerance = tolerance, playerCount = playerCount })

@@ -21,8 +21,8 @@ const popAndMatchRankedSRC = join(__dirname, "./popAndMatchRanked.lua");
 const POP_AND_MATCH_RANKED = readFileSync(popAndMatchRankedSRC).toString();
 
 function eloToDifficulty(avgElo) {
-    if (avgElo < 1200) return ProblemDifficulty.EASY;
-    if (avgElo < 1600) return ProblemDifficulty.MEDIUM;
+    if (avgElo < 1600) return ProblemDifficulty.EASY;
+    if (avgElo < 2400) return ProblemDifficulty.MEDIUM;
     return ProblemDifficulty.HARD;
 }
 

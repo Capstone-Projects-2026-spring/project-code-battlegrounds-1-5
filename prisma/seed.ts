@@ -41,9 +41,34 @@ async function main() {
       .catch(() => console.log(`${u.name} already exists, skipping...`));
   }
 
-  const [alice, bob, charlie, diana, erik] = await Promise.all(
+  let [alice, bob, charlie, diana, erik] = await Promise.all(
     userDefs.map((u) => prisma.user.findUniqueOrThrow({ where: { email: u.email } }))
   );
+
+  alice = await prisma.user.update({
+    where: { id: alice.id },
+    data: { elo: 2000 }
+  });
+
+  bob = await prisma.user.update({
+    where: { id: bob.id },
+    data: { elo: 2000 }
+  });
+
+  charlie = await prisma.user.update({
+    where: { id: charlie.id },
+    data: { elo: 2300 }
+  });
+
+  diana = await prisma.user.update({
+    where: { id: diana.id },
+    data: { elo: 2000}
+  });
+
+  erik = await prisma.user.update({
+    where: { id: erik.id },
+    data: { elo: 500}
+  });
 
   console.log("Users created");
 

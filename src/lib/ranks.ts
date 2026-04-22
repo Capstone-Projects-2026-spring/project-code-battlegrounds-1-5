@@ -3,8 +3,6 @@ export type RankDefinition = {
   id: string;
   // Display label shown on the badge 
   label: string;
-  // Friendly subtitle / tier name
-  sublabel: string;
   // Inclusive ELO bounds [min, max]. Use Number.MAX_SAFE_INTEGER for the top tier.
   eloMin: number;
   eloMax: number;
@@ -20,7 +18,6 @@ export const RANK_DEFINITIONS: RankDefinition[] = [
   {
     id: "null",
     label: "NULL",
-    sublabel: "Unranked",
     eloMin: 0,
     eloMax: 799,
     color: "#6b7280",
@@ -30,7 +27,6 @@ export const RANK_DEFINITIONS: RankDefinition[] = [
   {
     id: "runtime",
     label: "RUNTIME",
-    sublabel: "Bronze",
     eloMin: 800,
     eloMax: 1199,
     color: "#cd7f32",
@@ -40,7 +36,6 @@ export const RANK_DEFINITIONS: RankDefinition[] = [
   {
     id: "compile",
     label: "COMPILE",
-    sublabel: "Silver",
     eloMin: 1200,
     eloMax: 1599,
     color: "#94a3b8",
@@ -50,7 +45,6 @@ export const RANK_DEFINITIONS: RankDefinition[] = [
   {
     id: "deploy",
     label: "DEPLOY",
-    sublabel: "Gold",
     eloMin: 1600,
     eloMax: 1999,
     color: "#f59e0b",
@@ -60,7 +54,6 @@ export const RANK_DEFINITIONS: RankDefinition[] = [
   {
     id: "kernel",
     label: "KERNEL",
-    sublabel: "Emerald",
     eloMin: 2000,
     eloMax: 2399,
     color: "#10b981",
@@ -70,7 +63,6 @@ export const RANK_DEFINITIONS: RankDefinition[] = [
   {
     id: "root",
     label: "ROOT",
-    sublabel: "Diamond",
     eloMin: 2400,
     eloMax: 2799,
     color: "#38bdf8",
@@ -80,7 +72,6 @@ export const RANK_DEFINITIONS: RankDefinition[] = [
   {
     id: "sudo",
     label: "SUDO",
-    sublabel: "Master",
     eloMin: 2800,
     eloMax: Number.MAX_SAFE_INTEGER,
     color: "#a855f7",
