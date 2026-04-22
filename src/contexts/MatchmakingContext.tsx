@@ -27,6 +27,9 @@ export interface MatchmakingContextAPI {
 
   gameId: string | undefined;
   setGameId: Dispatch<SetStateAction<string | undefined>>;
+
+  elo: number;
+  setElo: Dispatch<SetStateAction<number>>;
 }
 
 export const MatchmakingContext = createContext<MatchmakingContextAPI | null>(null);
@@ -41,15 +44,30 @@ export const MatchmakingProvider = ({ children }: { children: ReactNode }) => {
   const [gameType, setGameType] = useState<GameType>(GameType.TWOPLAYER);
   const [difficulty, setDifficulty] = useState<ProblemDifficulty>(ProblemDifficulty.MEDIUM);
   const [gameId, setGameId] = useState<string | undefined>();
+  const [elo, setElo] = useState<number>(2000);
+
+  const fetchElo = async () => {
+    try {
+      const res = await fetch('/api/matchmaking', {
+        method: "GET"
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setElo(data.elo);
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  };
 
   // Initialize socket once when the user session is available
   useEffect(() => {
     if (!session?.user.id) return;
     if (!socket) return;
 
-    socket.emit("register", { userId: session.user.id });
+    fetchElo();
 
-    const handleCreatedRoomFromhost = (({gameId: id}: { gameId: string }) => {
+    const handleCreatedRoomFromhost = (({ gameId: id }: { gameId: string }) => {
       router.push(`/game/${id}`);
       setGameId(id);
     });
@@ -65,7 +83,7 @@ export const MatchmakingProvider = ({ children }: { children: ReactNode }) => {
       if (qs === "queued") setStatus("queued");
       if (qs === "matched") setStatus("matched");
     };
-    
+
     const handleReceiveQueueSelection = ({ gameType, difficulty }: { gameType: GameType; difficulty: ProblemDifficulty }) => {
       setGameType(gameType);
       setDifficulty(difficulty);
@@ -101,6 +119,8 @@ export const MatchmakingProvider = ({ children }: { children: ReactNode }) => {
     setDifficulty,
     gameId,
     setGameId,
+    elo,
+    setElo
   };
 
   return (

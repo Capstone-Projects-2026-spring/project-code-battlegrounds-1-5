@@ -17,6 +17,7 @@ import classes from "@/styles/Matchmaking.module.css";
 import { useParty } from "@/contexts/PartyContext";
 import { useMatchmaking } from "@/contexts/MatchmakingContext";
 import { useSocket } from "@/contexts/SocketContext";
+import RankedModeSection from "./RankedModeSection";
 
 type QueueStatus = "idle" | "queued" | "matched" | "error";
 
@@ -103,7 +104,7 @@ export default function FindLobbySection({
         </Box>
 
         {/* Difficulty Selection */}
-        {gameType !== GameType.RANKED && (<Box>
+        {gameType !== GameType.RANKED ? (<Box>
           <Group justify="space-between" mb="xs">
             <Text size="sm" fw={600}>Difficulty</Text>
           </Group>
@@ -122,7 +123,7 @@ export default function FindLobbySection({
             }))}
             className={classes.segmentedControl}
           />
-        </Box>)}
+        </Box>) : (<RankedModeSection />)}
 
         {/* Party ID Badge */}
         {inParty && (

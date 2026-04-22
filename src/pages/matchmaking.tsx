@@ -20,11 +20,11 @@ import { useSocket } from '@/contexts/SocketContext';
 import classes from '@/styles/Matchmaking.module.css';
 import dynamic from 'next/dynamic';
 
-const DifficultySection = dynamic(() => import("@/components/home/DifficultySection"));
-const JoinGameSection = dynamic(() => import("@/components/home/JoinGameSection"));
+const DifficultySection = dynamic(() => import("@/components/matchmaking/DifficultySection"));
+const JoinGameSection = dynamic(() => import("@/components/matchmaking/JoinGameSection"));
 // const FindLobbySection = dynamic(() => import("@/components/home/FindLobbySection"));
 // Not dynamic since it's being rendered immediately
-import FindLobbySection from '@/components/home/FindLobbySection';
+import FindLobbySection from '@/components/matchmaking/FindLobbySection';
 
 export default function QueuePage() {
   const posthog = usePostHog();
