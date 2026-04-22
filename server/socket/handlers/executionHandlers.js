@@ -65,7 +65,7 @@ function registerExecutionHandlers(io, socket, gameService) {
                 io.to(roomId).emit('gameEnded');
             }
         }
-        else if (type === GameType.FOURPLAYER) {
+        else if (type === GameType.FOURPLAYER || type === GameType.RANKED) {
             console.log('verify its a fourplayer game');
             if (!team) {
                 socket.emit('error', { message: 'Missing team for four-player submitCode.' });
