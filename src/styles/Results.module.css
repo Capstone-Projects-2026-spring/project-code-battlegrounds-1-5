@@ -75,6 +75,23 @@
   animation: victoryPulse 2s ease-in-out infinite;
 }
 
+.defeatTitle {
+  font-size: clamp(2.5rem, 6vw, 4rem);
+  font-weight: 800;
+  background: linear-gradient(135deg, #ff4444, #cc0000);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: 0 0 30px rgba(255, 68, 68, 0.3);
+  margin-bottom: 0.5rem;
+  animation: defeatPulse 2s ease-in-out infinite;
+}
+
+@keyframes defeatPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(0.98); }
+}
+
 .victorySubtitle {
   font-size: clamp(1.25rem, 3vw, 1.75rem);
   color: var(--mantine-color-dimmed);

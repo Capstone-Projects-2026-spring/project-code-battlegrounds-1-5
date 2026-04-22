@@ -89,7 +89,7 @@ function PlayGameRoom() {
   const [problem, setProblem] = useState<ActiveProblem | null>(null);
   const [teams, setTeams] = useState<TeamCount[]>([]);
   const [teamSelected, setTeamSelected] = useState<string | null>(null);
-  const [liveCode, setLiveCode] = useState<string>("function solution(a, b) { \n\treturn a + b;\n}");
+  const [liveCode, setLiveCode] = useState<string>("// Make sure your function is named solution \nfunction solution(a, b) { \n\treturn a + b;\n}");
   const [activeTestId, setActiveTestId] = useState<number>(0);
   const [gameType, setGameType] = useState<GameType | null>(null);
   const [isWaitingForOtherTeam, setIsWaitingForOtherTeam] = useState(false);
@@ -143,6 +143,8 @@ function PlayGameRoom() {
   // ONLY HAPPENS ON PAGE LAUNCH
   useEffect(() => {
     if (!session?.user.id || !gameId || !socket) return;
+
+    setStatus('idle');
 
     gameStateCtx.setGameId(gameId);
 
@@ -220,7 +222,6 @@ function PlayGameRoom() {
 
     socket.on('invalidGame', invalidGameHandler);
     socket.on("error", errorHandler);
-    
 
     // 6. Cleanup: disconnect the socket if the user leaves the page
     return () => {

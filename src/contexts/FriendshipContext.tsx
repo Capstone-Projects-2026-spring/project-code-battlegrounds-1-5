@@ -8,6 +8,8 @@ import {
   type SetStateAction,
 } from "react";
 import { useSocket } from "./SocketContext";
+import { showFriendRequestNotification } from "@/components/notifications";
+import { authClient } from "@/lib/auth-client";
 
 export type PresenceStatus = "online" | "away" | "offline";
 
@@ -49,12 +51,14 @@ export const FriendshipContext = createContext<FriendshipContextAPI | null>(null
 
 export const FriendshipProvider = ({ children }: { children: ReactNode }) => {
   const { socket } = useSocket();
+  const { data: session, isPending } = authClient.useSession();
 
   const [friends, setFriends] = useState<Friend[]>([]);
   const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([]);
   const [friendCode, setFriendCode] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!session && !isPending) return;
     fetch("/api/friends")
       .then((res) => {
         if (!res.ok) return;
@@ -70,7 +74,7 @@ export const FriendshipProvider = ({ children }: { children: ReactNode }) => {
       .catch((err) => {
         console.error("Failed to fetch friends:", err);
       });
-  }, []);
+  }, [session, isPending]);
 
   useEffect(() => {
     if (!socket) return;
@@ -80,6 +84,19 @@ export const FriendshipProvider = ({ children }: { children: ReactNode }) => {
         if (prev.some((r) => r.id === request.id)) return prev;
         return [...prev, { ...request, direction: "incoming" }];
       });
+
+      showFriendRequestNotification(
+        request.displayName,
+        request.id,
+        () => {
+          socket.emit("friendRequestAccept", { requestId: request.id });
+          setFriendRequests((prev) => prev.filter((r) => r.id !== request.id));
+        },
+        () => {
+          socket.emit("friendRequestDecline", { requestId: request.id });
+          setFriendRequests((prev) => prev.filter((r) => r.id !== request.id));
+        },
+      );
     };
 
     const onFriendRequestAccepted = (friend: Friend) => {
