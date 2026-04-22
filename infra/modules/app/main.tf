@@ -68,8 +68,8 @@ resource "google_cloud_run_v2_job" "migrate" {
           name  = "DATABASE_URL"
           value = "postgresql://${var.db_user}:${data.google_secret_manager_secret_version.postgres_password.secret_data}@localhost/appdb?host=%2Fcloudsql%2F${google_sql_database_instance.postgres.connection_name}"
         }
-        command = ["npx"]
-        args    = ["prisma", "migrate", "deploy"]
+        command = ["bun"]
+        args = ["prisma", "migrate", "deploy"]
         resources {
           limits = {
             memory = "1024Mi"
@@ -116,8 +116,8 @@ resource "google_cloud_run_v2_job" "db-seed" {
           value = "true"
         }
 
-        command = ["npx"]
-        args    = ["tsx", "prisma/seed.ts"]
+        command = ["bun"]
+        args    = ["prisma", "db", "seed"]
 
         resources {
           limits = {
