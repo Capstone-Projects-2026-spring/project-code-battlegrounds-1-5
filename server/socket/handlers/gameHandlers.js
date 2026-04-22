@@ -67,6 +67,11 @@ const requestTeamUpdateSchema = z.object({
 
 function registerGameHandlers(io, socket, gameService) {
 
+    socket.on('register', async (data) => {
+        socket.userId = data.userId;
+        await gameService.registerSocketToUser(data.userId, socket.id);
+    });
+
     socket.on('joinGame', async (data) => {
         const payload = validate(joinGameSchema, data);
         if (!payload) {
