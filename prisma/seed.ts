@@ -6,6 +6,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import * as z from "zod";
 import { TestCase } from "@/lib/ProblemInputOutput";
+import { randomUUID } from "node:crypto";
 
 const adapter = new PrismaPg({
   connectionString: process.env.DATABASE_URL!,
@@ -42,11 +43,27 @@ async function main() {
       .catch(() => console.log(`${u.name} already exists, skipping...`));
   }
 
-  const [alice, bob, charlie, diana, erik] = await Promise.all(
-    userDefs.map((u) => prisma.user.findUniqueOrThrow({ where: { email: u.email } }))
+  const ensuredUsers = await Promise.all(
+    userDefs.map(async (u) => {
+      const existing = await prisma.user.findUnique({ where: { email: u.email } });
+      if (existing) {
+        return existing;
+      }
+      const created = await prisma.user.create({
+        data: {
+          id: randomUUID(),
+          name: u.name,
+          email: u.email,
+        },
+      });
+      console.log(`Created user ${u.email} directly in DB (fallback).`);
+      return created;
+    })
   );
 
-  console.log("Users created");
+  const [alice, bob, charlie, diana, erik] = ensuredUsers;
+
+  console.log("Users ensured/created");
 
   // ── Problems from CSV ──
   const csvPath = path.join(__dirname, "../public/dataset.csv");
