@@ -1,6 +1,6 @@
 # we use this root module to reference the bootstrap and app modules.
 # this way we can issue apply and destroy commands for the app directly and leave the always on infra like artifact registry
-# and the vpc on
+# and the vpc on and take the expensive services down as needed
 
 terraform {
   required_version = ">= 1.5"
