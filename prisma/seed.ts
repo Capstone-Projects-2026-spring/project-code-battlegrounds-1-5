@@ -7,6 +7,7 @@ import * as path from "node:path";
 import * as z from "zod";
 import { TestCase } from "@/lib/ProblemInputOutput";
 import { randomUUID } from "node:crypto";
+import { hashPassword } from "better-auth/crypto";
 
 const adapter = new PrismaPg({
   connectionString: process.env.DATABASE_URL!,
@@ -36,7 +37,8 @@ async function main() {
     { name: "Erik", email: "erik@test.com" }
   ];
 
-  const password = process.env.TEST_ACCS_PASSWORD ?? "password123"
+  const password = process.env.TEST_ACCS_PASSWORD as string;
+  const hashedPassword = await hashPassword(password);
   for (const u of userDefs) {
     await auth.api
       .signUpEmail({ body: { ...u, password: password } })
@@ -49,18 +51,31 @@ async function main() {
       if (existing) {
         return existing;
       }
+
+      const userId = randomUUID();
       const created = await prisma.user.create({
         data: {
-          id: randomUUID(),
+          id: userId,
           name: u.name,
           email: u.email,
-          password: password
         },
+      });
+      await prisma.account.create({
+        data: {
+          id: randomUUID(),
+          userId: userId,
+          accountId: userId,
+          providerId: 'credential',
+          password: hashedPassword,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        }
       });
       console.log(`Created user ${u.email} directly in DB (fallback).`);
       return created;
     })
   );
+
 
   const [alice, bob, charlie, diana, erik] = ensuredUsers;
 
