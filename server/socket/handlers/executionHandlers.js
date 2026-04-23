@@ -23,6 +23,7 @@ function registerExecutionHandlers(io, socket, gameService) {
             return;
         }
         const { roomId, code, type, team, teamId, testCases, runIDs } = payload;
+        console.log(`Submitting code for Room ${roomId}`);
 
         if (!roomId) return;
 
@@ -157,6 +158,7 @@ function registerExecutionHandlers(io, socket, gameService) {
             testCases,
             runIDs
         } = data;
+        console.log(`Submitting test cases for Room ${roomId}`);
         let payload = {
             gameId: roomId,
             language: "javascript",
