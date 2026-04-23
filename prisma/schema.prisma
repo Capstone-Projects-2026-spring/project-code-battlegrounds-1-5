@@ -237,31 +237,43 @@ model ProblemTest {
 }
 
 model GameTest {
-  id             String @id @default(uuid())
+  id             String   @id @default(uuid())
+  gameRoomId     String   // Direct reference for efficient filtering
   gameResultId   String
-  teamNumber     Int
+  testCaseId     String   // Changed from Int to match ProblemTest.id
   position       Int
-  testCaseId     Int
+  teamNumber     Int      // Required: team 1 or 2. NOTE: Hidden testcases are duplicated per team
   functionInput  Json
   expectedOutput Json
 
+  // Execution Results
+  actualOutput   Json?           // Computed output from execution
+  passed         Boolean?        // Test pass/fail
+  stderr         String?         // Captures full stderr output from execution
+  executionTimeMs Int?           // Individual test execution time in ms
+
+  // Classification
+  type           String   @default("Game") // "Game" (player submitted) or "Hidden" (DB held for grading)
+  createdAt      DateTime @default(now())  // Audit trail
+
   gameResult GameResult @relation(fields: [gameResultId], references: [id], onDelete: Cascade)
 
+  @@index([gameRoomId])
   @@index([gameResultId])
   @@index([gameResultId, teamNumber])
+  @@index([gameResultId, teamNumber, type]) // For filtering by test type
+  @@index([gameRoomId, teamNumber])         // For game-level filtering
   @@unique([gameResultId, teamNumber, position])
   @@unique([gameResultId, teamNumber, testCaseId])
 }
 
 model GameResult {
-  id                String  @id @default(uuid())
-  gameRoomId        String  @unique
-  winningTeamId     String? @unique
-  team1Code         String?
-  team2Code         String?
-  team1TimeToPassMs Int?
-  team2TimeToPassMs Int?
-  gameTests         GameTest[]
+  id            String  @id @default(uuid())
+  gameRoomId    String  @unique
+  winningTeamId String? @unique
+  team1Code     String?
+  team2Code     String?
+  gameTests     GameTest[]
 
   winningTeam Team?    @relation("WinningTeamRelation", fields: [winningTeamId], references: [id])
   gameRoom    GameRoom @relation(fields: [gameRoomId], references: [id], onDelete: Cascade)

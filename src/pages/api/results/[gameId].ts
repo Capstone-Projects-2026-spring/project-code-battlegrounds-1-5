@@ -241,6 +241,7 @@ export default async function handler(
         },
         gameResult: {
           select: {
+            id: true,
             team1Code: true,
             team2Code: true,
           },
@@ -293,74 +294,80 @@ export default async function handler(
       expected: test.expectedOutput,
     }));
 
-    const executorTestCases: TestableCase[] = tests.map((test, index) => ({
-      id: index,
-      functionInput: normalizeParameterArray(test.functionInput),
-      expectedOutput: normalizeExpectedParameter(test.expectedOutput),
-      computedOutput: null,
-    }));
+    // QUERY GameTest records from database (no re-execution needed)
+    const gameTestResults = await prisma.gameTest.findMany({
+      where: {
+        gameResultId: gameRoom.gameResult?.id,
+      },
+      orderBy: [{ teamNumber: "asc" }, { position: "asc" }],
+    });
 
-    const [team1Execution, team2Execution] = await Promise.all([
-      executeSubmission(
-        gameRoom.gameResult?.team1Code ?? null,
-        formattedTests,
-        executorTestCases,
-      ).catch((error: unknown) => {
-        console.error("Failed to evaluate team 1 submission", error);
-        return emptyExecution(formattedTests.length);
-      }),
-      executeSubmission(
-        gameRoom.gameResult?.team2Code ?? null,
-        formattedTests,
-        executorTestCases,
-      ).catch((error: unknown) => {
-        console.error("Failed to evaluate team 2 submission", error);
-        return emptyExecution(formattedTests.length);
-      }),
-    ]);
+    // Group by team
+    const team1GameTests = gameTestResults.filter((gt) => gt.teamNumber === 1);
+    const team2GameTests = gameTestResults.filter((gt) => gt.teamNumber === 2);
 
-    // Save average execution times if not previously saved
-    try {
-      const currentResult = await prisma.gameResult.findUnique({
-        where: { gameRoomId: gameId },
-        select: {
-          team1TimeToPassMs: true,
-          team2TimeToPassMs: true,
-        },
+    // Extract results arrays (actualOutput) in position order
+    const team1Results = team1GameTests
+      .sort((a, b) => a.position - b.position)
+      .map((gt) => {
+        if (!gt.actualOutput) return null;
+        try {
+          return JSON.parse(
+            typeof gt.actualOutput === "string"
+              ? gt.actualOutput
+              : JSON.stringify(gt.actualOutput)
+          );
+        } catch {
+          return gt.actualOutput;
+        }
       });
 
-      // Build update data for each team independently
-      const dataToUpdate: Partial<{ team1TimeToPassMs: number | null; team2TimeToPassMs: number | null }> = {};
+    const team2Results = team2GameTests
+      .sort((a, b) => a.position - b.position)
+      .map((gt) => {
+        if (!gt.actualOutput) return null;
+        try {
+          return JSON.parse(
+            typeof gt.actualOutput === "string"
+              ? gt.actualOutput
+              : JSON.stringify(gt.actualOutput)
+          );
+        } catch {
+          return gt.actualOutput;
+        }
+      });
 
-      // Team 1
-      if (!currentResult || currentResult.team1TimeToPassMs === null) {
-        dataToUpdate.team1TimeToPassMs = team1Execution.averageExecutionTime;
-      }
+    // Extract errors (stderr) in position order
+    const team1Errors = team1GameTests
+      .sort((a, b) => a.position - b.position)
+      .map((gt) => gt.stderr);
 
-      // Team 2
-      if (!currentResult || currentResult.team2TimeToPassMs === null) {
-        dataToUpdate.team2TimeToPassMs = team2Execution.averageExecutionTime;
-      }
+    const team2Errors = team2GameTests
+      .sort((a, b) => a.position - b.position)
+      .map((gt) => gt.stderr);
 
-      // Only call update if there's something to update
-      let savedResult = currentResult;
-      if (Object.keys(dataToUpdate).length > 0) {
-        savedResult = await prisma.gameResult.update({
-          where: { gameRoomId: gameId },
-          data: dataToUpdate,
-          select: {
-            team1TimeToPassMs: true,
-            team2TimeToPassMs: true,
-          },
-        });
-      }
+    // Calculate average execution times from GameTest records (only hidden tests)
+    const calculateAverageTime = (
+      gameTests: (typeof gameTestResults)[number][]
+    ) => {
+      // Only include hidden test cases for average calculation
+      const hiddenTests = gameTests.filter((gt) => gt.type === "Hidden");
+      const validTimes = hiddenTests
+        .map((gt) => gt.executionTimeMs)
+        .filter((t): t is number => t !== null && typeof t === "number" && t > 0);
 
-      // Return the saved DB values, not the newly calculated ones
-      team1Execution.averageExecutionTime = savedResult?.team1TimeToPassMs ?? null;
-      team2Execution.averageExecutionTime = savedResult?.team2TimeToPassMs ?? null;
-    } catch (error) {
-      console.error("Failed to save execution times", error);
-    }
+      if (validTimes.length === 0) return null;
+      return Math.round(
+        validTimes.reduce((a, b) => a + b, 0) / validTimes.length
+      );
+    };
+
+    const team1AverageExecutionTime = calculateAverageTime(team1GameTests);
+    const team2AverageExecutionTime = calculateAverageTime(team2GameTests);
+
+    // Calculate passed counts
+    const team1PassedCount = team1GameTests.filter((gt) => gt.passed).length;
+    const team2PassedCount = team2GameTests.filter((gt) => gt.passed).length;
 
     return res.status(200).json({
       // Problem & Game Details
@@ -376,25 +383,25 @@ export default async function handler(
       team1Code: gameRoom.gameResult?.team1Code ?? null,
       team2Code: gameRoom.gameResult?.team2Code ?? null,
 
-      // Test Execution Results
+      // Test Execution Results (from persisted GameTest records)
       tests: formattedTests,
-      team1Results: team1Execution.results,
-      team2Results: team2Execution.results,
-      team1PassedCount: team1Execution.passedCount,
-      team2PassedCount: team2Execution.passedCount,
+      team1Results: team1Results.length > 0 ? team1Results : [],
+      team2Results: team2Results.length > 0 ? team2Results : [],
+      team1PassedCount,
+      team2PassedCount,
       totalTests: formattedTests.length,
-      team1AverageExecutionTime: team1Execution.averageExecutionTime,
-      team2AverageExecutionTime: team2Execution.averageExecutionTime,
-      team1Errors: team1Execution.errors,
-      team2Errors: team2Execution.errors,
+      team1AverageExecutionTime,
+      team2AverageExecutionTime,
+      team1Errors,
+      team2Errors,
     });
   } catch (error: unknown) {
+    console.error("[RESULTS API] Error:", error);
     if (error instanceof Error) {
-      return res
-        .status(500)
-        .json({ message: error.message || "Failed to fetch tests" });
+      return res.status(500).json({
+        message: error.message || "Failed to fetch tests",
+      });
     }
-
     return res.status(500).json({ message: "Failed to fetch tests" });
   }
 }
