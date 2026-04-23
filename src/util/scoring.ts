@@ -5,6 +5,20 @@ export const SCORING_WEIGHTS = {
 
 const RUNTIME_THRESHOLD = 0.10; // 10% difference required to award runtime points
 const MAX_REASONABLE_RUNTIME_MS = 5000; // Assumes <5000ms is max reasonable time for fallback scoring
+const SHOULD_LOG_SCORE_BREAKDOWN = process.env.NEXT_PUBLIC_DEBUG_SCORING === "true";
+
+function logScoreBreakdown(
+  teamLabel: string,
+  testScore: number,
+  runtimeScore: number,
+  totalScore: number
+) {
+  if (!SHOULD_LOG_SCORE_BREAKDOWN) return;
+
+  console.log(
+    `[${teamLabel}] Score Breakdown: Tests=${testScore.toFixed(2)}, Runtime=${runtimeScore.toFixed(2)}, Total=${totalScore}`
+  );
+}
 
 export function calculateScore(
   testsPassed: number,
@@ -24,10 +38,7 @@ export function calculateScore(
     : 0;
 
   const totalScore = Math.round(testScore + runtimeScore);
-
-  console.log(
-    `[${teamLabel}] Score Breakdown: Tests=${testScore.toFixed(2)}, Runtime=${runtimeScore.toFixed(2)}, Total=${totalScore}`
-  );
+  logScoreBreakdown(teamLabel, testScore, runtimeScore, totalScore);
 
   return totalScore;
 }
@@ -84,12 +95,8 @@ export function calculateScorePair(
   const totalScore1 = Math.round(testScore1 + runtimeScore1);
   const totalScore2 = Math.round(testScore2 + runtimeScore2);
 
-  console.log(
-    `[${team1Label}] Score Breakdown: Tests=${testScore1.toFixed(2)}, Runtime=${runtimeScore1.toFixed(2)}, Total=${totalScore1}`
-  );
-  console.log(
-    `[${team2Label}] Score Breakdown: Tests=${testScore2.toFixed(2)}, Runtime=${runtimeScore2.toFixed(2)}, Total=${totalScore2}`
-  );
+  logScoreBreakdown(team1Label, testScore1, runtimeScore1, totalScore1);
+  logScoreBreakdown(team2Label, testScore2, runtimeScore2, totalScore2);
 
   return [totalScore1, totalScore2];
 }
