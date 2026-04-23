@@ -24,12 +24,14 @@ function initSocket(httpServer, redis) {
     const matchmakingService = createMatchmakingService(redis.stateRedis, io);
     const inviteService = createInviteService(redis.stateRedis);
 
-    
+    /*
     io.use(async (socket, next) => {
         try {
             const cookieHeader = socket.handshake.headers.cookie;
             const cookies = cookie.parse(cookieHeader ?? '');
-            const fullToken = decodeURIComponent(cookies['better-auth.session_token']);
+            const fullToken = process.env.NODE_ENV === 'development' 
+                ? decodeURIComponent(cookies['better-auth.session_token']) 
+                : decodeURIComponent(cookies['__Secure-better-auth.session_token']);
 
             if (!fullToken) return next(new Error('Authentication error: No token provided'));
 
@@ -54,6 +56,7 @@ function initSocket(httpServer, redis) {
         }
         
     });
+    */
     
 
     // Register per-connection handlers
