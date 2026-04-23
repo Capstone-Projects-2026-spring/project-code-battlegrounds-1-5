@@ -102,6 +102,6 @@ jobs:
           exit 1
 
       - name: Run Jest tests
-        run: npx jest tests/api/ --forceExit
+        run: npx jest tests/api/ server/tests/ --forceExit
         env:
           PORT: 3000

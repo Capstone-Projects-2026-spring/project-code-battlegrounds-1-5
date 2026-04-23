@@ -23,7 +23,8 @@
       "^@/(.*)$": "<rootDir>/src/$1"
     },
     "testMatch": [
-      "**/tests/**/*.spec.ts"
+      "**/tests/**/*.spec.ts",
+      "**/server/tests/**/*.spec.js"
     ]
   },
   "dependencies": {
