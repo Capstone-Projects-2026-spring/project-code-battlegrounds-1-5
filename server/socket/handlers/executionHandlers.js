@@ -91,7 +91,6 @@ async function executeAndPersist({
     // STEP 3: Create GameTest records to persist (both game and hidden)
     const gameTestsToCreate = [];
     const executionTimes = [];
-    const hiddenExecutionTimes = [];
 
     for (let position = 0; position < allTestCases.length; position++) {
         const result = results[position] || {};
@@ -101,11 +100,6 @@ async function executeAndPersist({
 
         const execTime = result.execution_time_ms || 0;
         executionTimes.push(execTime);
-
-        // Only track hidden test execution times for average
-        if (isHidden) {
-            hiddenExecutionTimes.push(execTime);
-        }
 
         gameTestsToCreate.push({
             gameResultId,
@@ -139,11 +133,7 @@ async function executeAndPersist({
         throw new Error(`Failed to persist test results: ${error.message}`);
     }
 
-    // STEP 5: Calculate metrics (average only from hidden tests)
-    const validHiddenExecutionTimes = hiddenExecutionTimes.filter(t => t > 0);
-    const averageExecutionTime = validHiddenExecutionTimes.length > 0
-        ? Math.round(validHiddenExecutionTimes.reduce((a, b) => a + b, 0) / validHiddenExecutionTimes.length)
-        : null;
+    // STEP 5: Return execution metadata; average runtime is computed in results API from persisted hidden tests.
 
     const passedCount = gameTestsToCreate.filter(t => t.passed).length;
 
@@ -151,7 +141,6 @@ async function executeAndPersist({
         teamNumber,
         totalTests: gameTestsToCreate.length,
         passedCount,
-        averageExecutionTime,
         executionTimeMs: executionTimes,
         success: true
     };
@@ -511,4 +500,4 @@ function registerExecutionHandlers(io, socket, gameService) {
     });
 }
 
-module.exports = { registerExecutionHandlers, executeAndPersist };
+module.exports = { registerExecutionHandlers };
