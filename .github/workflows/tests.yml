@@ -53,14 +53,16 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "22"
-          cache: "bun"
 
       - name: Install dependencies
-        run: bun ci
+        run: bun install --frozen-lockfile
 
       - name: Generate Prisma client
         run: bunx --bun prisma generate
@@ -83,9 +85,7 @@ jobs:
         run: bun run build
 
       - name: Start server
-        run: bun run start
-        #env:
-        #  NODE_ENV: production This was causing problems with playwright
+        run: bun run start &
 
       - name: Wait for server to be ready
         run: |
@@ -101,7 +101,7 @@ jobs:
           echo "Server failed to start"
           exit 1
 
-      - name: Run Jest tests
+      - name: Run tests
         run: bun test
         env:
           PORT: 3000
