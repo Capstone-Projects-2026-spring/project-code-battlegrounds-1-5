@@ -53,7 +53,6 @@ const {
   uid,
 } = require("../utils/tests/helpers");
 const { createMatchmakingService } = require("../matchmaking/matchmakingService");
-
 // ---------------------------------------------------------------------------
 // Redis + service setup
 // ---------------------------------------------------------------------------
