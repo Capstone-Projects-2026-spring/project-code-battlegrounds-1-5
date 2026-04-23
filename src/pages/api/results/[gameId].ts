@@ -44,6 +44,24 @@ export interface ErrorResponse {
   message: string;
 }
 
+function parseOutput(output: unknown): unknown {
+  if (!output) return null;
+  try {
+    return JSON.parse(
+      typeof output === "string" ? output : JSON.stringify(output)
+    );
+  } catch {
+    return output;
+  }
+}
+
+function normalizeExpected(output: unknown): unknown[] {
+  const parsed = parseOutput(output);
+  if (Array.isArray(parsed)) return parsed;
+  if (parsed && typeof parsed === "object") return [parsed];
+  return [];
+}
+
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse<TestsResponse | ErrorResponse>
@@ -133,17 +151,19 @@ export default async function handler(
     // For each position, we want to show the input once with both teams' outputs
     const testsByPosition = new Map<number, { team1: typeof team1GameTests[0] | undefined; team2: typeof team2GameTests[0] | undefined }>();
 
-    team1GameTests.forEach((gt) => {
-      if (!testsByPosition.has(gt.position)) {
-        testsByPosition.set(gt.position, { team1: undefined, team2: undefined });
+    const ensureTestPosition = (position: number) => {
+      if (!testsByPosition.has(position)) {
+        testsByPosition.set(position, { team1: undefined, team2: undefined });
       }
+    };
+
+    team1GameTests.forEach((gt) => {
+      ensureTestPosition(gt.position);
       testsByPosition.get(gt.position)!.team1 = gt;
     });
 
     team2GameTests.forEach((gt) => {
-      if (!testsByPosition.has(gt.position)) {
-        testsByPosition.set(gt.position, { team1: undefined, team2: undefined });
-      }
+      ensureTestPosition(gt.position);
       testsByPosition.get(gt.position)!.team2 = gt;
     });
 
@@ -158,27 +178,6 @@ export default async function handler(
       const testPair = testsByPosition.get(position)!;
       const team1Test = testPair.team1;
       const team2Test = testPair.team2;
-
-      // Parse actual outputs
-      const parseOutput = (output: unknown) => {
-        if (!output) return null;
-        try {
-          return JSON.parse(
-            typeof output === "string" ? output : JSON.stringify(output)
-          );
-        } catch {
-          return output;
-        }
-      };
-
-      // The UI expects expected output as an array of parameters.
-      // Persisted game tests can store a single parameter object.
-      const normalizeExpected = (output: unknown): unknown[] => {
-        const parsed = parseOutput(output);
-        if (Array.isArray(parsed)) return parsed;
-        if (parsed && typeof parsed === "object") return [parsed];
-        return [];
-      };
 
       return {
         id: team1Test?.id || team2Test?.id || `test-${position}`,

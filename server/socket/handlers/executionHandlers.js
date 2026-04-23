@@ -6,6 +6,14 @@ const { deleteVm } = require("../../utils/vm/deleteVm");
 
 const prisma = getPrisma();
 
+function normalizeHiddenTests(hiddenTests, gameTestCount) {
+    return hiddenTests.map((t, idx) => ({
+        id: gameTestCount + idx,
+        functionInput: Array.isArray(t.functionInput) ? t.functionInput : [t.functionInput],
+        expectedOutput: Array.isArray(t.expectedOutput) ? t.expectedOutput[0] : t.expectedOutput
+    }));
+}
+
 const submitCodeSchema = z.object({
     roomId: z.string(),
     code: z.string().max(10000).optional(),
@@ -226,11 +234,7 @@ function registerExecutionHandlers(io, socket, gameService) {
 
                 // Normalize hidden test cases to match game test structure
                 // For TWOPLAYER: Single shared set (not duplicated per team like FOURPLAYER)
-                const normalizedHiddenTests = hiddenTests.map((t, idx) => ({
-                    id: gameTestCases.length + idx,
-                    functionInput: Array.isArray(t.functionInput) ? t.functionInput : [t.functionInput],
-                    expectedOutput: Array.isArray(t.expectedOutput) ? t.expectedOutput[0] : t.expectedOutput
-                }));
+                const normalizedHiddenTests = normalizeHiddenTests(hiddenTests, gameTestCases.length);
 
                 const hiddenTestCaseIds = hiddenTests.map(t => t.id);
 
@@ -371,22 +375,14 @@ function registerExecutionHandlers(io, socket, gameService) {
                         });
 
                         // Create normalized hidden tests for each team (they get separate sets)
-                        const normalizedHiddenTestsTeam1 = hiddenTests.map((t, idx) => ({
-                            id: team1GameTestCases.length + idx,
-                            functionInput: Array.isArray(t.functionInput) ? t.functionInput : [t.functionInput],
-                            expectedOutput: Array.isArray(t.expectedOutput) ? t.expectedOutput[0] : t.expectedOutput
-                        }));
+                        const normalizedHiddenTestsTeam1 = normalizeHiddenTests(hiddenTests, team1GameTestCases.length);
 
-                        const normalizedHiddenTestsTeam2 = hiddenTests.map((t, idx) => ({
-                            id: team2GameTestCases.length + idx,
-                            functionInput: Array.isArray(t.functionInput) ? t.functionInput : [t.functionInput],
-                            expectedOutput: Array.isArray(t.expectedOutput) ? t.expectedOutput[0] : t.expectedOutput
-                        }));
+                        const normalizedHiddenTestsTeam2 = normalizeHiddenTests(hiddenTests, team2GameTestCases.length);
 
                         const hiddenTestCaseIds = hiddenTests.map(t => t.id);
 
                         // Execute BOTH teams in parallel
-                        const [execution1, execution2] = await Promise.all([
+                        await Promise.all([
                             executeAndPersist({
                                 roomId,
                                 gameResultId: gameResult.id,
