@@ -24,7 +24,7 @@ function initSocket(httpServer, redis) {
     const matchmakingService = createMatchmakingService(redis.stateRedis, io);
     const inviteService = createInviteService(redis.stateRedis);
 
-    /*
+    
     io.use(async (socket, next) => {
         try {
             const cookieHeader = socket.handshake.headers.cookie;
@@ -54,7 +54,7 @@ function initSocket(httpServer, redis) {
         }
         
     });
-    */
+    
 
     // Register per-connection handlers
     io.on('connection', (socket) => {
