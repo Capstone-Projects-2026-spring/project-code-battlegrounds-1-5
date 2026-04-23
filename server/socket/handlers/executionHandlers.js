@@ -1,10 +1,18 @@
+const { z } = require("zod");
 const { GameType } = require("@prisma/client");
 const { getPrisma } = require("../../prisma");
 const { validate } = require("../../utils/validate");
 const { deleteVm } = require("../../utils/vm/deleteVm");
-const { submitCodeSchema } = require("../models/submitCode");
 
 const prisma = getPrisma();
+
+const submitCodeSchema = z.object({
+    roomId: z.string(),
+    code: z.string().max(10000).optional(), // Adjust max length as needed
+    type: z.enum([GameType.TWOPLAYER, GameType.FOURPLAYER]),
+    team: z.enum(["team1", "team2"]).nullable().optional(),
+    teamId: z.string().optional(),
+});
 
 function registerExecutionHandlers(io, socket, gameService) {
 
