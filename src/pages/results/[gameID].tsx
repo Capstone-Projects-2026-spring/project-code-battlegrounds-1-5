@@ -107,7 +107,7 @@ export default function Page() {
   // if we aren't even logged in
   useEffect(() => {
     if (!isPending && !session) {
-      router.replace("/auth");
+      router.replace("/login");
     }
   }, [isPending, session, router]);
   return <Results />;
@@ -509,7 +509,7 @@ export function Results() {
               color="console"
               className={styles.primaryButton}
               rightSection={<IconArrowRight size={20} />}
-              onClick={() => router.push('/matchmaking')}
+              onClick={() => router.push('/matchmaking').then(() => window.scrollTo(0, 0))}
             >
               Play Again
             </Button>
