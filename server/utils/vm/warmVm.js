@@ -6,21 +6,21 @@ const warmVm = async (gameId) => {
     })
     .then(async (res) => {
         if (!res.ok) {
-            console.error(`[DELETE_VM] Failed to delete VM for ${gameId}: ${res.status}`);
+            console.error(`[WARM_VM] Failed to warm VM for ${gameId}: ${res.status}`);
             return;
         }
         const text = await res.text();
         if (text) {
             try {
-                console.log('[DELETE_VM] Response:', JSON.parse(text));
+                console.log('[WARM_VM] Response:', JSON.parse(text));
             } catch {
-                console.log('[DELETE_VM] Response (non-JSON):', text);
+                console.log('[WARM_VM] Response (non-JSON):', text);
             }
         } else {
-            console.log(`[DELETE_VM] VM deleted for ${gameId}`);
+            console.log(`[WARM_VM] VM deleted for ${gameId}`);
         }
     })
-    .catch(error => console.error('[DELETE_VM] Error:', error));
+    .catch(error => console.error('[WARM_VM] Error:', error));
 };
 
 module.exports = { warmVm };
