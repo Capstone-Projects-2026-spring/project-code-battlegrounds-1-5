@@ -242,13 +242,12 @@ function registerExecutionHandlers(io, socket, gameService) {
                     hiddenTestCaseIds
                 });
                 console.log('[TWOPLAYER] Execution completed:', executionResult);
-            } catch (error) {
-                console.error("Error in TWOPLAYER execution:", error);
-                socket.emit('error', { message: 'Code execution failed' });
-            } finally {
                 await gameService.cleanupGameTimers(roomId);
                 deleteVm(roomId);
                 io.to(roomId).emit('gameEnded');
+            } catch (error) {
+                console.error("Error in TWOPLAYER execution:", error);
+                socket.emit('error', { message: 'Code execution failed! Try again in a bit...' });
             }
         }
         else if (type === GameType.FOURPLAYER) {
@@ -414,10 +413,6 @@ function registerExecutionHandlers(io, socket, gameService) {
                         io.to(teamId).emit('waitingForOtherTeam');
                     }
                 }
-            } catch (error) {
-                console.error('[FOURPLAYER] Error in submission:', error);
-                socket.emit('error', { message: 'Submission failed' });
-            } finally {
                 // Cleanup happens after both teams submit or on error
                 if (Object.keys(await gameService.getGameData(`game:${roomId}:submissions`) || {}).length === 2) {
                     await gameService.cleanupGameTimers(roomId);
@@ -429,6 +424,9 @@ function registerExecutionHandlers(io, socket, gameService) {
                     await gameService.deleteGameData(`game:${roomId}:submissions`);
                     io.to(roomId).emit('gameEnded');
                 }
+            } catch (error) {
+                console.error('[FOURPLAYER] Error in submission:', error);
+                socket.emit('error', { message: 'Submission failed try again in a bit' });
             }
         }
     });
@@ -497,7 +495,7 @@ function registerExecutionHandlers(io, socket, gameService) {
             socket.emit("receiveTestCaseSync", toReceive);
         } catch (error) {
             console.error(error);
-            socket.emit("errorTests", { message: "Sorry that didn't work try again in a few seconds"});
+            socket.emit("error", { message: "Sorry that didn't work try again in a few seconds" });
         }
     });
 }

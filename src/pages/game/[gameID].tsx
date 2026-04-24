@@ -194,7 +194,7 @@ function PlayGameRoom() {
               setRole(joined.role);
             }
           }
-        } 
+        }
       } catch (error) {
         console.error("Failed to load room problem", error);
         router.replace("/");
@@ -215,6 +215,8 @@ function PlayGameRoom() {
     }
 
     const errorHandler = (data: JSON) => {
+      setRunningAllTests(false);
+      setIsWaitingForOtherTeam(false);
       console.error("Socket error:", data);
     };
 
@@ -245,7 +247,7 @@ function PlayGameRoom() {
     });
 
     console.log("Syncing default code");
-    socket.emit("codeChange", {teamId: teamSelected, code: liveCode});
+    socket.emit("codeChange", { teamId: teamSelected, code: liveCode });
   }, [socket, teamSelected]);
 
   useEffect(() => {
@@ -518,10 +520,10 @@ function PlayGameRoom() {
       prev.map((parameter) =>
         parameter.isOutputParameter
           ? {
-              ...parameter,
-              type,
-              value: null,
-            }
+            ...parameter,
+            type,
+            value: null,
+          }
           : parameter,
       ),
     );
@@ -619,7 +621,7 @@ function PlayGameRoom() {
       {/* Waiting Modal */}
       <Modal
         opened={isWaitingForOtherTeam}
-        onClose={() => {}}
+        onClose={() => { }}
         centered
         withCloseButton={false}
         closeOnEscape={false}
@@ -726,13 +728,13 @@ function PlayGameRoom() {
                 >
                   {(gameState === GameStatus.ACTIVE ||
                     gameState === GameStatus.FLIPPING) && (
-                    <Box mb="md" p="1rem" pb={isProblemVisible ? "md" : "1rem"}>
-                      <GameTimer
-                        endTime={endTime}
-                        onExpire={handleTimerExpire}
-                      />
-                    </Box>
-                  )}
+                      <Box mb="md" p="1rem" pb={isProblemVisible ? "md" : "1rem"}>
+                        <GameTimer
+                          endTime={endTime}
+                          onExpire={handleTimerExpire}
+                        />
+                      </Box>
+                    )}
                   {isProblemVisible ? (
                     <Box
                       style={{
