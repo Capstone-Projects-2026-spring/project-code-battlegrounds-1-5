@@ -129,6 +129,7 @@ function registerExecutionHandlers(io, socket, gameService) {
                     // deletes vm after game is over
                     deleteVm(roomId);
                     await gameService.deleteGameData(submissionKey);
+                    io.to(roomId).emit('gameEnded');
                 }
             } else {
                 // First team submitted - notify waiting (only to that team)
