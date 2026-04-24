@@ -31,6 +31,6 @@
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
     "**/*.mts"
-, "server/tests/game.spec.js"  ],
+  ],
   "exclude": ["node_modules", "types"]
 }
