@@ -320,11 +320,8 @@ def execute(req: ExecutionRequest, request: Request):
         # vm.status = Status.BUSY # mark this vm as busy right now
         # serialize quite carefully as this was breaking things earlier
         payload = req.model_dump(mode='json') if hasattr(req, 'model_dump') else req.dict()
-        if isinstance(payload["testCases"], str):
-            payload["testCases"] = json.loads(payload["testCases"])
-
-        if isinstance(payload["runIDs"], str):
-            payload["runIDs"] = json.loads(payload["runIDs"])
+        # Do not coerce types here; forward exactly as received to preserve backward compatibility
+        # with executor-api which may expect strings for testCases and runIDs.
         print(f"Forwarding /execute to http://{target_ip}:8000/execute")
         print(f"Payload (truncated): {json.dumps(payload)[:800]}")
         resp = requests.post(
