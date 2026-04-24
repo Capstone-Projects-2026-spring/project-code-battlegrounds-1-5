@@ -789,22 +789,6 @@ function PlayGameRoom() {
                       <>
                         <Button
                           size="xs"
-                          color="cyan"
-                          disabled={isSpectator || isWaitingForOtherTeam}
-                          className={styles.runButton}
-                          onClick={() =>
-                            posthog.capture("code_run_triggered", { gameId })
-                          }
-                          rightSection={
-                            <IconPlayerPlay
-                              size={"var(--mantine-font-size-md)"}
-                            />
-                          }
-                        >
-                          RUN
-                        </Button>
-                        <Button
-                          size="xs"
                           color="green"
                           onClick={submitFinalCode}
                           disabled={isSpectator || isWaitingForOtherTeam} // TODO: disable this for first thirty seconds
