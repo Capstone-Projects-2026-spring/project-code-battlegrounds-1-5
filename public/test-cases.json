@@ -51747,7 +51747,7 @@
       {
         "name": "nums",
         "type": "array_number",
-        "value": "[1, 5, 3, 8, 12, 7, 2, 9]"
+        "value": "[1, 5, 3, 8, 12, 7, 6, 9]"
       },
       {
         "name": "target",
