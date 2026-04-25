@@ -928,6 +928,7 @@ function PlayGameRoom() {
                                   <Group gap="xs">
                                     <NewParameterButton
                                       onNewParameter={handleNewParameter}
+                                      disabled={isSpectator}
                                     />
                                     <Button
                                       size="compact-sm"
@@ -962,7 +963,7 @@ function PlayGameRoom() {
                                       showDelete={
                                         testCaseCtx.cases.length !== 1
                                       }
-                                      disabled={runningAllTests}
+                                      disabled={runningAllTests || isSpectator}
                                       onExpectedOutputTypeChange={
                                         handleExpectedOutputTypeChange
                                       }
