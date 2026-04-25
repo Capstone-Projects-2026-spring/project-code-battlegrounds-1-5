@@ -509,7 +509,7 @@ export function Results() {
               color="console"
               className={styles.primaryButton}
               rightSection={<IconArrowRight size={20} />}
-              onClick={() => router.push('/matchmaking').then(() => window.scrollTo(0, 0))}
+              onClick={() => router.push('/matchmaking')}
             >
               Play Again
             </Button>
