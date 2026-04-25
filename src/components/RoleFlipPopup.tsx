@@ -20,7 +20,7 @@ export default function RoleFlipPopup({ gameState, role }: RoleFlipPopupProps) {
     >
       <Stack align="center" py="md" gap="xs">
         <Text size="xl" fw={600}>Roles flipping!</Text>
-        <Text size="sm" c="dimmed">You are going to be {role === Role.CODER ? "🧪 Tester" : "⌨ Coder" }</Text>
+        <Text size="sm" c="dimmed">You are going to be {role === Role.CODER ? "Tester" : "Coder" }</Text>
       </Stack>
     </Modal>
   );

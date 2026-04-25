@@ -810,7 +810,7 @@ function PlayGameRoom() {
                           letterSpacing: "0.05em",
                         }}
                       >
-                        {role === Role.CODER ? "⌨ Coder" : role === Role.TESTER ? "🧪 Tester" : "👁 Spectator"}
+                        {role === Role.CODER ? "Coder" : role === Role.TESTER ? "Tester" : "Spectator"}
                       </Text>
                     )}
                     {effectiveRole === Role.CODER && (
