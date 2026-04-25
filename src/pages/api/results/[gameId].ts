@@ -38,6 +38,12 @@ export interface TestsResponse {
   team2AverageExecutionTime: number | null;
   team1Errors: (string | null)[];
   team2Errors: (string | null)[];
+
+  // Submission & Time Metrics
+  team1SubmittedAt: string | null;
+  team2SubmittedAt: string | null;
+  team1TimeLeftSeconds: number | null;
+  team2TimeLeftSeconds: number | null;
 }
 
 export interface ErrorResponse {
@@ -60,6 +66,28 @@ function normalizeExpected(output: unknown): unknown[] {
   if (Array.isArray(parsed)) return parsed;
   if (parsed && typeof parsed === "object") return [parsed];
   return [];
+}
+
+function parseTimerDisplay(submittedAt: string | null | undefined): number | null {
+  if (!submittedAt) return null;
+
+  const match = submittedAt.trim().match(/^(\d+):([0-5]?\d)$/);
+  if (!match) return null;
+
+  const minutes = Number(match[1]);
+  const seconds = Number(match[2]);
+  if (Number.isNaN(minutes) || Number.isNaN(seconds)) return null;
+
+  return minutes * 60 + seconds;
+}
+
+function calculateTimeLeftSeconds(submittedAt: string | null | undefined): number | null {
+  const remainingSeconds = parseTimerDisplay(submittedAt);
+  return remainingSeconds === null ? null : Math.max(0, remainingSeconds);
+}
+
+function formatSubmittedAt(submittedAt: string | null): string | null {
+  return submittedAt ?? null;
 }
 
 export default async function handler(
@@ -101,6 +129,8 @@ export default async function handler(
             id: true,
             team1Code: true,
             team2Code: true,
+            team1SubmittedAt: true,
+            team2SubmittedAt: true,
           },
         },
         teams: {
@@ -216,6 +246,8 @@ export default async function handler(
 
     const team1PassedCount = team1GameTests.filter((gt) => gt.passed).length;
     const team2PassedCount = team2GameTests.filter((gt) => gt.passed).length;
+    const team1SubmittedAt: string | null = gameRoom.gameResult?.team1SubmittedAt ?? null;
+    const team2SubmittedAt: string | null = gameRoom.gameResult?.team2SubmittedAt ?? null;
 
     return res.status(200).json({
       // Problem & Game Details
@@ -231,7 +263,7 @@ export default async function handler(
       team1Code: gameRoom.gameResult?.team1Code ?? null,
       team2Code: gameRoom.gameResult?.team2Code ?? null,
 
-      // Test Execution Results (from persisted GameTest records with unified data)
+      // Test Execution Results
       tests: unifiedTestCases,
       team1Results: team1ActualOutputs,
       team2Results: team2ActualOutputs,
@@ -242,6 +274,12 @@ export default async function handler(
       team2AverageExecutionTime,
       team1Errors: team1ErrorsArray,
       team2Errors: team2ErrorsArray,
+
+      // Submission & Time Metrics
+      team1SubmittedAt: formatSubmittedAt(team1SubmittedAt),
+      team2SubmittedAt: formatSubmittedAt(team2SubmittedAt),
+      team1TimeLeftSeconds: calculateTimeLeftSeconds(team1SubmittedAt),
+      team2TimeLeftSeconds: calculateTimeLeftSeconds(team2SubmittedAt),
     });
   } catch (error: unknown) {
     console.error("[RESULTS API] Error:", error);

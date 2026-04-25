@@ -91,6 +91,15 @@ function formatTime(seconds: number): string {
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
+function deriveCompletionSeconds(timeLeftSeconds: number | null | undefined): number {
+  //Shows the time taken to complete a given problem, derived from the time left on the timer when the team submitted their solution.
+  if (typeof timeLeftSeconds !== "number" || Number.isNaN(timeLeftSeconds)) {
+    return 0;
+  }
+
+  return Math.max(0, 300 - timeLeftSeconds);
+}
+
 export default function Page() {
   const { data: session, isPending } = authClient.useSession();
   const router = useRouter();
@@ -144,6 +153,10 @@ export function Results() {
   const problem = gameResults?.problem ?? null;
   const gameType = (gameResults?.gameType as GameType) ?? GameType.FOURPLAYER;
   const userTeamNumber = gameResults?.userTeamNumber ?? 1;
+  const team1SubmittedAt = gameResults?.team1SubmittedAt ?? null;
+  const team2SubmittedAt = gameResults?.team2SubmittedAt ?? null;
+  const team1CompletionSeconds = deriveCompletionSeconds(gameResults?.team1TimeLeftSeconds);
+  const team2CompletionSeconds = deriveCompletionSeconds(gameResults?.team2TimeLeftSeconds);
   const analysisProps = gameResults?.team1Code || gameResults?.team2Code
     ? {
         team1Code: gameResults.team1Code ?? "",
@@ -167,10 +180,12 @@ export function Results() {
       testResultsSummary.totalTests,
       analysisProps.team1AverageExecutionTime ?? null,
       analysisProps.team2AverageExecutionTime ?? null,
+      gameResults?.team1TimeLeftSeconds ?? null,
+      gameResults?.team2TimeLeftSeconds ?? null,
       userTeamNumber === 1 ? "Your Team (Team 1)" : "Other Team (Team 1)",
       userTeamNumber === 2 ? "Your Team (Team 2)" : "Other Team (Team 2)"
     );
-  }, [testResultsSummary, analysisProps, userTeamNumber]);
+  }, [testResultsSummary, analysisProps, userTeamNumber, gameResults?.team1TimeLeftSeconds, gameResults?.team2TimeLeftSeconds]);
 
   // Mock data - replace with actual fetched data
   const coOpTeam: TeamResult = {
@@ -178,7 +193,7 @@ export function Results() {
     score: team1Score,
     testsPassed: testResultsSummary?.yourPassedCount ?? 0,
     totalTests: testResultsSummary?.totalTests ?? 0,
-    time: 0, // Calculated later
+    time: userTeamNumber === 1 ? team1CompletionSeconds : team2CompletionSeconds,
     isWinner: true
   };
 
@@ -189,7 +204,7 @@ export function Results() {
       ? (testResultsSummary?.yourPassedCount ?? 0)
       : (testResultsSummary?.otherTeamPassedCount ?? 0),
     totalTests: testResultsSummary?.totalTests ?? 0,
-    time: 0, // Calculated later
+    time: team1CompletionSeconds,
     isWinner: true
   };
 
@@ -200,7 +215,7 @@ export function Results() {
       ? (testResultsSummary?.otherTeamPassedCount ?? 0)
       : (testResultsSummary?.yourPassedCount ?? 0),
     totalTests: testResultsSummary?.totalTests ?? 0,
-    time: 0, // Calculated later
+    time: team2CompletionSeconds,
     isWinner: false
   };
 

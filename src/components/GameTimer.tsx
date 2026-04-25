@@ -1,19 +1,34 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, forwardRef, useImperativeHandle } from "react";
 import { Text } from "@mantine/core";
 import { usePostHog } from "posthog-js/react";
 
-interface GameTimerProps {
+export interface GameTimerProps {
   endTime: number;
   onExpire?: () => void;
 }
 
-export default function GameTimer({ endTime, onExpire }: GameTimerProps) {
+export interface GameTimerHandle {
+  getTimeElapsed: () => number;
+  getTimeRemainingDisplay: () => string;
+}
+
+const GameTimer = forwardRef(({ endTime, onExpire }: GameTimerProps, ref: React.Ref<GameTimerHandle>) => {
   const posthog = usePostHog();
   const [timeRemaining, setTimeRemaining] = useState<number>(() =>
     Math.max(0, endTime - Date.now())
   );
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const initialDurationRef = useRef<number>(Math.max(0, endTime - Date.now()));
 
+  useImperativeHandle(ref, () => ({
+    getTimeElapsed: () => Math.max(0, initialDurationRef.current - timeRemaining),
+    getTimeRemainingDisplay: () => {
+      const minutes = Math.floor(timeRemaining / 60000);
+      const seconds = Math.floor((timeRemaining % 60000) / 1000);
+      return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+    }
+  }))
+ 
   useEffect(() => {
     if (!endTime) return;
 
@@ -49,4 +64,6 @@ export default function GameTimer({ endTime, onExpire }: GameTimerProps) {
       {minutes}:{seconds.toString().padStart(2, "0")}
     </Text>
   );
-}
+});
+
+export default GameTimer;

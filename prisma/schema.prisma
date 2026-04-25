@@ -274,6 +274,8 @@ model GameResult {
   team1Code     String?
   team2Code     String?
   gameTests     GameTest[]
+  team1SubmittedAt   String?
+  team2SubmittedAt   String?
 
   winningTeam Team?    @relation("WinningTeamRelation", fields: [winningTeamId], references: [id])
   gameRoom    GameRoom @relation(fields: [gameRoomId], references: [id], onDelete: Cascade)
