@@ -1,11 +1,12 @@
 import { Modal, Text, Stack } from "@mantine/core";
-import { GameStatus } from "@prisma/client";
+import { GameStatus, Role } from "@prisma/client";
 
 interface RoleFlipPopupProps {
   gameState: GameStatus;
+  role: Role;
 }
 
-export default function RoleFlipPopup({ gameState }: RoleFlipPopupProps) {
+export default function RoleFlipPopup({ gameState, role }: RoleFlipPopupProps) {
   return (
     <Modal
       opened={gameState === GameStatus.FLIPPING}
@@ -19,7 +20,7 @@ export default function RoleFlipPopup({ gameState }: RoleFlipPopupProps) {
     >
       <Stack align="center" py="md" gap="xs">
         <Text size="xl" fw={600}>Roles flipping!</Text>
-        <Text size="sm" c="dimmed">Ooh, switching things up...</Text>
+        <Text size="sm" c="dimmed">You are going to be {role === Role.CODER ? "🧪 Tester" : "⌨ Coder" }</Text>
       </Stack>
     </Modal>
   );
