@@ -8,7 +8,7 @@ import { usePostHog } from 'posthog-js/react';
 import { Panel, Group as PanelGroup, Separator as PanelResizeHandle } from 'react-resizable-panels';
 
 import ChatBox from '@/components/ChatBox';
-import GameTimer from '@/components/GameTimer';
+import GameTimer, { GameTimerHandle } from '@/components/GameTimer';
 import TeamSelect from "@/components/TeamSelect";
 import { TeamCount } from "@/components/TeamSelect";
 import type { ActiveProblem } from "@/components/ProblemBox";
@@ -96,6 +96,8 @@ function PlayGameRoom() {
 
   const [runningAllTests, setRunningAllTests] = useState<boolean>(false);
 
+  const gameTimerRef = useRef<GameTimerHandle>(null);
+
   // Context <3
   const testCaseCtx = useTestCases();
   const gameStateCtx = useGameState();
@@ -118,6 +120,8 @@ function PlayGameRoom() {
     setIsWaitingForOtherTeam(true);
     const indexes = Array.from(
       { length: testCaseCtx.cases.length }, (_, i) => i);
+    const submitTime = new Date().toISOString();
+    const submitTimer = gameTimerRef.current?.getTimeRemainingDisplay() ?? "0:00";
 
     const codeToSubmit = gameStateCtx.code || liveCode || "";
 
@@ -127,6 +131,8 @@ function PlayGameRoom() {
       codeToSubmit,
       teamSelected,
       gameId,
+      submitTime,
+      submitTimer,
     });
 
     socket.emit("submitCode", {
@@ -137,6 +143,8 @@ function PlayGameRoom() {
       teamId: teamSelected,
       testCases: testCaseCtx.cases,
       runIDs: indexes,
+      submitTime,
+      submitTimer,
     });
   }, [socket, gameType, teamSelected, gameId, gameStateCtx, testCaseCtx.cases, liveCode]);
 
@@ -385,6 +393,8 @@ function PlayGameRoom() {
       { length: testCaseCtx.cases.length },
       (_, i) => i,
     );
+    const submitTime = new Date().toISOString();
+    const submitTimer = gameTimerRef.current?.getTimeRemainingDisplay() ?? null;
 
     socket.emit("submitCode", {
       roomId: gameId,
@@ -394,6 +404,8 @@ function PlayGameRoom() {
       teamId: teamSelected,
       testCases: testCaseCtx.cases,
       runIDs: indexes,
+      submitTime,
+      submitTimer,
     });
   };
 
@@ -728,13 +740,14 @@ function PlayGameRoom() {
                 >
                   {(gameState === GameStatus.ACTIVE ||
                     gameState === GameStatus.FLIPPING) && (
-                      <Box mb="md" p="1rem" pb={isProblemVisible ? "md" : "1rem"}>
-                        <GameTimer
-                          endTime={endTime}
-                          onExpire={handleTimerExpire}
-                        />
-                      </Box>
-                    )}
+                    <Box mb="md" p="1rem" pb={isProblemVisible ? "md" : "1rem"}>
+                      <GameTimer
+                        endTime={endTime}
+                        onExpire={handleTimerExpire}
+                        ref={gameTimerRef}
+                      />
+                    </Box>
+                  )}
                   {isProblemVisible ? (
                     <Box
                       style={{
