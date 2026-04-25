@@ -18,7 +18,7 @@ terraform {
 }
 
 provider "google" { # we use this generated terraform key for auth. generate service account and save key as needed
-  credentials = file("/home/juli4fasick/terraform-key.json")
+  // credentials = file("/home/juli4fasick/terraform-key.json")
   project     = var.project_id
   region      = var.region
 }
