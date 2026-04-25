@@ -8,7 +8,6 @@ export interface GameTimerProps {
 }
 
 export interface GameTimerHandle {
-  getTimeElapsed: () => number;
   getTimeRemainingDisplay: () => string;
 }
 
@@ -18,10 +17,8 @@ const GameTimer = forwardRef(({ endTime, onExpire }: GameTimerProps, ref: React.
     Math.max(0, endTime - Date.now())
   );
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const initialDurationRef = useRef<number>(Math.max(0, endTime - Date.now()));
 
   useImperativeHandle(ref, () => ({
-    getTimeElapsed: () => Math.max(0, initialDurationRef.current - timeRemaining),
     getTimeRemainingDisplay: () => {
       const minutes = Math.floor(timeRemaining / 60000);
       const seconds = Math.floor((timeRemaining % 60000) / 1000);
