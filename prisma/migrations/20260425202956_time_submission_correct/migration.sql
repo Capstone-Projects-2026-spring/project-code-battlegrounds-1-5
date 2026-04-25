@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "GameResult" ALTER COLUMN "team1SubmittedAt" SET DATA TYPE TEXT,
+ALTER COLUMN "team2SubmittedAt" SET DATA TYPE TEXT;

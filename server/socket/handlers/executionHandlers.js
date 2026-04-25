@@ -22,7 +22,31 @@ const submitCodeSchema = z.object({
     teamId: z.string().optional(),
     testCases: z.array(z.any()).optional(),
     runIDs: z.array(z.any()).optional(),
+    submitTime: z.union([z.string(), z.number(), z.date()]).nullable().optional(),
+    submitTimer: z.string().nullable().optional(),
 });
+
+function toSubmissionTimestamp(submitTime) {
+    if (submitTime instanceof Date && !Number.isNaN(submitTime.getTime())) {
+        return submitTime.toISOString();
+    }
+
+    if (typeof submitTime === "number" && Number.isFinite(submitTime)) {
+        const parsedFromNumber = new Date(submitTime);
+        if (!Number.isNaN(parsedFromNumber.getTime())) {
+            return parsedFromNumber.toISOString();
+        }
+    }
+
+    if (typeof submitTime === "string") {
+        const parsedFromString = new Date(submitTime);
+        if (!Number.isNaN(parsedFromString.getTime())) {
+            return parsedFromString.toISOString();
+        }
+    }
+
+    return new Date().toISOString();
+}
 
 /**
  * Executes code against test cases and persists results to database
@@ -154,12 +178,14 @@ function registerExecutionHandlers(io, socket, gameService) {
             socket.emit('error', { message: 'Invalid payload for submitCode.' });
             return;
         }
-        const { roomId, code, type, team, teamId, testCases, runIDs } = payload;
+        const { roomId, code, type, team, teamId, testCases, runIDs, submitTime, submitTimer } = payload;
+        const submissionTimestamp = toSubmissionTimestamp(submitTime);
+        const submissionTimer = typeof submitTimer === "string" && submitTimer.trim() ? submitTimer.trim() : submissionTimestamp;
         console.log(`Submitting code for Room ${roomId}`);
 
         if (!roomId) return;
 
-        console.log('submitCode received for roomId:', roomId, 'with code length:', code?.length, 'and type:', type);
+        console.log('submitCode received for roomId:', roomId, 'with code length:', code?.length, 'and type:', type, 'at time:', submitTime, 'timer:', submitTimer);
 
         if (type === GameType.TWOPLAYER) {
             console.log('verify its a twoplayer game');
@@ -194,7 +220,10 @@ function registerExecutionHandlers(io, socket, gameService) {
                 // Save code to DB
                 await prisma.gameResult.update({
                     where: { id: gameResult.id },
-                    data: { team1Code: code }
+                    data: {
+                        team1Code: code,
+                        team1SubmittedAt: submissionTimer
+                    }
                 });
                 console.log('code submitted for two-player game');
 
@@ -298,7 +327,9 @@ function registerExecutionHandlers(io, socket, gameService) {
                 await prisma.gameResult.update({
                     where: { id: gameResult.id },
                     data: {
-                        ...(team === "team1" ? { team1Code: code } : { team2Code: code })
+                        ...(team === "team1"
+                            ? { team1Code: code, team1SubmittedAt: submissionTimer }
+                            : { team2Code: code, team2SubmittedAt: submissionTimer })
                     }
                 });
                 console.log(`code submitted for four-player game by ${team}`);
