@@ -268,14 +268,14 @@ model GameTest {
 }
 
 model GameResult {
-  id            String  @id @default(uuid())
-  gameRoomId    String  @unique
-  winningTeamId String? @unique
-  team1Code     String?
-  team2Code     String?
-  gameTests     GameTest[]
+  id                String  @id @default(uuid())
+  gameRoomId        String  @unique
+  winningTeamId     String? @unique
+  team1Code         String?
+  team2Code         String?
   team1SubmittedAt   String?
   team2SubmittedAt   String?
+  gameTests         GameTest[]
 
   winningTeam Team?    @relation("WinningTeamRelation", fields: [winningTeamId], references: [id])
   gameRoom    GameRoom @relation(fields: [gameRoomId], references: [id], onDelete: Cascade)
