@@ -244,7 +244,7 @@ function PlayGameRoom() {
     });
 
     console.log("Syncing default code");
-    socket.emit("codeChange", {teamId: teamSelected, code: liveCode});
+    socket.emit("codeChange", { teamId: teamSelected, code: liveCode });
   }, [socket, teamSelected]);
 
   useEffect(() => {
@@ -517,10 +517,10 @@ function PlayGameRoom() {
       prev.map((parameter) =>
         parameter.isOutputParameter
           ? {
-              ...parameter,
-              type,
-              value: null,
-            }
+            ...parameter,
+            type,
+            value: null,
+          }
           : parameter,
       ),
     );
@@ -618,7 +618,7 @@ function PlayGameRoom() {
       {/* Waiting Modal */}
       <Modal
         opened={isWaitingForOtherTeam}
-        onClose={() => {}}
+        onClose={() => { }}
         centered
         withCloseButton={false}
         closeOnEscape={false}
@@ -637,35 +637,36 @@ function PlayGameRoom() {
       {/* Spectator view switcher buttons */}
       {/* spectator view bug for 4PLAYER (Teams ordered wrong?) */}
       {isSpectator && (
-        <Box
+        <Group
           data-testid="spectating-box"
-          style={{ position: "absolute", top: 12, left: 12, zIndex: 20 }}
+          gap="xs"
+          style={{ position: "absolute", top: 12, right: 12, zIndex: 20 }}
         >
           {teams.map((team, i) => (
-            <Group key={team.teamId} gap="xs">
+            <>
               <Button
+                key={`${team.teamId}-coder`}
                 data-testid={`team-${i + 1}-coder`}
                 size="sm"
                 onClick={() => {
                   setTeamSelected(team.teamId);
                   setSpectatorView(Role.CODER);
-                  console.log("Effective role: ", effectiveRole);
                 }}
               >
                 Team {i + 1} Coder
               </Button>
               <Button
+                key={`${team.teamId}-tester`}
                 data-testid={`team-${i + 1}-tester`}
                 size="sm"
                 onClick={() => {
                   setTeamSelected(team.teamId);
                   setSpectatorView(Role.TESTER);
-                  console.log("Effective role: ", effectiveRole);
                 }}
               >
                 Team {i + 1} Tester
               </Button>
-            </Group>
+            </>
           ))}
           <Button
             className={styles.spectatorButton}
@@ -678,7 +679,7 @@ function PlayGameRoom() {
           >
             Exit View
           </Button>
-        </Box>
+        </Group>
       )}
 
       {/* Spectator waiting message */}
@@ -725,13 +726,13 @@ function PlayGameRoom() {
                 >
                   {(gameState === GameStatus.ACTIVE ||
                     gameState === GameStatus.FLIPPING) && (
-                    <Box mb="md" p="1rem" pb={isProblemVisible ? "md" : "1rem"}>
-                      <GameTimer
-                        endTime={endTime}
-                        onExpire={handleTimerExpire}
-                      />
-                    </Box>
-                  )}
+                      <Box mb="md" p="1rem" pb={isProblemVisible ? "md" : "1rem"}>
+                        <GameTimer
+                          endTime={endTime}
+                          onExpire={handleTimerExpire}
+                        />
+                      </Box>
+                    )}
                   {isProblemVisible ? (
                     <Box
                       style={{
