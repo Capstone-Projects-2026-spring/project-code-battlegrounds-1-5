@@ -23,20 +23,6 @@ function logScoreBreakdown(
   );
 }
 
-function parseSubmissionTime(timeSubmitted: string | null | undefined): number | null {
-  if (!timeSubmitted) return null;
-
-  const trimmed = timeSubmitted.trim();
-  const match = trimmed.match(/^(\d+):([0-5]?\d)$/);
-  if (!match) return null;
-
-  const minutes = Number(match[1]);
-  const seconds = Number(match[2]);
-  if (Number.isNaN(minutes) || Number.isNaN(seconds)) return null;
-
-  return minutes * 60 + seconds;
-}
-
 function calculateTimeScore(
   timeLeftSeconds: number | null
 ): number {

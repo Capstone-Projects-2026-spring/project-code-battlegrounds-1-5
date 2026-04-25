@@ -153,8 +153,6 @@ export function Results() {
   const problem = gameResults?.problem ?? null;
   const gameType = (gameResults?.gameType as GameType) ?? GameType.FOURPLAYER;
   const userTeamNumber = gameResults?.userTeamNumber ?? 1;
-  const team1SubmittedAt = gameResults?.team1SubmittedAt ?? null;
-  const team2SubmittedAt = gameResults?.team2SubmittedAt ?? null;
   const team1CompletionSeconds = deriveCompletionSeconds(gameResults?.team1TimeLeftSeconds);
   const team2CompletionSeconds = deriveCompletionSeconds(gameResults?.team2TimeLeftSeconds);
   const analysisProps = gameResults?.team1Code || gameResults?.team2Code
@@ -273,7 +271,7 @@ export function Results() {
   const userTeamScore = team1Score;  // team1Score is always yourScore from calculateScorePair
   const animatedScore = useCounter(userTeamScore, 2000, 200);
   const animatedTests = useCounter(areTestResultsLoading ? 0 : testsPassedForMetric, 1500, 400);
-  const animatedTime = useCounter(winner.time, 1800, 600);
+  const animatedTime = useCounter(primaryTeam.time, 1800, 600);
 
   // Determine if user's team won
   const userTeamWon = !isTie && updatedPrimaryTeam.score > (updatedSecondaryTeam?.score ?? 0);
