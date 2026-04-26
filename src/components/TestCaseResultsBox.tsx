@@ -18,6 +18,16 @@ interface TestCase {
   expected: ParameterType[];
 }
 
+type ScoredCase = {
+  id: string;
+  input: ParameterType[];
+  expected: ParameterType[];
+  yourResult: unknown;
+  otherTeamResult: unknown;
+  yourError: string | null;
+  otherTeamError: string | null;
+};
+
 interface TestCaseResultsBoxProps {
   tests?: Array<{ id: string; input: unknown; expected: unknown }>;
   team1Results?: unknown[];
@@ -108,99 +118,115 @@ function extractAndCompare(actual: unknown, expected: ParameterType[]): boolean 
   }
 }
 
+function groupScoredCases(
+  convertedTests: TestCase[],
+  userTeamNumber: 1 | 2,
+  team1TestResults: unknown[],
+  team2TestResults: unknown[],
+  team1ErrorsArray: (string | null)[],
+  team2ErrorsArray: (string | null)[]
+): ScoredCase[] {
+  if (!convertedTests.length) return [];
+
+  const keyForInput = (input: ParameterType[]) => JSON.stringify(input);
+  const grouped = new Map<string, ScoredCase>();
+  const yourResults = userTeamNumber === 2 ? team2TestResults : team1TestResults;
+  const otherTeamResults = userTeamNumber === 2 ? team1TestResults : team2TestResults;
+  const yourErrors = userTeamNumber === 2 ? team2ErrorsArray : team1ErrorsArray;
+  const otherTeamErrors = userTeamNumber === 2 ? team1ErrorsArray : team2ErrorsArray;
+
+  convertedTests.forEach((element, index) => {
+    const key = keyForInput(element.input);
+    const existing = grouped.get(key);
+    const yourResult = yourResults?.[index];
+    const otherTeamResult = otherTeamResults?.[index];
+    const yourError = yourErrors?.[index] ?? null;
+    const otherTeamError = otherTeamErrors?.[index] ?? null;
+
+    if (!existing) {
+      grouped.set(key, {
+        id: element.id,
+        input: element.input,
+        expected: element.expected,
+        yourResult,
+        otherTeamResult,
+        yourError,
+        otherTeamError,
+      });
+      return;
+    }
+
+    if (existing.yourResult === undefined && yourResult !== undefined) {
+      existing.yourResult = yourResult;
+    }
+    if (existing.otherTeamResult === undefined && otherTeamResult !== undefined) {
+      existing.otherTeamResult = otherTeamResult;
+    }
+    if (!existing.yourError && yourError) {
+      existing.yourError = yourError;
+    }
+    if (!existing.otherTeamError && otherTeamError) {
+      existing.otherTeamError = otherTeamError;
+    }
+  });
+
+  return Array.from(grouped.values());
+}
+
 export default function TestCaseResultsBox({ tests, team1Results, team2Results, team1Errors, team2Errors, team1GameMadeTests, team2GameMadeTests, showOtherTeamColumn = true, gameType = "FOURPLAYER", userTeamNumber = 1, onSummaryChange }: TestCaseResultsBoxProps) {
   // Convert and validate test cases from API
   const convertedTests = useMemo(() => convertTestCases(tests), [tests]);
   const [activeTab, setActiveTab] = useState<string | null>("scored");
   const isCoOp = gameType === "TWOPLAYER" || gameType === "COOP";
 
-  const team1TestResults = useMemo(() => team1Results ?? [], [team1Results]);
-  const team2TestResults = useMemo(() => team2Results ?? [], [team2Results]);
-  const team1ErrorsArray = useMemo(() => team1Errors ?? [], [team1Errors]);
-  const team2ErrorsArray = useMemo(() => team2Errors ?? [], [team2Errors]);
   const team1GameTests = useMemo(() => team1GameMadeTests ?? [], [team1GameMadeTests]);
   const team2GameTests = useMemo(() => team2GameMadeTests ?? [], [team2GameMadeTests]);
   const yourGameTests = userTeamNumber === 2 ? team2GameTests : team1GameTests;
   const otherTeamGameTests = userTeamNumber === 2 ? team1GameTests : team2GameTests;
 
-  const groupedScoredCases = useMemo(() => {
-    if (!convertedTests.length) return [];
-
-    type GroupedCase = {
-      input: ParameterType[];
-      expected: ParameterType[];
-      yourResult: unknown;
-      otherTeamResult: unknown;
-      yourError: string | null;
-      otherTeamError: string | null;
-    };
-
-    const keyForInput = (input: ParameterType[]) => JSON.stringify(input);
-    const grouped = new Map<string, GroupedCase>();
-    const yourResults = userTeamNumber === 2 ? team2TestResults : team1TestResults;
-    const otherTeamResults = userTeamNumber === 2 ? team1TestResults : team2TestResults;
-    const yourErrors = userTeamNumber === 2 ? team2ErrorsArray : team1ErrorsArray;
-    const otherTeamErrors = userTeamNumber === 2 ? team1ErrorsArray : team2ErrorsArray;
-
-    convertedTests.forEach((element, index) => {
-      const key = keyForInput(element.input);
-      const existing = grouped.get(key);
-      const yourResult = yourResults?.[index];
-      const otherTeamResult = otherTeamResults?.[index];
-      const yourError = yourErrors?.[index] ?? null;
-      const otherTeamError = otherTeamErrors?.[index] ?? null;
-
-      if (!existing) {
-        grouped.set(key, {
-          input: element.input,
-          expected: element.expected,
-          yourResult,
-          otherTeamResult,
-          yourError,
-          otherTeamError,
-        });
-        return;
-      }
-
-      if (existing.yourResult === undefined && yourResult !== undefined) {
-        existing.yourResult = yourResult;
-      }
-      if (existing.otherTeamResult === undefined && otherTeamResult !== undefined) {
-        existing.otherTeamResult = otherTeamResult;
-      }
-      if (!existing.yourError && yourError) {
-        existing.yourError = yourError;
-      }
-      if (!existing.otherTeamError && otherTeamError) {
-        existing.otherTeamError = otherTeamError;
-      }
-    });
-
-    return Array.from(grouped.values());
-  }, [convertedTests, team1ErrorsArray, team1TestResults, team2ErrorsArray, team2TestResults, userTeamNumber]);
+  const scoredCases = useMemo(
+    () =>
+      groupScoredCases(
+        convertedTests,
+        userTeamNumber,
+        team1Results ?? [],
+        team2Results ?? [],
+        team1Errors ?? [],
+        team2Errors ?? []
+      ),
+    [
+      convertedTests,
+      team1Errors,
+      team1Results,
+      team2Errors,
+      team2Results,
+      userTeamNumber,
+    ]
+  );
 
   // Notify parent of summary when tests are available
   useEffect(() => {
-    if (!onSummaryChange || groupedScoredCases.length === 0) return;
+  if (!onSummaryChange || scoredCases.length === 0) return;
 
-    const team1PassedCount = groupedScoredCases.filter((testCase) => {
-      return testCase.yourResult !== undefined && extractAndCompare(testCase.yourResult, testCase.expected);
-    }).length;
-    const team2PassedCount = groupedScoredCases.filter((testCase) => {
-      return testCase.otherTeamResult !== undefined && extractAndCompare(testCase.otherTeamResult, testCase.expected);
-    }).length;
+  const yourPassedCount = scoredCases.filter((testCase) =>
+    testCase.yourResult !== undefined &&
+    extractAndCompare(testCase.yourResult, testCase.expected)
+  ).length;
 
-    const yourGamePassedCount = yourGameTests.filter((test) => test.passed).length;
-    const yourGameTotal = yourGameTests.length;
+  const otherTeamPassedCount = scoredCases.filter((testCase) =>
+    testCase.otherTeamResult !== undefined &&
+    extractAndCompare(testCase.otherTeamResult, testCase.expected)
+  ).length;
 
-    // COOP mode includes your game-made tests in scoring analysis.
-    // FOURPLAYER/2v2 keeps game-made tests as visual-only reference.
-    onSummaryChange({
-      yourPassedCount: (userTeamNumber === 2 ? team2PassedCount : team1PassedCount) + (isCoOp ? yourGamePassedCount : 0),
-      otherTeamPassedCount: userTeamNumber === 2 ? team1PassedCount : team2PassedCount,
-      totalTests: groupedScoredCases.length + (isCoOp ? yourGameTotal : 0),
-    });
-  }, [groupedScoredCases, isCoOp, onSummaryChange, userTeamNumber, yourGameTests]);
+  const yourGamePassedCount = yourGameTests.filter((test) => test.passed).length;
+  const yourGameTotal = yourGameTests.length;
+
+  onSummaryChange({
+    yourPassedCount: yourPassedCount + (isCoOp ? yourGamePassedCount : 0),
+    otherTeamPassedCount: otherTeamPassedCount,
+    totalTests: scoredCases.length + (isCoOp ? yourGameTotal : 0),
+  });
+}, [isCoOp, onSummaryChange, scoredCases, yourGameTests]);
 
 
   const formatValue = (value: ParameterType[] | unknown): string => {
@@ -234,61 +260,7 @@ export default function TestCaseResultsBox({ tests, team1Results, team2Results, 
   };
 
   const rows = useMemo(() => {
-    if (!convertedTests.length) return [];
-
-    type ScoredRow = {
-      id: string;
-      input: ParameterType[];
-      expected: ParameterType[];
-      yourResult: unknown;
-      otherTeamResult: unknown;
-      yourError: string | null;
-      otherTeamError: string | null;
-    };
-
-    const keyForInput = (input: ParameterType[]) => JSON.stringify(input);
-    const scoredRows = new Map<string, ScoredRow>();
-    const yourResults = userTeamNumber === 2 ? team2TestResults : team1TestResults;
-    const otherTeamResults = userTeamNumber === 2 ? team1TestResults : team2TestResults;
-    const yourErrors = userTeamNumber === 2 ? team2ErrorsArray : team1ErrorsArray;
-    const otherTeamErrors = userTeamNumber === 2 ? team1ErrorsArray : team2ErrorsArray;
-
-    convertedTests.forEach((element, index) => {
-      const key = keyForInput(element.input);
-      const existing = scoredRows.get(key);
-      const yourResult = yourResults?.[index];
-      const otherTeamResult = otherTeamResults?.[index];
-      const yourError = yourErrors?.[index] ?? null;
-      const otherTeamError = otherTeamErrors?.[index] ?? null;
-
-      if (!existing) {
-        scoredRows.set(key, {
-          id: element.id,
-          input: element.input,
-          expected: element.expected,
-          yourResult,
-          otherTeamResult,
-          yourError,
-          otherTeamError,
-        });
-        return;
-      }
-
-      if (existing.yourResult === undefined && yourResult !== undefined) {
-        existing.yourResult = yourResult;
-      }
-      if (existing.otherTeamResult === undefined && otherTeamResult !== undefined) {
-        existing.otherTeamResult = otherTeamResult;
-      }
-      if (!existing.yourError && yourError) {
-        existing.yourError = yourError;
-      }
-      if (!existing.otherTeamError && otherTeamError) {
-        existing.otherTeamError = otherTeamError;
-      }
-    });
-
-    return Array.from(scoredRows.values()).map((row) => {
+    return scoredCases.map((row) => {
       const hasYourResult = row.yourResult !== undefined;
       const hasOtherTeamResult = row.otherTeamResult !== undefined;
       const hasYourError = Boolean(row.yourError && row.yourError.length > 0);
@@ -376,7 +348,7 @@ export default function TestCaseResultsBox({ tests, team1Results, team2Results, 
         </Table.Tr>
       );
     });
-  }, [convertedTests, showOtherTeamColumn, team1ErrorsArray, team1TestResults, team2ErrorsArray, team2TestResults, userTeamNumber]);
+  }, [scoredCases, showOtherTeamColumn]);
 
   const renderStatusCell = (passed: boolean, hasError: boolean, value: unknown, error: string | null) => {
     return (
