@@ -15,7 +15,7 @@ function initSocket(httpServer, redis) {
             credentials: true
         },
         pingInterval: 5_000,
-        pingTimeout: 120_000
+        pingTimeout: 30 * 60 * 1000
     });
 
     // Attach Redis adapter for cluster support
