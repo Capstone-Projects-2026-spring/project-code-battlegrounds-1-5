@@ -510,8 +510,8 @@ export default function LiveDemoSection() {
 
                     <Box ref={chatContainerRef} className={classes.chatStream}>
                       <Stack gap={6} className={classes.chatStack}>
-                        {chatFeed.map((message) => (
-                          <Box key={message.id} className={`${classes.chatBubble} ${classes.chatBubbleEnter}`}>
+                        {chatFeed.map((message, idx) => (
+                          <Box key={idx} className={`${classes.chatBubble} ${classes.chatBubbleEnter}`}>
                             <Text size="xs" fw={700} className={classes.chatAuthor}>
                               {message.name} ({message.role})
                             </Text>
