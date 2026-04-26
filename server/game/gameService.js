@@ -4,7 +4,7 @@ const GAME_DURATION_MS = 5 * 60 * 1000; // 5 minutes in milliseconds
 const SECONDS_BEFORE_ROLE_SWAP_WARNING = 60 * 1000; // 60 seconds in milliseconds
 
 
-function createGameService(stateRedis) {
+function createGameService(stateRedis, io) {
   return {
     GAME_DURATION_MS,
 
@@ -12,7 +12,7 @@ function createGameService(stateRedis) {
       await stateRedis.set(`socket:${userId}`, socketId); // link userId
       console.log(`registered: ${userId}`);
     },
-    
+
     async startGameIfNeeded(gameId) {
       const key = `game:${gameId}:expires`;
       // try to set key only if it doesnt exist (to avoid potential race condition)
@@ -105,7 +105,7 @@ function createGameService(stateRedis) {
     async getSocketId(userId) {
       return stateRedis.get(`socket:${userId}`);
     },
-    
+
     async saveGameData(key, value) {
       return stateRedis.set(key, value);
     },
@@ -118,6 +118,23 @@ function createGameService(stateRedis) {
     async deleteGameData(key) {
       return stateRedis.del(key);
     },
+
+    async removePlayersFromSockets(gameRoom) {
+      for (const team of gameRoom.teams) {
+        for (const player of team.players) {
+          console.log('Looking up player:', player.userId);
+          const socketId = await stateRedis.get(`socket:${player.userId}`);
+          console.log('Found socketId:', socketId);
+          const socket = io.sockets.sockets.get(socketId);
+          console.log('Found socket:', socket?.id);
+          if (socket) {
+            await socket.leave(gameRoom.id);
+            await socket.leave(team.id);
+            console.log(`Socket: ${socket.id} left ${gameRoom.id} and ${team.id}`);
+          }
+        }
+      }
+    }
   };
 }
 

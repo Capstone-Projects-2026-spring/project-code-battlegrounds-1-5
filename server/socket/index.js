@@ -20,7 +20,7 @@ function initSocket(httpServer, redis) {
     io.adapter(redis.adapter);
 
     // Create services using Redis state client
-    const gameService = createGameService(redis.stateRedis);
+    const gameService = createGameService(redis.stateRedis, io);
     const matchmakingService = createMatchmakingService(redis.stateRedis, io);
     const inviteService = createInviteService(redis.stateRedis);
 

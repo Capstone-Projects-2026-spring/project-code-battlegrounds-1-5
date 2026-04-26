@@ -178,7 +178,10 @@ function registerExecutionHandlers(io, socket, gameService) {
                             select: { slug: true }
                         },
                         teams: {
-                            select: { id: true }
+                            select: { 
+                                id: true,
+                                players: true 
+                            }
                         }
                     }
                 });
@@ -245,6 +248,7 @@ function registerExecutionHandlers(io, socket, gameService) {
                 await gameService.cleanupGameTimers(roomId);
                 deleteVm(roomId);
                 io.to(roomId).emit('gameEnded');
+                await gameService.removePlayersFromSockets(gameRoom);
             } catch (error) {
                 console.error("Error in TWOPLAYER execution:", error);
                 socket.emit('error', { message: 'Code execution failed! Try again in a bit...' });
@@ -416,13 +420,15 @@ function registerExecutionHandlers(io, socket, gameService) {
                 // Cleanup happens after both teams submit or on error
                 if (Object.keys(await gameService.getGameData(`game:${roomId}:submissions`) || {}).length === 2) {
                     await gameService.cleanupGameTimers(roomId);
-                    await prisma.gameRoom.update({
+                    const gameRoom = await prisma.gameRoom.update({
                         where: { id: roomId },
-                        data: { status: 'FINISHED' }
+                        data: { status: 'FINISHED' },
+                        select: { teams: { select: { id: true, players: true } } }
                     });
                     deleteVm(roomId);
                     await gameService.deleteGameData(`game:${roomId}:submissions`);
                     io.to(roomId).emit('gameEnded');
+                    await gameService.removePlayersFromSockets(gameRoom);
                 }
             } catch (error) {
                 console.error('[FOURPLAYER] Error in submission:', error);
