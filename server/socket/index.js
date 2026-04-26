@@ -13,7 +13,9 @@ function initSocket(httpServer, redis) {
             origin: process.env.BETTER_AUTH_URL,
             methods: ["GET", "POST"],
             credentials: true
-        }
+        },
+        pingInterval: 5_000,
+        pingTimeout: 120_000
     });
 
     // Attach Redis adapter for cluster support
