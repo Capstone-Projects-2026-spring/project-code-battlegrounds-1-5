@@ -234,7 +234,7 @@ function PlayGameRoom() {
       socket.off("error", errorHandler);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gameId, session?.user.id]);
+  }, [gameId, session?.user.id, socket, router.isReady]);
 
   useEffect(() => {
     // Runs after team gets selected - join rooms first, then set up room-specific listeners
