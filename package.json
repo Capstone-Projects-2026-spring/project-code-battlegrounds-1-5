@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "tsx server/index.ts",
+    "dev": "bun server/index.ts",
     "build": "next build",
-    "start": "NODE_ENV=production tsx server/index.ts",
+    "start": "NODE_ENV=production bun server/index.ts",
     "lint": "next lint",
     "server:typecheck": "tsc -p server/tsconfig.json",
     "prisma:reset": "prisma migrate reset",
