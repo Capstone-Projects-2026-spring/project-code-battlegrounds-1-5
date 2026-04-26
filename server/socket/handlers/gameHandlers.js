@@ -133,7 +133,8 @@ function registerGameHandlers(io, socket, gameService) {
         }
 
         try {
-            const latestCode = await getOrCreateTeamCode(gameService, teamId);
+            // const latestCode = await getOrCreateTeamCode(gameService, teamId);
+            const latestCode = await gameService.getLatestCode(teamId);
             socket.emit('receiveCodeUpdate', latestCode);
         } catch (e) {
             console.error('Error fetching code from Redis', e);

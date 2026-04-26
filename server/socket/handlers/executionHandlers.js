@@ -1,7 +1,7 @@
 const { z } = require("zod");
 const { GameType } = require("@prisma/client");
 const { getPrisma } = require("../../prisma");
-const { validate, getOrCreateTeamTestCases } = require("./utils");
+const { validate } = require("./utils");
 
 const prisma = getPrisma();
 
@@ -27,7 +27,8 @@ function registerExecutionHandlers(io, socket, gameService) {
 
         let testCases;
         try {
-            testCases = await getOrCreateTeamTestCases(gameService, teamId);
+            // testCases = await getOrCreateTeamTestCases(gameService, teamId);
+            testCases = await gameService.getTestCases(teamId);
         } catch (e) {
             console.error('Error preparing test cases for submitCode', e);
             socket.emit('error', { e, message: 'Failed to prepare test cases for submission.' });

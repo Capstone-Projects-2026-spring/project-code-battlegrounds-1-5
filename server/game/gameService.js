@@ -3,6 +3,27 @@
 const GAME_DURATION_MS = 5 * 60 * 1000; // 5 minutes in milliseconds
 const SECONDS_BEFORE_ROLE_SWAP_WARNING = 60 * 1000; // 60 seconds in milliseconds
 
+function getDefaultTestCases() {
+  return [
+    {
+      id: 0,
+      functionInput: [
+        { name: "a", type: "number", value: "2" },
+        { name: "b", type: "number", value: "3" },
+      ],
+      expectedOutput: {
+        name: "result",
+        type: "number",
+        value: "5",
+        isOutputParameter: true,
+      },
+    },
+  ];
+}
+
+function getDefaultStarterCode() {
+  return "function solution(a, b) { \n\treturn a + b;\n}";
+}
 
 function createGameService(stateRedis) {
   return {
@@ -11,7 +32,7 @@ function createGameService(stateRedis) {
     async registerSocketToUser(userId, socketId) {
       await stateRedis.set(`socket:${userId}`, socketId); // link userId
     },
-    
+
     async startGameIfNeeded(gameId) {
       const key = `game:${gameId}:expires`;
       // try to set key only if it doesnt exist (to avoid potential race condition)
@@ -19,12 +40,12 @@ function createGameService(stateRedis) {
       if (started) {
         const flipRatio = Math.random() * (0.7 - 0.3) + 0.3; // random between 0.3 and 0.7
         const flipped_duration = Math.floor(GAME_DURATION_MS * flipRatio);
-        const flippedKey = `game:${gameId}:roleswap`
-        const warningKey = `game:${gameId}:roleswap:warning`
+        const flippedKey = `game:${gameId}:roleswap`;
+        const warningKey = `game:${gameId}:roleswap:warning`;
         console.log("Flipped key being set");
         await stateRedis.set(flippedKey, '1', 'PX', flipped_duration, 'NX'); // set flip timer at the same time
         const warning_trigger = Math.max(0, flipped_duration - SECONDS_BEFORE_ROLE_SWAP_WARNING); // set the warning popup time
-        console.log("Warning key being set")
+        console.log("Warning key being set");
         await stateRedis.set(warningKey, '1', 'PX', warning_trigger, 'NX');
         await stateRedis.sadd('activeGames', gameId);
         console.log(
@@ -47,7 +68,14 @@ function createGameService(stateRedis) {
     },
 
     async getLatestCode(teamId) {
-      return stateRedis.get(`game:${teamId}:code`);
+      const existing = await stateRedis.get(`game:${teamId}:code`);
+      if(typeof existing === "string" && existing.length > 0) {
+        return existing;
+      }
+
+      const defaults = getDefaultStarterCode();
+      await this.saveLatestCode(teamId, defaults);
+      return defaults;
     },
 
     async saveLatestCode(teamId, code) {
@@ -69,8 +97,14 @@ function createGameService(stateRedis) {
     },
 
     async getTestCases(teamId) {
-      const data = await stateRedis.get(`testcases:${teamId}`);
-      return data ? JSON.parse(data) : null;
+      const existing = await stateRedis.get(`testcases:${teamId}`);
+      if (Array.isArray(existing) && existing.length > 0) {
+        return existing;
+      }
+
+      const defaults = getDefaultTestCases();
+      await this.saveTestCases(teamId, defaults);
+      return defaults;
     },
 
     async getActiveGames() {
@@ -104,7 +138,7 @@ function createGameService(stateRedis) {
     async getSocketId(userId) {
       return stateRedis.get(`socket:${userId}`);
     },
-    
+
     async saveGameData(key, value) {
       return stateRedis.set(key, value);
     },
@@ -117,6 +151,8 @@ function createGameService(stateRedis) {
     async deleteGameData(key) {
       return stateRedis.del(key);
     },
+
+
   };
 }
 
