@@ -10,7 +10,7 @@ function createGameService(stateRedis, io) {
 
     async registerSocketToUser(userId, socketId) {
       await stateRedis.set(`socket:${userId}`, socketId); // link userId
-      console.log(`registered: ${userId}`);
+      console.log(`REGISTERED TO REDIS: ${userId}`);
     },
 
     async startGameIfNeeded(gameId) {

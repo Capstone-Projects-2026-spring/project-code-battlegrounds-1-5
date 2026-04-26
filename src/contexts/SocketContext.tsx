@@ -30,8 +30,10 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
 
     const socketInstance = io({ autoConnect: true });
 
-    socketInstance.emit("register", { userId: session.user.id });
-
+    socketInstance.on("connect", () => {
+      socketInstance.emit("register", { userId: session.user.id });
+    });
+    
     socketInstance.on("error", ({ message }: {message: string}) => {
       showErrorNotification(message);
     });
