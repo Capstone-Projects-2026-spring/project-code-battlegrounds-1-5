@@ -246,6 +246,10 @@ function registerExecutionHandlers(io, socket, gameService) {
                 });
                 console.log('[TWOPLAYER] Execution completed:', executionResult);
                 await gameService.cleanupGameTimers(roomId);
+                await prisma.gameRoom.update({
+                    where: { id: roomId },
+                    data: { status: GameStatus.FINISHED }
+                });
                 deleteVm(roomId);
                 io.to(roomId).emit('gameEnded');
                 await gameService.removePlayersFromSockets(gameRoom);
