@@ -6,10 +6,6 @@ export interface TestCase {
   id: string;
   input: unknown;
   expected: unknown;
-  team1Actual?: unknown;
-  team2Actual?: unknown;
-  team1Error?: string | null;
-  team2Error?: string | null;
 }
 
 export interface TeamGameMadeTestCase {
@@ -53,8 +49,6 @@ export interface TestsResponse {
   team2GameMadeTests: TeamGameMadeTestCase[];
 
   // Submission & Time Metrics
-  team1SubmittedAt: string | null;
-  team2SubmittedAt: string | null;
   team1TimeLeftSeconds: number | null;
   team2TimeLeftSeconds: number | null;
 }
@@ -97,10 +91,6 @@ function parseTimerDisplay(submittedAt: string | null | undefined): number | nul
 function calculateTimeLeftSeconds(submittedAt: string | null | undefined): number | null {
   const remainingSeconds = parseTimerDisplay(submittedAt);
   return remainingSeconds === null ? null : Math.max(0, remainingSeconds);
-}
-
-function formatSubmittedAt(submittedAt: string | null): string | null {
-  return submittedAt ?? null;
 }
 
 function mapTeamGameMadeTestCase(gameTest: {
@@ -152,7 +142,6 @@ export default async function handler(
             description: true,
             difficulty: true,
             topics: true,
-            slug: true,
           },
         },
         gameResult: {
@@ -235,21 +224,25 @@ export default async function handler(
         return (pair.team1?.type === "Hidden") || (pair.team2?.type === "Hidden");
       })
       .sort((a, b) => a - b);
-    const unifiedTestCases: TestCase[] = sortedPositions.map((position) => {
+    const hiddenScoringCases = sortedPositions.map((position) => {
       const testPair = testsByPosition.get(position)!;
       const team1Test = testPair.team1;
       const team2Test = testPair.team2;
 
       return {
-        id: team1Test?.id || team2Test?.id || `test-${position}`,
-        input: team1Test?.functionInput ?? team2Test?.functionInput,
-        expected: normalizeExpected(team1Test?.expectedOutput ?? team2Test?.expectedOutput),
+        testCase: {
+          id: team1Test?.id || team2Test?.id || `test-${position}`,
+          input: team1Test?.functionInput ?? team2Test?.functionInput,
+          expected: normalizeExpected(team1Test?.expectedOutput ?? team2Test?.expectedOutput),
+        } as TestCase,
         team1Actual: team1Test ? parseOutput(team1Test.actualOutput) : undefined,
         team2Actual: team2Test ? parseOutput(team2Test.actualOutput) : undefined,
         team1Error: team1Test?.stderr ?? null,
         team2Error: team2Test?.stderr ?? null,
       };
     });
+
+    const unifiedTestCases: TestCase[] = hiddenScoringCases.map((caseData) => caseData.testCase);
 
     // Game-made tests are shown separately from hidden scoring tests.
     const team1GameMadeTests = team1GameTests
@@ -281,10 +274,10 @@ export default async function handler(
     const team1AverageExecutionTime = calculateAverageTime(team1GameTests);
     const team2AverageExecutionTime = calculateAverageTime(team2GameTests);
 
-    const team1ActualOutputs = unifiedTestCases.map(tc => tc.team1Actual);
-    const team2ActualOutputs = unifiedTestCases.map(tc => tc.team2Actual);
-    const team1ErrorsArray = unifiedTestCases.map(tc => tc.team1Error ?? null);
-    const team2ErrorsArray = unifiedTestCases.map(tc => tc.team2Error ?? null);
+    const team1ActualOutputs = hiddenScoringCases.map((caseData) => caseData.team1Actual);
+    const team2ActualOutputs = hiddenScoringCases.map((caseData) => caseData.team2Actual);
+    const team1ErrorsArray = hiddenScoringCases.map((caseData) => caseData.team1Error);
+    const team2ErrorsArray = hiddenScoringCases.map((caseData) => caseData.team2Error);
 
     const team1PassedCount = team1GameTests.filter((gt) => gt.type === "Hidden" && gt.passed).length;
     const team2PassedCount = team2GameTests.filter((gt) => gt.type === "Hidden" && gt.passed).length;
@@ -324,8 +317,6 @@ export default async function handler(
       team2GameMadeTests,
 
       // Submission & Time Metrics
-      team1SubmittedAt: formatSubmittedAt(team1SubmittedAt),
-      team2SubmittedAt: formatSubmittedAt(team2SubmittedAt),
       team1TimeLeftSeconds: calculateTimeLeftSeconds(team1SubmittedAt),
       team2TimeLeftSeconds: calculateTimeLeftSeconds(team2SubmittedAt),
     });

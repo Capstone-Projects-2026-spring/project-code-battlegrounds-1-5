@@ -33,7 +33,6 @@ import TestCaseResultsBox, { type TestResultsSummary } from "@/components/TestCa
 import { calculateScorePair } from "@/util/scoring";
 import { useGameResults } from "@/hooks/useGameResults";
 
-// Mock data - replace with actual data from backend
 interface TeamResult {
   name: string;
   score: number;
@@ -201,7 +200,6 @@ export function Results() {
       )
     : [0, 0];
 
-  // Mock data - replace with actual fetched data
   const greenTeam: TeamResult = {
     name: "Green Hackers",
     score: team1Score,
@@ -220,13 +218,13 @@ export function Results() {
     isWinner: false
   };
 
-  const actualWinner = isCoOp
-    ? greenTeam
+  const winningTeamName = isCoOp
+    ? greenTeam.name
     : team1Score === team2Score
       ? null
       : team1Score > team2Score
-        ? greenTeam
-        : redTeam;
+        ? greenTeam.name
+        : redTeam.name;
 
   const primaryTeam = userTeamNumber === 1 ? greenTeam : redTeam;
   const secondaryTeam = isCoOp ? null : (userTeamNumber === 1 ? redTeam : greenTeam);
@@ -258,10 +256,6 @@ export function Results() {
       }
     : null;
 
-  // Determine winner based on actual score comparison
-  const winner = isCoOp
-    ? greenTeam
-    : actualWinner;
   const areTestResultsLoading = !gameResults;
   const userTeamTestsPassed = userTeamNumber === 1 ? greenTeam.testsPassed : redTeam.testsPassed;
   const userTeamTotalTests = userTeamNumber === 1 ? greenTeam.totalTests : redTeam.totalTests;
@@ -288,8 +282,13 @@ export function Results() {
   const animatedTests = useCounter(areTestResultsLoading ? 0 : testsPassedForMetric, 1500, 400);
   const animatedTime = useCounter(primaryTeam.time, 1800, 600);
 
-  // Determine if user's team won
-  const userTeamWon = isCoOp ? true : actualWinner !== null && ((userTeamNumber === 1 && actualWinner === greenTeam) || (userTeamNumber === 2 && actualWinner === redTeam));
+  // Determine if user's team won based on score values rather than object identity.
+  const userTeamWon = isCoOp
+    ? true
+    : !isTie && (
+      (userTeamNumber === 1 && team1Score > team2Score)
+      || (userTeamNumber === 2 && team2Score > team1Score)
+    );
 
   if (!session) return null;
 
@@ -332,7 +331,7 @@ export function Results() {
                 ? "made it out of the battleground!"
                 : isTie
                 ? "Both teams showcased equal skill!"
-                : <span><span className={styles.winnerTeamName}>{winner?.name}</span> dominated the battlefield!</span>
+                : <span><span className={styles.winnerTeamName}>{winningTeamName}</span> dominated the battlefield!</span>
               }
             </p>
           </Box>
