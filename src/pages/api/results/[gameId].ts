@@ -12,6 +12,15 @@ export interface TestCase {
   team2Error?: string | null;
 }
 
+export interface TeamGameMadeTestCase {
+  id: string;
+  input: unknown;
+  expected: unknown;
+  actual: unknown;
+  error: string | null;
+  passed: boolean;
+}
+
 
 export interface TestsResponse {
   // Problem & Game Details
@@ -34,10 +43,14 @@ export interface TestsResponse {
   team1PassedCount: number;
   team2PassedCount: number;
   totalTests: number;
+  team1TotalTests: number;
+  team2TotalTests: number;
   team1AverageExecutionTime: number | null;
   team2AverageExecutionTime: number | null;
   team1Errors: (string | null)[];
   team2Errors: (string | null)[];
+  team1GameMadeTests: TeamGameMadeTestCase[];
+  team2GameMadeTests: TeamGameMadeTestCase[];
 
   // Submission & Time Metrics
   team1SubmittedAt: string | null;
@@ -88,6 +101,24 @@ function calculateTimeLeftSeconds(submittedAt: string | null | undefined): numbe
 
 function formatSubmittedAt(submittedAt: string | null): string | null {
   return submittedAt ?? null;
+}
+
+function mapTeamGameMadeTestCase(gameTest: {
+  id: string;
+  functionInput: unknown;
+  expectedOutput: unknown;
+  actualOutput: unknown;
+  stderr: string | null;
+  passed: boolean | null;
+}): TeamGameMadeTestCase {
+  return {
+    id: gameTest.id,
+    input: gameTest.functionInput,
+    expected: normalizeExpected(gameTest.expectedOutput),
+    actual: parseOutput(gameTest.actualOutput),
+    error: gameTest.stderr ?? null,
+    passed: Boolean(gameTest.passed),
+  };
 }
 
 export default async function handler(
@@ -197,7 +228,7 @@ export default async function handler(
       testsByPosition.get(gt.position)!.team2 = gt;
     });
 
-    // Create unified test cases with both team results
+    // Create unified hidden test cases with both team results (these are grading/scoring tests)
     const sortedPositions = Array.from(testsByPosition.keys())
       .filter(position => {
         const pair = testsByPosition.get(position)!;
@@ -219,6 +250,17 @@ export default async function handler(
         team2Error: team2Test?.stderr ?? null,
       };
     });
+
+    // Game-made tests are shown separately from hidden scoring tests.
+    const team1GameMadeTests = team1GameTests
+      .filter((gt) => gt.type === "Game")
+      .sort((a, b) => a.position - b.position)
+      .map((gt) => mapTeamGameMadeTestCase(gt));
+
+    const team2GameMadeTests = team2GameTests
+      .filter((gt) => gt.type === "Game")
+      .sort((a, b) => a.position - b.position)
+      .map((gt) => mapTeamGameMadeTestCase(gt));
 
     // Calculate average execution times from GameTest records (only hidden tests)
     const calculateAverageTime = (
@@ -244,8 +286,10 @@ export default async function handler(
     const team1ErrorsArray = unifiedTestCases.map(tc => tc.team1Error ?? null);
     const team2ErrorsArray = unifiedTestCases.map(tc => tc.team2Error ?? null);
 
-    const team1PassedCount = team1GameTests.filter((gt) => gt.passed).length;
-    const team2PassedCount = team2GameTests.filter((gt) => gt.passed).length;
+    const team1PassedCount = team1GameTests.filter((gt) => gt.type === "Hidden" && gt.passed).length;
+    const team2PassedCount = team2GameTests.filter((gt) => gt.type === "Hidden" && gt.passed).length;
+    const team1TotalTests = team1GameTests.filter((gt) => gt.type === "Hidden").length;
+    const team2TotalTests = team2GameTests.filter((gt) => gt.type === "Hidden").length;
     const team1SubmittedAt: string | null = gameRoom.gameResult?.team1SubmittedAt ?? null;
     const team2SubmittedAt: string | null = gameRoom.gameResult?.team2SubmittedAt ?? null;
 
@@ -270,10 +314,14 @@ export default async function handler(
       team1PassedCount,
       team2PassedCount,
       totalTests: unifiedTestCases.length,
+      team1TotalTests,
+      team2TotalTests,
       team1AverageExecutionTime,
       team2AverageExecutionTime,
       team1Errors: team1ErrorsArray,
       team2Errors: team2ErrorsArray,
+      team1GameMadeTests,
+      team2GameMadeTests,
 
       // Submission & Time Metrics
       team1SubmittedAt: formatSubmittedAt(team1SubmittedAt),
