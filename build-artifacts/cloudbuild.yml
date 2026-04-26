@@ -1,31 +1,31 @@
 steps:
-    # build the orchestrator container
-  - name: gcr.io/cloud-builders/docker
-    args:
-      - build
-      - -f
-      - build-artifacts/Dockerfile.orchestrator
-      - -t
-      - "us-central1-docker.pkg.dev/code-battlegrounds/app/orchestrator:latest"
-      - .
-
-  # push orchestrator image
-  - name: gcr.io/cloud-builders/docker
-    args: ["push", "us-central1-docker.pkg.dev/code-battlegrounds/app/orchestrator:latest"]
-
-  # build the rootjail container image
-  - name: gcr.io/cloud-builders/docker
-    args:
-      - build
-      - -f
-      - build-artifacts/Dockerfile.executor-image
-      - -t
-      - "us-central1-docker.pkg.dev/code-battlegrounds/app/rootjail:latest"
-      - .
-
-  # push rootjail image
-  - name: gcr.io/cloud-builders/docker
-    args: ["push", "us-central1-docker.pkg.dev/code-battlegrounds/app/rootjail:latest"]
+#    # build the orchestrator container
+#  - name: gcr.io/cloud-builders/docker
+#    args:
+#      - build
+#      - -f
+#      - build-artifacts/Dockerfile.orchestrator
+#      - -t
+#      - "us-central1-docker.pkg.dev/code-battlegrounds/app/orchestrator:latest"
+#      - .
+#
+#  # push orchestrator image
+#  - name: gcr.io/cloud-builders/docker
+#    args: ["push", "us-central1-docker.pkg.dev/code-battlegrounds/app/orchestrator:latest"]
+#
+#  # build the rootjail container image
+#  - name: gcr.io/cloud-builders/docker
+#    args:
+#      - build
+#      - -f
+#      - build-artifacts/Dockerfile.executor-image
+#      - -t
+#      - "us-central1-docker.pkg.dev/code-battlegrounds/app/rootjail:latest"
+#      - .
+#
+#  # push rootjail image
+#  - name: gcr.io/cloud-builders/docker
+#    args: ["push", "us-central1-docker.pkg.dev/code-battlegrounds/app/rootjail:latest"]
 
   # this bit builds the full prod image
   - name: gcr.io/cloud-builders/docker
@@ -40,24 +40,24 @@ steps:
   # push the prod image
   - name: gcr.io/cloud-builders/docker
     args: ["push", "us-central1-docker.pkg.dev/code-battlegrounds/app/app:latest"]
-
-  # build the prisma deployment image
-  - name: gcr.io/cloud-builders/docker
-    args:
-      - build
-      - -f
-      - build-artifacts/Dockerfile.migrate
-      - -t
-      - "us-central1-docker.pkg.dev/code-battlegrounds/app/migrate:latest"
-      - .
-
-  # push deployment image
-  - name: gcr.io/cloud-builders/docker
-    args: ["push", "us-central1-docker.pkg.dev/code-battlegrounds/app/migrate:latest"]
+#
+#  # build the prisma deployment image
+#  - name: gcr.io/cloud-builders/docker
+#    args:
+#      - build
+#      - -f
+#      - build-artifacts/Dockerfile.migrate
+#      - -t
+#      - "us-central1-docker.pkg.dev/code-battlegrounds/app/migrate:latest"
+#      - .
+#
+#  # push deployment image
+#  - name: gcr.io/cloud-builders/docker
+#    args: ["push", "us-central1-docker.pkg.dev/code-battlegrounds/app/migrate:latest"]
 
 images:
    - "us-central1-docker.pkg.dev/code-battlegrounds/app/app:latest"
-   - "us-central1-docker.pkg.dev/code-battlegrounds/app/migrate:latest"
-   - "us-central1-docker.pkg.dev/code-battlegrounds/app/rootjail:latest"
-   - "us-central1-docker.pkg.dev/code-battlegrounds/app/orchestrator:latest"
+#   - "us-central1-docker.pkg.dev/code-battlegrounds/app/migrate:latest"
+#   - "us-central1-docker.pkg.dev/code-battlegrounds/app/rootjail:latest"
+#   - "us-central1-docker.pkg.dev/code-battlegrounds/app/orchestrator:latest"
 timeout: "1200s" # 20 minutes
