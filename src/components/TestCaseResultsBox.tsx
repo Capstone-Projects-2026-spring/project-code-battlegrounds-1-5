@@ -1,9 +1,10 @@
-import { Paper, Title, Table, Text, Box, Badge, Tooltip } from "@mantine/core";
+import { Paper, Title, Table, Text, Box, Badge, Tooltip, Tabs } from "@mantine/core";
 import { useEffect, useState, useMemo } from "react";
 import { ParameterType, ParameterPrimitiveType } from "@/lib/ProblemInputOutput";
 import { IconCheck, IconX } from "@tabler/icons-react";
 import deepEqual from "@/util/deepEqual";
 import styles from '@/styles/comps/TestCaseResultsBox.module.css';
+import { type TeamGameMadeTestCase } from "@/pages/api/results/[gameId]";
 
 export interface TestResultsSummary {
   yourPassedCount: number;
@@ -23,8 +24,10 @@ interface TestCaseResultsBoxProps {
   team2Results?: unknown[];
   team1Errors?: (string | null)[];
   team2Errors?: (string | null)[];
+  team1GameMadeTests?: TeamGameMadeTestCase[];
+  team2GameMadeTests?: TeamGameMadeTestCase[];
   showOtherTeamColumn?: boolean;
-  gameType?: "TWOPLAYER" | "FOURPLAYER";
+  gameType?: "TWOPLAYER" | "FOURPLAYER" | "COOP";
   userTeamNumber?: 1 | 2;
   onSummaryChange?: (summary: TestResultsSummary) => void;
 }
@@ -44,9 +47,19 @@ function parseValueByType(value: unknown, type: ParameterPrimitiveType): unknown
   if (value === null || value === undefined) return value;
 
   if (type === "boolean") {
-    return typeof value === "boolean" ? value : value === "true";
+    if (typeof value === "boolean") return value;
+    if (typeof value === "string") {
+      if (value === "true") return true;
+      if (value === "false") return false;
+    }
+    return value;
   } else if (type === "number") {
-    return typeof value === "number" ? value : Number(value);
+    if (typeof value === "number") return value;
+    if (typeof value === "string" && value.trim() !== "") {
+      const parsed = Number(value);
+      return Number.isNaN(parsed) ? value : parsed;
+    }
+    return value;
   } else if (type.includes("array")) {
     if (typeof value === "string") {
       try {
@@ -95,41 +108,99 @@ function extractAndCompare(actual: unknown, expected: ParameterType[]): boolean 
   }
 }
 
-export default function TestCaseResultsBox({ tests, team1Results, team2Results, team1Errors, team2Errors, showOtherTeamColumn = true, gameType = "FOURPLAYER", userTeamNumber = 1, onSummaryChange }: TestCaseResultsBoxProps) {
+export default function TestCaseResultsBox({ tests, team1Results, team2Results, team1Errors, team2Errors, team1GameMadeTests, team2GameMadeTests, showOtherTeamColumn = true, gameType = "FOURPLAYER", userTeamNumber = 1, onSummaryChange }: TestCaseResultsBoxProps) {
   // Convert and validate test cases from API
   const convertedTests = useMemo(() => convertTestCases(tests), [tests]);
+  const [activeTab, setActiveTab] = useState<string | null>("scored");
+  const isCoOp = gameType === "TWOPLAYER" || gameType === "COOP";
 
-  const team1TestResults = team1Results ?? [];
-  const team2TestResults = team2Results ?? [];
-  const team1ErrorsArray = team1Errors ?? [];
-  const team2ErrorsArray = team2Errors ?? [];
+  const team1TestResults = useMemo(() => team1Results ?? [], [team1Results]);
+  const team2TestResults = useMemo(() => team2Results ?? [], [team2Results]);
+  const team1ErrorsArray = useMemo(() => team1Errors ?? [], [team1Errors]);
+  const team2ErrorsArray = useMemo(() => team2Errors ?? [], [team2Errors]);
+  const team1GameTests = useMemo(() => team1GameMadeTests ?? [], [team1GameMadeTests]);
+  const team2GameTests = useMemo(() => team2GameMadeTests ?? [], [team2GameMadeTests]);
+  const yourGameTests = userTeamNumber === 2 ? team2GameTests : team1GameTests;
+  const otherTeamGameTests = userTeamNumber === 2 ? team1GameTests : team2GameTests;
+
+  const groupedScoredCases = useMemo(() => {
+    if (!convertedTests.length) return [];
+
+    type GroupedCase = {
+      input: ParameterType[];
+      expected: ParameterType[];
+      yourResult: unknown;
+      otherTeamResult: unknown;
+      yourError: string | null;
+      otherTeamError: string | null;
+    };
+
+    const keyForInput = (input: ParameterType[]) => JSON.stringify(input);
+    const grouped = new Map<string, GroupedCase>();
+    const yourResults = userTeamNumber === 2 ? team2TestResults : team1TestResults;
+    const otherTeamResults = userTeamNumber === 2 ? team1TestResults : team2TestResults;
+    const yourErrors = userTeamNumber === 2 ? team2ErrorsArray : team1ErrorsArray;
+    const otherTeamErrors = userTeamNumber === 2 ? team1ErrorsArray : team2ErrorsArray;
+
+    convertedTests.forEach((element, index) => {
+      const key = keyForInput(element.input);
+      const existing = grouped.get(key);
+      const yourResult = yourResults?.[index];
+      const otherTeamResult = otherTeamResults?.[index];
+      const yourError = yourErrors?.[index] ?? null;
+      const otherTeamError = otherTeamErrors?.[index] ?? null;
+
+      if (!existing) {
+        grouped.set(key, {
+          input: element.input,
+          expected: element.expected,
+          yourResult,
+          otherTeamResult,
+          yourError,
+          otherTeamError,
+        });
+        return;
+      }
+
+      if (existing.yourResult === undefined && yourResult !== undefined) {
+        existing.yourResult = yourResult;
+      }
+      if (existing.otherTeamResult === undefined && otherTeamResult !== undefined) {
+        existing.otherTeamResult = otherTeamResult;
+      }
+      if (!existing.yourError && yourError) {
+        existing.yourError = yourError;
+      }
+      if (!existing.otherTeamError && otherTeamError) {
+        existing.otherTeamError = otherTeamError;
+      }
+    });
+
+    return Array.from(grouped.values());
+  }, [convertedTests, team1ErrorsArray, team1TestResults, team2ErrorsArray, team2TestResults, userTeamNumber]);
 
   // Notify parent of summary when tests are available
   useEffect(() => {
-    if (!onSummaryChange || !convertedTests || convertedTests.length === 0) return;
+    if (!onSummaryChange || groupedScoredCases.length === 0) return;
 
-    // Calculate passed counts using deepEqual
-    let team1PassedCount = 0;
-    let team2PassedCount = 0;
+    const team1PassedCount = groupedScoredCases.filter((testCase) => {
+      return testCase.yourResult !== undefined && extractAndCompare(testCase.yourResult, testCase.expected);
+    }).length;
+    const team2PassedCount = groupedScoredCases.filter((testCase) => {
+      return testCase.otherTeamResult !== undefined && extractAndCompare(testCase.otherTeamResult, testCase.expected);
+    }).length;
 
-    convertedTests.forEach((testCase, index) => {
-      const team1Result = team1TestResults?.[index];
-      const team2Result = team2TestResults?.[index];
+    const yourGamePassedCount = yourGameTests.filter((test) => test.passed).length;
+    const yourGameTotal = yourGameTests.length;
 
-      if (team1Result !== undefined && extractAndCompare(team1Result, testCase.expected)) {
-        team1PassedCount++;
-      }
-      if (team2Result !== undefined && extractAndCompare(team2Result, testCase.expected)) {
-        team2PassedCount++;
-      }
-    });
-
+    // COOP mode includes your game-made tests in scoring analysis.
+    // FOURPLAYER/2v2 keeps game-made tests as visual-only reference.
     onSummaryChange({
-      yourPassedCount: userTeamNumber === 2 ? team2PassedCount : team1PassedCount,
+      yourPassedCount: (userTeamNumber === 2 ? team2PassedCount : team1PassedCount) + (isCoOp ? yourGamePassedCount : 0),
       otherTeamPassedCount: userTeamNumber === 2 ? team1PassedCount : team2PassedCount,
-      totalTests: convertedTests.length,
+      totalTests: groupedScoredCases.length + (isCoOp ? yourGameTotal : 0),
     });
-  }, [convertedTests, onSummaryChange, userTeamNumber, team1TestResults, team2TestResults]);
+  }, [groupedScoredCases, isCoOp, onSummaryChange, userTeamNumber, yourGameTests]);
 
 
   const formatValue = (value: ParameterType[] | unknown): string => {
@@ -162,88 +233,100 @@ export default function TestCaseResultsBox({ tests, team1Results, team2Results, 
       .trim();
   };
 
-  const rows = convertedTests?.map((element, index) => {
-    // Determine which results to show based on user's team
+  const rows = useMemo(() => {
+    if (!convertedTests.length) return [];
+
+    type ScoredRow = {
+      id: string;
+      input: ParameterType[];
+      expected: ParameterType[];
+      yourResult: unknown;
+      otherTeamResult: unknown;
+      yourError: string | null;
+      otherTeamError: string | null;
+    };
+
+    const keyForInput = (input: ParameterType[]) => JSON.stringify(input);
+    const scoredRows = new Map<string, ScoredRow>();
     const yourResults = userTeamNumber === 2 ? team2TestResults : team1TestResults;
     const otherTeamResults = userTeamNumber === 2 ? team1TestResults : team2TestResults;
     const yourErrors = userTeamNumber === 2 ? team2ErrorsArray : team1ErrorsArray;
     const otherTeamErrors = userTeamNumber === 2 ? team1ErrorsArray : team2ErrorsArray;
 
-    const yourResult = yourResults?.[index];
-    const otherTeamResult = otherTeamResults?.[index];
-    const yourError = yourErrors?.[index];
-    const otherTeamError = otherTeamErrors?.[index];
+    convertedTests.forEach((element, index) => {
+      const key = keyForInput(element.input);
+      const existing = scoredRows.get(key);
+      const yourResult = yourResults?.[index];
+      const otherTeamResult = otherTeamResults?.[index];
+      const yourError = yourErrors?.[index] ?? null;
+      const otherTeamError = otherTeamErrors?.[index] ?? null;
 
-    const hasYourResult = yourResult !== undefined;
-    const hasOtherTeamResult = otherTeamResult !== undefined;
-    const hasYourError = yourError && yourError.length > 0;
-    const hasOtherTeamError = otherTeamError && otherTeamError.length > 0;
+      if (!existing) {
+        scoredRows.set(key, {
+          id: element.id,
+          input: element.input,
+          expected: element.expected,
+          yourResult,
+          otherTeamResult,
+          yourError,
+          otherTeamError,
+        });
+        return;
+      }
 
-    const yourResultPassed = hasYourResult && extractAndCompare(yourResult, element.expected);
-    const otherTeamPassed = hasOtherTeamResult && extractAndCompare(otherTeamResult, element.expected);
+      if (existing.yourResult === undefined && yourResult !== undefined) {
+        existing.yourResult = yourResult;
+      }
+      if (existing.otherTeamResult === undefined && otherTeamResult !== undefined) {
+        existing.otherTeamResult = otherTeamResult;
+      }
+      if (!existing.yourError && yourError) {
+        existing.yourError = yourError;
+      }
+      if (!existing.otherTeamError && otherTeamError) {
+        existing.otherTeamError = otherTeamError;
+      }
+    });
 
-    return (
-      <Table.Tr key={element.id} className={styles.tableRow}>
-        <Table.Td>
-          <Text size="sm" fw={500} ff="monospace" className={styles.cellInput} style={{ maxWidth: '200px', overflow: 'auto', wordBreak: 'break-word' }}>
-            {formatValue(element.input)}
-          </Text>
-        </Table.Td>
-        <Table.Td>
-          <Box className={styles.cellResult}>
-            <Box style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              {hasYourResult && !hasYourError && (
-                <span className={`${styles.statusIndicator} ${yourResultPassed ? styles.statusPass : styles.statusFail}`}>
-                  {yourResultPassed ? <IconCheck size={12} className={styles.passIcon} /> : <IconX size={12} className={styles.failIcon} />}
-                </span>
-              )}
-              {!hasYourResult && !hasYourError && (
-                <span className={styles.statusPlaceholder} aria-hidden="true" />
-              )}
-              {!hasYourError && (
-                <Text
-                  size="sm"
-                  fw={500}
-                  ff="monospace"
-                  className={`${styles.cellInput} ${hasYourResult ? (yourResultPassed ? styles.passText : styles.failText) : ""}`}
-                >
-                  {hasYourResult ? formatValue(yourResult) : '-'}
-                </Text>
-              )}
-              {hasYourError && (
-                <Tooltip label={formatStderr(yourError)} multiline maw={500} withArrow withinPortal>
-                  <Badge color="red" variant="filled" size="lg">
-                    Error
-                  </Badge>
-                </Tooltip>
-              )}
-            </Box>
-          </Box>
-        </Table.Td>
-        {showOtherTeamColumn && (
+    return Array.from(scoredRows.values()).map((row) => {
+      const hasYourResult = row.yourResult !== undefined;
+      const hasOtherTeamResult = row.otherTeamResult !== undefined;
+      const hasYourError = Boolean(row.yourError && row.yourError.length > 0);
+      const hasOtherTeamError = Boolean(row.otherTeamError && row.otherTeamError.length > 0);
+
+      const yourResultPassed = hasYourResult && extractAndCompare(row.yourResult, row.expected);
+      const otherTeamPassed = hasOtherTeamResult && extractAndCompare(row.otherTeamResult, row.expected);
+
+      return (
+        <Table.Tr key={row.id} className={styles.tableRow}>
+          <Table.Td>
+            <Text size="sm" fw={500} ff="monospace" className={styles.cellInput} style={{ maxWidth: '200px', overflow: 'auto', wordBreak: 'break-word' }}>
+              {formatValue(row.input)}
+            </Text>
+          </Table.Td>
           <Table.Td>
             <Box className={styles.cellResult}>
               <Box style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                {hasOtherTeamResult && !hasOtherTeamError && (
-                  <span className={`${styles.statusIndicator} ${otherTeamPassed ? styles.statusPass : styles.statusFail}`}>
-                    {otherTeamPassed ? <IconCheck size={12} className={styles.passIcon} /> : <IconX size={12} className={styles.failIcon} />}
+                {hasYourResult && !hasYourError && (
+                  <span className={`${styles.statusIndicator} ${yourResultPassed ? styles.statusPass : styles.statusFail}`}>
+                    {yourResultPassed ? <IconCheck size={12} className={styles.passIcon} /> : <IconX size={12} className={styles.failIcon} />}
                   </span>
                 )}
-                {!hasOtherTeamResult && !hasOtherTeamError && (
+                {!hasYourResult && !hasYourError && (
                   <span className={styles.statusPlaceholder} aria-hidden="true" />
                 )}
-                {!hasOtherTeamError && (
+                {!hasYourError && (
                   <Text
                     size="sm"
                     fw={500}
                     ff="monospace"
-                    className={`${styles.cellInput} ${hasOtherTeamResult ? (otherTeamPassed ? styles.passText : styles.failText) : ""}`}
+                    className={`${styles.cellInput} ${hasYourResult ? (yourResultPassed ? styles.passText : styles.failText) : ""}`}
                   >
-                    {hasOtherTeamResult ? formatValue(otherTeamResult) : '-'}
+                    {hasYourResult ? formatValue(row.yourResult) : '-'}
                   </Text>
                 )}
-                {hasOtherTeamError && (
-                  <Tooltip label={formatStderr(otherTeamError)} multiline maw={500} withArrow withinPortal>
+                {hasYourError && (
+                  <Tooltip label={formatStderr(row.yourError ?? "")} multiline maw={500} withArrow withinPortal>
                     <Badge color="red" variant="filled" size="lg">
                       Error
                     </Badge>
@@ -252,15 +335,99 @@ export default function TestCaseResultsBox({ tests, team1Results, team2Results, 
               </Box>
             </Box>
           </Table.Td>
-        )}
+          {showOtherTeamColumn && (
+            <Table.Td>
+              <Box className={styles.cellResult}>
+                <Box style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {hasOtherTeamResult && !hasOtherTeamError && (
+                    <span className={`${styles.statusIndicator} ${otherTeamPassed ? styles.statusPass : styles.statusFail}`}>
+                      {otherTeamPassed ? <IconCheck size={12} className={styles.passIcon} /> : <IconX size={12} className={styles.failIcon} />}
+                    </span>
+                  )}
+                  {!hasOtherTeamResult && !hasOtherTeamError && (
+                    <span className={styles.statusPlaceholder} aria-hidden="true" />
+                  )}
+                  {!hasOtherTeamError && (
+                    <Text
+                      size="sm"
+                      fw={500}
+                      ff="monospace"
+                      className={`${styles.cellInput} ${hasOtherTeamResult ? (otherTeamPassed ? styles.passText : styles.failText) : ""}`}
+                    >
+                      {hasOtherTeamResult ? formatValue(row.otherTeamResult) : '-'}
+                    </Text>
+                  )}
+                  {hasOtherTeamError && (
+                    <Tooltip label={formatStderr(row.otherTeamError ?? "")} multiline maw={500} withArrow withinPortal>
+                      <Badge color="red" variant="filled" size="lg">
+                        Error
+                      </Badge>
+                    </Tooltip>
+                  )}
+                </Box>
+              </Box>
+            </Table.Td>
+          )}
+          <Table.Td>
+            <Text size="sm" fw={500} ff="monospace" className={styles.cellInput} style={{ maxWidth: '200px', overflow: 'auto', wordBreak: 'break-word' }}>
+              {formatValue(row.expected)}
+            </Text>
+          </Table.Td>
+        </Table.Tr>
+      );
+    });
+  }, [convertedTests, showOtherTeamColumn, team1ErrorsArray, team1TestResults, team2ErrorsArray, team2TestResults, userTeamNumber]);
+
+  const renderStatusCell = (passed: boolean, hasError: boolean, value: unknown, error: string | null) => {
+    return (
+      <Box className={styles.cellResult}>
+        <Box style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {!hasError && (
+            <span className={`${styles.statusIndicator} ${passed ? styles.statusPass : styles.statusFail}`}>
+              {passed ? <IconCheck size={12} className={styles.passIcon} /> : <IconX size={12} className={styles.failIcon} />}
+            </span>
+          )}
+          {!hasError && (
+            <Text
+              size="sm"
+              fw={500}
+              ff="monospace"
+              className={`${styles.cellInput} ${passed ? styles.passText : styles.failText}`}
+            >
+              {formatValue(value)}
+            </Text>
+          )}
+          {hasError && (
+            <Tooltip label={formatStderr(error ?? "Execution error")} multiline maw={500} withArrow withinPortal>
+              <Badge color="red" variant="filled" size="lg">
+                Error
+              </Badge>
+            </Tooltip>
+          )}
+        </Box>
+      </Box>
+    );
+  };
+
+  const renderTeamGameRows = (teamTests: TeamGameMadeTestCase[]) => {
+    return teamTests.map((testCase) => (
+      <Table.Tr key={testCase.id} className={styles.tableRow}>
         <Table.Td>
           <Text size="sm" fw={500} ff="monospace" className={styles.cellInput} style={{ maxWidth: '200px', overflow: 'auto', wordBreak: 'break-word' }}>
-            {formatValue(element.expected)}
+            {formatValue(testCase.input)}
+          </Text>
+        </Table.Td>
+        <Table.Td>
+          {renderStatusCell(testCase.passed, Boolean(testCase.error), testCase.actual, testCase.error)}
+        </Table.Td>
+        <Table.Td>
+          <Text size="sm" fw={500} ff="monospace" className={styles.cellInput} style={{ maxWidth: '200px', overflow: 'auto', wordBreak: 'break-word' }}>
+            {formatValue(testCase.expected)}
           </Text>
         </Table.Td>
       </Table.Tr>
-    );
-  }) ?? [];
+    ));
+  };
 
   const colSpan = showOtherTeamColumn ? 4 : 3;
 
@@ -270,31 +437,103 @@ export default function TestCaseResultsBox({ tests, team1Results, team2Results, 
         Test Cases
       </Title>
 
-      <Box className={styles.scrollRegion}>
-        <Table highlightOnHover verticalSpacing="sm" striped className={styles.table}>
-          <Table.Thead>
-            <Table.Tr>
-              <Table.Th className={styles.tableHeader}>Input</Table.Th>
-              <Table.Th className={styles.tableHeader}>{gameType === "TWOPLAYER" ? "Your Code" : "Your Result"}</Table.Th>
-              {showOtherTeamColumn && <Table.Th className={styles.tableHeader}>Other Team</Table.Th>}
-              <Table.Th className={styles.tableHeader}>Expected Result</Table.Th>
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>
-            {!convertedTests || convertedTests.length === 0 && (
-              <Table.Tr>
-                <Table.Td colSpan={colSpan}>
-                  <Text size="sm" ta="center" c="dimmed" className={styles.stateText}>
-                    No test cases available for this game.
-                  </Text>
-                </Table.Td>
-              </Table.Tr>
-            )}
+      <Tabs value={activeTab} onChange={setActiveTab} className={styles.tabsRoot}>
+        <Tabs.List>
+          <Tabs.Tab value="scored">Scoring Tests</Tabs.Tab>
+          <Tabs.Tab value="your-tests">
+            Your Tests {!isCoOp ? "(Not Scored)" : ""}
+          </Tabs.Tab>
+          {!isCoOp && (
+            <Tabs.Tab value="other-team-tests">
+              Other Team Tests (Not Scored)
+            </Tabs.Tab>
+          )}
+        </Tabs.List>
 
-            {convertedTests && convertedTests.length > 0 && rows}
-          </Table.Tbody>
-        </Table>
-      </Box>
+        <Tabs.Panel value="scored" pt="md">
+          <Box className={styles.scrollRegion}>
+            <Table highlightOnHover verticalSpacing="sm" striped className={styles.table}>
+              <Table.Thead>
+                <Table.Tr>
+                  <Table.Th className={styles.tableHeader}>Input</Table.Th>
+                  <Table.Th className={styles.tableHeader}>{isCoOp ? "Your Code" : "Your Result"}</Table.Th>
+                  {showOtherTeamColumn && <Table.Th className={styles.tableHeader}>Other Team</Table.Th>}
+                  <Table.Th className={styles.tableHeader}>Expected Result</Table.Th>
+                </Table.Tr>
+              </Table.Thead>
+              <Table.Tbody>
+                {!convertedTests || convertedTests.length === 0 ? (
+                  <Table.Tr>
+                    <Table.Td colSpan={colSpan}>
+                      <Text size="sm" ta="center" c="dimmed" className={styles.stateText}>
+                        No scoring test cases available for this game.
+                      </Text>
+                    </Table.Td>
+                  </Table.Tr>
+                ) : (
+                  rows
+                )}
+              </Table.Tbody>
+            </Table>
+          </Box>
+        </Tabs.Panel>
+
+        <Tabs.Panel value="your-tests" pt="md">
+          <Box className={styles.scrollRegion}>
+            <Table highlightOnHover verticalSpacing="sm" striped className={styles.table}>
+              <Table.Thead>
+                <Table.Tr>
+                  <Table.Th className={styles.tableHeader}>Input</Table.Th>
+                  <Table.Th className={styles.tableHeader}>Your Result</Table.Th>
+                  <Table.Th className={styles.tableHeader}>Expected Result</Table.Th>
+                </Table.Tr>
+              </Table.Thead>
+              <Table.Tbody>
+                {yourGameTests.length === 0 ? (
+                  <Table.Tr>
+                    <Table.Td colSpan={3}>
+                      <Text size="sm" ta="center" c="dimmed" className={styles.stateText}>
+                        No game-made tests found for your team.
+                      </Text>
+                    </Table.Td>
+                  </Table.Tr>
+                ) : (
+                  renderTeamGameRows(yourGameTests)
+                )}
+              </Table.Tbody>
+            </Table>
+          </Box>
+        </Tabs.Panel>
+
+        {!isCoOp && (
+          <Tabs.Panel value="other-team-tests" pt="md">
+            <Box className={styles.scrollRegion}>
+              <Table highlightOnHover verticalSpacing="sm" striped className={styles.table}>
+                <Table.Thead>
+                  <Table.Tr>
+                    <Table.Th className={styles.tableHeader}>Input</Table.Th>
+                    <Table.Th className={styles.tableHeader}>Other Team Result</Table.Th>
+                    <Table.Th className={styles.tableHeader}>Expected Result</Table.Th>
+                  </Table.Tr>
+                </Table.Thead>
+                <Table.Tbody>
+                  {otherTeamGameTests.length === 0 ? (
+                    <Table.Tr>
+                      <Table.Td colSpan={3}>
+                        <Text size="sm" ta="center" c="dimmed" className={styles.stateText}>
+                          No game-made tests found for the other team.
+                        </Text>
+                      </Table.Td>
+                    </Table.Tr>
+                  ) : (
+                    renderTeamGameRows(otherTeamGameTests)
+                  )}
+                </Table.Tbody>
+              </Table>
+            </Box>
+          </Tabs.Panel>
+        )}
+      </Tabs>
     </Paper>
   );
 }
