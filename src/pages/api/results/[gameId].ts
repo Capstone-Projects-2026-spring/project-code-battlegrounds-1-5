@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { calculateScorePair } from "@/util/scoring";
 
 export interface TestCase {
   id: string;
@@ -147,6 +148,7 @@ export default async function handler(
         gameResult: {
           select: {
             id: true,
+            winningTeamId: true,
             team1Code: true,
             team2Code: true,
             team1SubmittedAt: true,
@@ -283,8 +285,41 @@ export default async function handler(
     const team2PassedCount = team2GameTests.filter((gt) => gt.type === "Hidden" && gt.passed).length;
     const team1TotalTests = team1GameTests.filter((gt) => gt.type === "Hidden").length;
     const team2TotalTests = team2GameTests.filter((gt) => gt.type === "Hidden").length;
+    const scoringTotalTests = Math.max(team1TotalTests, team2TotalTests);
     const team1SubmittedAt: string | null = gameRoom.gameResult?.team1SubmittedAt ?? null;
     const team2SubmittedAt: string | null = gameRoom.gameResult?.team2SubmittedAt ?? null;
+    const team1TimeLeftSeconds = calculateTimeLeftSeconds(team1SubmittedAt);
+    const team2TimeLeftSeconds = calculateTimeLeftSeconds(team2SubmittedAt);
+    const team1Id = gameRoom.teams[0]?.id ?? null;
+    const team2Id = gameRoom.teams[1]?.id ?? null;
+
+    let nextWinningTeamId: string | null = null;
+    if (gameRoom.gameType === "TWOPLAYER") {
+      nextWinningTeamId = team1Id;
+    } else if (team1Id && team2Id) {
+      const [team1Score, team2Score] = calculateScorePair(
+        team1PassedCount,
+        team2PassedCount,
+        scoringTotalTests,
+        team1AverageExecutionTime,
+        team2AverageExecutionTime,
+        team1TimeLeftSeconds,
+        team2TimeLeftSeconds,
+        "Team 1",
+        "Team 2"
+      );
+
+      nextWinningTeamId =
+        team1Score === team2Score ? null : (team1Score > team2Score ? team1Id : team2Id);
+    }
+
+    const currentWinningTeamId = gameRoom.gameResult?.winningTeamId ?? null;
+    if (gameRoom.gameResult?.id && currentWinningTeamId !== nextWinningTeamId) {
+      await prisma.gameResult.update({
+        where: { id: gameRoom.gameResult.id },
+        data: { winningTeamId: nextWinningTeamId },
+      });
+    }
 
     return res.status(200).json({
       // Problem & Game Details
@@ -317,8 +352,8 @@ export default async function handler(
       team2GameMadeTests,
 
       // Submission & Time Metrics
-      team1TimeLeftSeconds: calculateTimeLeftSeconds(team1SubmittedAt),
-      team2TimeLeftSeconds: calculateTimeLeftSeconds(team2SubmittedAt),
+      team1TimeLeftSeconds,
+      team2TimeLeftSeconds,
     });
   } catch (error: unknown) {
     console.error("[RESULTS API] Error:", error);
