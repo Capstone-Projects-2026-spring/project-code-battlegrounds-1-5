@@ -17,7 +17,7 @@ const warmVm = async (gameId) => {
                 console.log('[WARM_VM] Response (non-JSON):', text);
             }
         } else {
-            console.log(`[WARM_VM] VM deleted for ${gameId}`);
+            console.log(`[WARM_VM] VM Response has no text for ${gameId}`);
         }
     })
     .catch(error => console.error('[WARM_VM] Error:', error));
