@@ -25,7 +25,7 @@ class TestableCase(BaseModel):
 
 
 class ExecutionRequest(BaseModel):
-    gameID: Optional[str] = None
+    gameId: Optional[str] = None
     language: str
     code: str
     testCases: Union[str, List[TestableCase]] = None
