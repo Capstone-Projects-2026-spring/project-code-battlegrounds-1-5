@@ -1,4 +1,4 @@
-import { Paper, Title, Table, Text, Box, Badge, Tooltip, Tabs, ScrollArea, Group, ThemeIcon} from "@mantine/core";
+import { Paper, Title, Table, Text, Box, Badge, Tooltip, Tabs, Group, ThemeIcon, ScrollArea} from "@mantine/core";
 import { useEffect, useState, useMemo } from "react";
 import { ParameterType, ParameterPrimitiveType } from "@/lib/ProblemInputOutput";
 import { IconCheck, IconInfoCircle, IconX } from "@tabler/icons-react";
@@ -385,7 +385,7 @@ export default function TestCaseResultsBox({ tests, team1Results, team2Results, 
         </Tabs.List>
         
         <Tabs.Panel value="scored" pt="md">
-          <ScrollArea.Autosize mah={550} mih={240} className={styles.scrollRegion} type="auto" offsetScrollbars>
+          <ScrollArea h={550} className={styles.scrollRegion} type="auto" offsetScrollbars>
             <Table highlightOnHover verticalSpacing="sm" striped className={styles.table}>
               <Table.Thead>
                 <Table.Tr>
@@ -409,11 +409,11 @@ export default function TestCaseResultsBox({ tests, team1Results, team2Results, 
                 )}
               </Table.Tbody>
             </Table>
-          </ScrollArea.Autosize>
+          </ScrollArea>
         </Tabs.Panel>
 
         <Tabs.Panel value="your-tests" pt="md">
-          <ScrollArea.Autosize mah={550} mih={240} className={styles.scrollRegion} type="auto" offsetScrollbars>
+          <ScrollArea h={550} className={styles.scrollRegion} type="auto" offsetScrollbars>
             <Table highlightOnHover verticalSpacing="sm" striped className={styles.table}>
               <Table.Thead>
                 <Table.Tr>
@@ -436,12 +436,12 @@ export default function TestCaseResultsBox({ tests, team1Results, team2Results, 
                 )}
               </Table.Tbody>
             </Table>
-          </ScrollArea.Autosize>
+          </ScrollArea>
         </Tabs.Panel>
 
         {!isCoOp && (
           <Tabs.Panel value="other-team-tests" pt="md">
-            <ScrollArea.Autosize mah={550} mih={240} className={styles.scrollRegion} type="auto" offsetScrollbars>
+            <ScrollArea h={550} className={styles.scrollRegion} type="auto" offsetScrollbars>
               <Table highlightOnHover verticalSpacing="sm" striped className={styles.table}>
                 <Table.Thead>
                   <Table.Tr>
@@ -464,7 +464,7 @@ export default function TestCaseResultsBox({ tests, team1Results, team2Results, 
                   )}
                 </Table.Tbody>
               </Table>
-            </ScrollArea.Autosize>
+            </ScrollArea>
           </Tabs.Panel>
         )}
       </Tabs>
