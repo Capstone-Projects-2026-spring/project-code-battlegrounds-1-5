@@ -154,10 +154,21 @@ function registerExecutionHandlers(io, socket, gameService) {
             socket.emit('error', { message: 'Invalid payload for submitCode.' });
             return;
         }
-        const { roomId, code, type, team, teamId, testCases, runIDs } = payload;
+        const { roomId, code, type, team, teamId } = payload;
         console.log(`Submitting code for Room ${roomId}`);
 
         if (!roomId) return;
+
+        let testCases;
+        try {
+            testCases = await gameService.getTestCases(teamId);
+        } catch (e) {
+            console.error('Error preparing test cases for submitCode', e);
+            socket.emit('error', { e, message: 'Failed to prepare test cases for submission.' });
+            return;
+        }
+
+        const runIDs = testCases.map((testCase) => testCase.id);
 
         console.log('submitCode received for roomId:', roomId, 'with code length:', code?.length, 'and type:', type);
 
