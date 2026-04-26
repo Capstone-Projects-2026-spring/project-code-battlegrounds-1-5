@@ -1,7 +1,7 @@
-import { Paper, Title, Table, Text, Box, Badge, Tooltip, Tabs } from "@mantine/core";
+import { Paper, Title, Table, Text, Box, Badge, Tooltip, Tabs, Group, ThemeIcon } from "@mantine/core";
 import { useEffect, useState, useMemo } from "react";
 import { ParameterType, ParameterPrimitiveType } from "@/lib/ProblemInputOutput";
-import { IconCheck, IconX } from "@tabler/icons-react";
+import { IconCheck, IconInfoCircle, IconX } from "@tabler/icons-react";
 import deepEqual from "@/util/deepEqual";
 import { groupScoredCases } from "@/util/groupScoredCases";
 import styles from '@/styles/comps/TestCaseResultsBox.module.css';
@@ -142,27 +142,27 @@ export default function TestCaseResultsBox({ tests, team1Results, team2Results, 
 
   // Notify parent of summary when tests are available
   useEffect(() => {
-  if (!onSummaryChange || scoredCases.length === 0) return;
+    if (!onSummaryChange || scoredCases.length === 0) return;
 
-  const yourPassedCount = scoredCases.filter((testCase) =>
-    testCase.yourResult !== undefined &&
-    extractAndCompare(testCase.yourResult, testCase.expected)
-  ).length;
+    const yourPassedCount = scoredCases.filter((testCase) =>
+      testCase.yourResult !== undefined &&
+      extractAndCompare(testCase.yourResult, testCase.expected)
+    ).length;
 
-  const otherTeamPassedCount = scoredCases.filter((testCase) =>
-    testCase.otherTeamResult !== undefined &&
-    extractAndCompare(testCase.otherTeamResult, testCase.expected)
-  ).length;
+    const otherTeamPassedCount = scoredCases.filter((testCase) =>
+      testCase.otherTeamResult !== undefined &&
+      extractAndCompare(testCase.otherTeamResult, testCase.expected)
+    ).length;
 
-  const yourGamePassedCount = yourGameTests.filter((test) => test.passed).length;
-  const yourGameTotal = yourGameTests.length;
+    const yourGamePassedCount = yourGameTests.filter((test) => test.passed).length;
+    const yourGameTotal = yourGameTests.length;
 
-  onSummaryChange({
-    yourPassedCount: yourPassedCount + (isCoOp ? yourGamePassedCount : 0),
-    otherTeamPassedCount: otherTeamPassedCount,
-    totalTests: scoredCases.length + (isCoOp ? yourGameTotal : 0),
-  });
-}, [isCoOp, onSummaryChange, scoredCases, yourGameTests]);
+    onSummaryChange({
+      yourPassedCount: yourPassedCount + (isCoOp ? yourGamePassedCount : 0),
+      otherTeamPassedCount: otherTeamPassedCount,
+      totalTests: scoredCases.length + (isCoOp ? yourGameTotal : 0),
+    });
+  }, [isCoOp, onSummaryChange, scoredCases, yourGameTests]);
 
 
   const formatValue = (value: ParameterType[] | unknown): string => {
@@ -348,13 +348,39 @@ export default function TestCaseResultsBox({ tests, team1Results, team2Results, 
       <Tabs value={activeTab} onChange={setActiveTab} className={styles.tabsRoot}>
         <Tabs.List>
           <Tabs.Tab value="scored">Scoring Tests</Tabs.Tab>
-          <Tabs.Tab value="your-tests">
-            Your Tests {!isCoOp ? "(Not Scored)" : ""}
-          </Tabs.Tab>
-          {!isCoOp && (
-            <Tabs.Tab value="other-team-tests">
-              Other Team Tests (Not Scored)
+          <Tooltip
+            withArrow
+            disabled={isCoOp}
+            label="Your test cases are not scored in 2v2."
+          >
+            <Tabs.Tab value="your-tests">
+              <Group gap={3}>
+                <Text size="sm">
+                  Your Tests
+                </Text>
+                <ThemeIcon size={"xs"} variant="transparent">
+                  <IconInfoCircle />
+                </ThemeIcon>
+              </Group>
             </Tabs.Tab>
+          </Tooltip>
+          {!isCoOp && (
+            <Tooltip
+              withArrow
+              disabled={isCoOp}
+              label="Other team test cases are not scored in 2v2."
+            >
+              <Tabs.Tab value="other-team-tests">
+                <Group gap={3}>
+                  <Text size="sm">
+                    Other Team Tests
+                  </Text>
+                  <ThemeIcon size={"xs"} variant="transparent">
+                    <IconInfoCircle />
+                  </ThemeIcon>
+                </Group>
+              </Tabs.Tab>
+            </Tooltip>
           )}
         </Tabs.List>
 
