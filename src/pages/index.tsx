@@ -4,6 +4,8 @@ import Head from "next/head";
 import dynamic from "next/dynamic";
 import { usePostHog } from "posthog-js/react";
 import { authClient } from "@/lib/auth-client";
+import { useDisclosure } from "@mantine/hooks";
+import { Avatar } from "@mantine/core";
 
 // Code splitting for performance
 const HeroSection = dynamic(() => import("@/components/home/HeroSection"), {
@@ -20,14 +22,18 @@ const CTASection = dynamic(() => import("@/components/home/CTASection"), {
   ssr: true
 });
 
+const SidePanel = dynamic(() => import("@/components/sidebar/SidePanel"), {
+  ssr: false
+});
+
 export default function Home() {
   const posthog = usePostHog();
+  const { data: session } = authClient.useSession();
+  const [sidePanelOpened, { toggle: toggleSidePanel, close: closeSidePanel }] = useDisclosure(false);
 
   useEffect(() => {
     posthog?.capture("homepage_viewed");
   }, [posthog]);
-
-  
 
   return (
     <>
@@ -46,6 +52,28 @@ export default function Home() {
       </Head>
 
       <main>
+
+        {session && (
+          <>
+            <Avatar
+              name={session.user.name}
+              size="md"
+              radius="xl"
+              color="var(--mantine-color-console-4)"
+              alt="Open side panel"
+              onClick={toggleSidePanel}
+              style={{
+                position: "fixed",
+                top: "1rem",
+                right: "1rem",
+                zIndex: 200,
+                cursor: "pointer",
+              }}
+            />
+            <SidePanel opened={sidePanelOpened} onClose={closeSidePanel} />
+          </>
+        )}
+
         {/* Hero - Above the fold, critical content */}
         <HeroSection />
 
