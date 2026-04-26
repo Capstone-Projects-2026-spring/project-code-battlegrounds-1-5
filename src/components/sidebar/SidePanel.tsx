@@ -16,6 +16,11 @@ export default function SidePanel(props: SidePanelProps) {
       size="xs"                        // or a fixed value like size="300px"
       withOverlay={false}
       position="right"
+      styles={{
+        body: {
+          height: "90%"
+        }
+      }}
     >
       <PartyBox />
     </Drawer>

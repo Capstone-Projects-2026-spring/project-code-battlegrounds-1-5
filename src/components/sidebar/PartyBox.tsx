@@ -1,4 +1,4 @@
-import { Box, Divider, Stack, Tabs, Button } from "@mantine/core";
+import { Box, Divider, Tabs, Button, Flex } from "@mantine/core";
 import { useFriendship } from "@/contexts/FriendshipContext";
 import { useParty } from "@/contexts/PartyContext";
 import { PartySlots } from "./PartySlots";
@@ -21,7 +21,7 @@ export default function PartyBox() {
   };
 
   return (
-    <Stack gap={0} align="stretch" h="100%">
+    <Flex direction={"column"} gap={0} h="100%">
       <Box px="md" pb="md">
         <PartySlots />
       </Box>
@@ -31,8 +31,6 @@ export default function PartyBox() {
       <Tabs
         defaultValue="friends"
         styles={{ panel: { padding: "12px 16px 16px" } } }
-        // thought I'd get tabs to scale by applying flex: 1
-        style={{ flex: 1 }}
       >
         <Tabs.List px="md">
           <Tabs.Tab value="friends" style={{ fontSize: 12 }}>
@@ -88,7 +86,6 @@ export default function PartyBox() {
           Sign out
         </Button>
       </Box>
-
-    </Stack>
+    </Flex>
   );
 }
