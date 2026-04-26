@@ -83,7 +83,7 @@ jobs:
         run: npm run build
 
       - name: Start server
-        run: node ./server/index.js &
+        run: npx tsx ./server/index.ts &
         #env:
         #  NODE_ENV: production This was causing problems with playwright
 

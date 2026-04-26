@@ -3,10 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "node server/index.js",
+    "dev": "tsx server/index.ts",
     "build": "next build",
-    "start": "NODE_ENV=production node server/index.js",
+    "start": "NODE_ENV=production tsx server/index.ts",
     "lint": "next lint",
+    "server:typecheck": "tsc -p server/tsconfig.json",
     "prisma:reset": "prisma migrate reset",
     "prisma:seed": "prisma db seed",
     "prisma:init": "prisma migrate reset --force && prisma generate && prisma db seed"
