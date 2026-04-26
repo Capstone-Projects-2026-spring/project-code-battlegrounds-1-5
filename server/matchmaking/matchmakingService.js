@@ -1,8 +1,9 @@
 const { getPrisma } = require('../prisma/index');
 const { GameType, Role, ProblemDifficulty } = require('@prisma/client');
-const { nanoid } = require('nanoid');
+const { nanoid } = require('../utils/nanoid');
 const { readFileSync } = require('node:fs');
 const { join } = require('node:path');
+const { warmVm } = require('../utils/vm/warmVm');
 
 const QUEUE_KEY = (gameType, difficulty) => `queue:${gameType}:${difficulty}`;
 const REQUIRED_PLAYERS = {
@@ -26,7 +27,7 @@ function createMatchmakingService(stateRedis, io) {
                 const parsed = JSON.parse(e);
                 return parsed.userId === userId;
             });
-            if (alreadyQueued) return { status: 'already_queued' };
+            if (alreadyQueued) {return { status: 'already_queued' }};
 
             // TWOPLAYER + party = instant game, no queue needed
             if (partyId && gameType === GameType.TWOPLAYER) {
@@ -135,6 +136,8 @@ function createMatchmakingService(stateRedis, io) {
             }
 
             const gameRoom = await this._createGameInDB(players, gameType, difficulty);
+            const gameId = gameRoom.id;
+            warmVm(gameId);
             await this._notifyPlayers(gameRoom);
             return { status: 'matched', gameId: gameRoom.id };
         },
@@ -153,6 +156,8 @@ function createMatchmakingService(stateRedis, io) {
                 { userId: party.member.userId, partyId },
             ];
             const gameRoom = await this._createGameInDB(players, gameType, difficulty);
+            const gameId = gameRoom.id;
+            warmVm(gameId);
             await this._notifyPlayers(gameRoom);
             return { status: 'matched', gameId: gameRoom.id };
         },

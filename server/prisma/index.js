@@ -14,4 +14,4 @@ function getPrisma() {
    return prisma;
 }
 
-module.exports = { getPrisma }
+module.exports = { getPrisma };

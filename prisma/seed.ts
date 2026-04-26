@@ -6,6 +6,8 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import * as z from "zod";
 import { TestCase } from "@/lib/ProblemInputOutput";
+import { randomUUID } from "node:crypto";
+import { hashPassword } from "better-auth/crypto";
 
 const adapter = new PrismaPg({
   connectionString: process.env.DATABASE_URL!,
@@ -35,17 +37,49 @@ async function main() {
     { name: "Erik", email: "erik@test.com" }
   ];
 
+  const password = process.env.TEST_ACCS_PASSWORD ?? "password123";
   for (const u of userDefs) {
     await auth.api
-      .signUpEmail({ body: { ...u, password: "password123" } })
+      .signUpEmail({ body: { ...u, password: password } })
       .catch(() => console.log(`${u.name} already exists, skipping...`));
   }
 
-  const [alice, bob, charlie, diana, erik] = await Promise.all(
-    userDefs.map((u) => prisma.user.findUniqueOrThrow({ where: { email: u.email } }))
+  const ensuredUsers = await Promise.all(
+    userDefs.map(async (u) => {
+      const existing = await prisma.user.findUnique({ where: { email: u.email } });
+      if (existing) {
+        return existing;
+      }
+      const hashedPassword = await hashPassword(password);
+
+      const userId = randomUUID();
+      const created = await prisma.user.create({
+        data: {
+          id: userId,
+          name: u.name,
+          email: u.email,
+        },
+      });
+      await prisma.account.create({
+        data: {
+          id: randomUUID(),
+          userId: userId,
+          accountId: userId,
+          providerId: 'credential',
+          password: hashedPassword,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        }
+      });
+      console.log(`Created user ${u.email} directly in DB (fallback).`);
+      return created;
+    })
   );
 
-  console.log("Users created");
+
+  const [alice, bob, charlie, diana, erik] = ensuredUsers;
+
+  console.log("Users ensured/created");
 
   // ── Problems from CSV ──
   const csvPath = path.join(__dirname, "../public/dataset.csv");
@@ -73,7 +107,7 @@ async function main() {
   }[] = [];
 
   const seenSlugs = new Set<string>();
-
+  const DEMO_MODE = process.env.DEMO_MODE ?? false
   for await (const row of parser) {
     const slug = row["Question Slug"];
     if (seenSlugs.has(slug)) {
@@ -81,7 +115,10 @@ async function main() {
       continue;
     }
     seenSlugs.add(slug);
-
+    // if demo mode is set and slug is not two sum skip
+    if (DEMO_MODE && slug !== "two-sum") {
+      continue;
+    }
     problemsData.push({
       title: row["Question Title"],
       slug,
@@ -99,7 +136,7 @@ async function main() {
     });
   }
 
-  await prisma.problem.createMany({ data: problemsData });
+  await prisma.problem.createMany({ data: problemsData, skipDuplicates: true });
   console.log(`Problems created: ${problemsData.length}`);
 
   // ── Problem Tests from JSON ──
@@ -119,7 +156,12 @@ async function main() {
     console.log("Successfully parsed test cases");
   }
 
-  const mapped = testCases.map((tc) => ({
+  // only create test cases for slug two-sum when demo mode is enabled
+  const filteredTestCases = DEMO_MODE
+    ? testCases.filter((tc) => tc.problemId === "two-sum")
+    : testCases;
+
+  const mapped = filteredTestCases.map((tc) => ({
     problemId: tc.problemId,
     functionInput: tc.functionInput,
     expectedOutput: tc.expectedOutput,
@@ -193,18 +235,17 @@ async function main() {
     map[nums[i]] = i;
   }
 }`,
-      team1TimeToPassMs: 287,
     },
   });
 
   console.log("Game result created");
   console.log("Seeding complete!");
   console.log("");
-  console.log("   alice@test.com   / password123");
-  console.log("   bob@test.com     / password123");
-  console.log("   charlie@test.com / password123");
-  console.log("   diana@test.com   / password123");
-  console.log("   erik@test.com    / password123");
+  console.log("   alice@test.com");
+  console.log("   bob@test.com");
+  console.log("   charlie@test.com");
+  console.log("   diana@test.com");
+  console.log("   erik@test.com");
 }
 
 main()

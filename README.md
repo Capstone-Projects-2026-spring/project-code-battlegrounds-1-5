@@ -69,12 +69,19 @@ To develop, you will need a computer with Git, Node, Bun, and Docker Compose.
 
 ### Environment Setup
 1. Clone the repository.
-2. Create a `.env` file and populate it with the following (filling the tokens as needed, they shouldn't matter too much for local development):
+2. Create a `.env` file and populate it with the following (filling the tokens as needed, they shouldn't matter too much
+   for local development):
     ```
     # config
     PORT=3000
     NODE_ENV=development
-    
+   
+    # db seeding configs
+    # password for the test accounts. in prod, ensure we inject this into the db script with something secure
+    TEST_ACCS_PASSWORD=password123
+    # if you ever want to seed the db with a single problem (two sum), uncomment this line
+    #DEMO_MODE=false
+   
     # better auth
     BETTER_AUTH_SECRET=SOME_SECRET_TOKEN
     BETTER_AUTH_URL=http://localhost:3000
@@ -90,8 +97,9 @@ To develop, you will need a computer with Git, Node, Bun, and Docker Compose.
     REDIS_HOST=localhost
     REDIS_PORT=6379
    
-   # executor image
+    # executor image
     EXECUTOR_PORT=6969
+    EXECUTOR_ADDR=http://127.0.0.1:6969
 
     # for prisma
     DATABASE_URL=postgresql://appuser:SOME_SECRET_TOKEN@localhost:5432/appdb
@@ -122,6 +130,21 @@ We use one testing library:
 Jest is used for individual API tests 
 
 For the Jest tests, run `bunx jest tests/api/ --forceExit`.
+
+## Infrastructure Development
+To develop the infrastructure or deploy the app, you must have a Google Cloud account. While I won't supply specific instructions (trust me, if you want to deploy on this - you will have to be precocious and persistent), the basic flow is that you will need to create a service account and store it's credentials in your cloud environment, then edit the main.tf file to reference it.
+
+There are some more specific commands in the /infra/README.md file to help get you started.
+
+Estimated deployment costs are ~40$/month dependent on usage. This is primarily due to the cost of Memorystore for Redis.
+
+Check out the /build-artifacts folder for the Docker files and cloudbuild configs.
+
+## Code Executor Development
+The code executor is a 3 layer system for production. Code is sent by the application to a VM orchestrator, which spins up and maintains a pool of Compute Engines as needed. The VMs in turn spin up Docker containers running an Alpine image, which pivot to new rootfs via a nsjail rootjail where the code is actually executed. There are a lot of moving parts to this system. For more info, take a look ath the /code-executor/README.md file.
+
+It is build on Python's fastapi for relatively easy development and integration with Google's compute APIs.
+
 ## Collaborators
 
 <div align="center">

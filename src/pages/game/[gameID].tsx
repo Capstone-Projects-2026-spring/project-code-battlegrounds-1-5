@@ -3,7 +3,7 @@ import { Editor } from '@monaco-editor/react';
 import { useRouter } from 'next/router';
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { Socket } from 'socket.io-client';
-import { IconEye, IconPlayerTrackNextFilled, IconPlus } from '@tabler/icons-react';
+import { IconEye, IconPlayerPlay, IconPlayerTrackNextFilled, IconPlus } from '@tabler/icons-react';
 import { usePostHog } from 'posthog-js/react';
 import { Panel, Group as PanelGroup, Separator as PanelResizeHandle } from 'react-resizable-panels';
 
@@ -100,8 +100,6 @@ function PlayGameRoom() {
   const testCaseCtx = useTestCases();
   const gameStateCtx = useGameState();
   const { socket } = useSocket();
-
-  // when setting status in the first useEffect, set it to _idle
   const { setStatus } = useMatchmaking();
 
   const [spectatorView, setSpectatorView] = useState<Role>(Role.SPECTATOR);
@@ -144,9 +142,7 @@ function PlayGameRoom() {
 
   // ONLY HAPPENS ON PAGE LAUNCH
   useEffect(() => {
-
-
-    if (!session?.user.id || !gameId || !socket) return;
+    if (!session?.user.id || !gameId || !router.isReady || !socket) return;
 
     setStatus('idle');
 
@@ -199,10 +195,11 @@ function PlayGameRoom() {
             }
           }
         }
-        setLoading(false);
       } catch (error) {
         console.error("Failed to load room problem", error);
         router.replace("/");
+      } finally {
+        setLoading(false);
       }
     };
     loadRoomDetails();
@@ -224,6 +221,8 @@ function PlayGameRoom() {
     }
 
     const errorHandler = (data: JSON) => {
+      setRunningAllTests(false);
+      setIsWaitingForOtherTeam(false);
       console.error("Socket error:", data);
     };
 
@@ -241,7 +240,7 @@ function PlayGameRoom() {
       socket.off("error", errorHandler);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gameId, session?.user.id]);
+  }, [gameId, session?.user.id, socket, router.isReady]);
 
   useEffect(() => {
     if (!socket || !teamSelected) return;
@@ -255,7 +254,7 @@ function PlayGameRoom() {
     });
 
     console.log("Syncing default code");
-    socket.emit("codeChange", {teamId: teamSelected, code: liveCode});
+    socket.emit("codeChange", { teamId: teamSelected, code: liveCode });
   }, [socket, teamSelected]);
 
   useEffect(() => {
@@ -528,10 +527,10 @@ function PlayGameRoom() {
       prev.map((parameter) =>
         parameter.isOutputParameter
           ? {
-              ...parameter,
-              type,
-              value: null,
-            }
+            ...parameter,
+            type,
+            value: null,
+          }
           : parameter,
       ),
     );
@@ -558,6 +557,7 @@ function PlayGameRoom() {
 
     setRunningAllTests(true);
     socket.emit("submitTestCases", {
+      roomId: gameId,
       code: liveCode,
       testCases: testCaseCtx.cases,
       runIDs: testCaseCtx.cases.map((t) => t.id), // all of em!
@@ -566,7 +566,7 @@ function PlayGameRoom() {
 
   // --- RENDERING LOGIC ---
   // State A: Still connecting to the WebSocket server
-  if (!socket || loading) {
+  if (loading) {
     return <EnteringBattleground />;
   }
 
@@ -582,23 +582,34 @@ function PlayGameRoom() {
           if (role === Role.SPECTATOR) {
             setGameState(GameStatus.ACTIVE);
           }
-          socket.emit("requestTeamUpdate", { teamId, gameId, playerCount });
+          socket?.emit("requestTeamUpdate", { teamId, gameId, playerCount });
         }}
       />
     );
   }
 
   if (gameState == GameStatus.STARTING) {
+    const roleInfo = {
+      [Role.CODER]: { label: "Coder", blurb: "Write code that passes the tester's cases." },
+      [Role.TESTER]: { label: "Tester", blurb: "Write test cases that break the coder's solution." },
+      [Role.SPECTATOR]: { label: "Spectator", blurb: "Watch the battle unfold." },
+    };
+    const info = role ? roleInfo[role] : null;
+
     return (
       <Center h="100vh">
-        <Group align="center">
+        <Stack align="center" gap="xs">
           <Text size="xl" c="dimmed" data-testid="waiting-for-second">
             Starting in 3...2...1...Battle!
           </Text>
-          <Text size="md" fw={600}>
-            Room ID: {gameId}
-          </Text>
-        </Group>
+          <Text size="md" fw={600}>Room ID: {gameId}</Text>
+          {info && (
+            <Stack align="center" gap={4} mt="sm">
+              <Text size="lg" fw={700}>You are the <span style={{ color: role === Role.CODER ? "#22d3ee" : "#4ade80" }}>{info.label}</span></Text>
+              <Text size="sm" c="dimmed">{info.blurb}</Text>
+            </Stack>
+          )}
+        </Stack>
       </Center>
     );
   }
@@ -628,7 +639,7 @@ function PlayGameRoom() {
       {/* Waiting Modal */}
       <Modal
         opened={isWaitingForOtherTeam}
-        onClose={() => {}}
+        onClose={() => { }}
         centered
         withCloseButton={false}
         closeOnEscape={false}
@@ -709,7 +720,7 @@ function PlayGameRoom() {
           h="100vh"
           style={{ display: "flex", flexDirection: "column" }}
         >
-          <RoleFlipPopup gameState={gameState} />
+          <RoleFlipPopup gameState={gameState} role={effectiveRole as Role} />
 
           <Box style={{ flex: 1, display: "flex", overflow: "hidden" }}>
             <PanelGroup orientation="horizontal">
@@ -735,13 +746,13 @@ function PlayGameRoom() {
                 >
                   {(gameState === GameStatus.ACTIVE ||
                     gameState === GameStatus.FLIPPING) && (
-                    <Box mb="md" p="1rem" pb={isProblemVisible ? "md" : "1rem"}>
-                      <GameTimer
-                        endTime={endTime}
-                        onExpire={handleTimerExpire}
-                      />
-                    </Box>
-                  )}
+                      <Box mb="md" p="1rem" pb={isProblemVisible ? "md" : "1rem"}>
+                        <GameTimer
+                          endTime={endTime}
+                          onExpire={handleTimerExpire}
+                        />
+                      </Box>
+                    )}
                   {isProblemVisible ? (
                     <Box
                       style={{
@@ -794,13 +805,31 @@ function PlayGameRoom() {
                       defaultValue="Javascript"
                       disabled={isSpectator || role !== Role.CODER}
                     />
+                    {/* Role badge */}
+                    {role && (
+                      <Text
+                        size="xs"
+                        fw={600}
+                        px="sm"
+                        py={4}
+                        style={{
+                          borderRadius: 4,
+                          backgroundColor: role === Role.CODER ? "#0e7490" : role === Role.TESTER ? "#166534" : "#374151",
+                          color: "white",
+                          textTransform: "uppercase",
+                          letterSpacing: "0.05em",
+                        }}
+                      >
+                        {role === Role.CODER ? "Coder" : role === Role.TESTER ? "Tester" : "Spectator"}
+                      </Text>
+                    )}
                     {effectiveRole === Role.CODER && (
                       <>
                         <Button
                           size="xs"
                           color="green"
                           onClick={submitFinalCode}
-                          disabled={isSpectator || isWaitingForOtherTeam}
+                          disabled={isSpectator || isWaitingForOtherTeam} // TODO: disable this for first thirty seconds
                         >
                           {isWaitingForOtherTeam
                             ? "Waiting for other team..."
