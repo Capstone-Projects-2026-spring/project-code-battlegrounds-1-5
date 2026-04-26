@@ -1,4 +1,4 @@
-import { ActionIcon, Box, Button, Center, Group, Loader, Modal, Select, Stack, Tabs, Text, Tooltip } from '@mantine/core';
+ import { ActionIcon, Box, Button, Center, Group, Loader, Modal, Select, Stack, Tabs, Text, Tooltip } from '@mantine/core';
 import { Editor } from '@monaco-editor/react';
 import { useRouter } from 'next/router';
 import { useEffect, useState, useRef, useCallback } from 'react';
@@ -234,7 +234,7 @@ function PlayGameRoom() {
       socket.off("error", errorHandler);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gameId, session?.user.id, socket, router.isReady]);
+  }, [gameId, session?.user.id]);
 
   useEffect(() => {
     // Runs after team gets selected - join rooms first, then set up room-specific listeners
