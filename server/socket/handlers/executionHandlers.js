@@ -328,6 +328,10 @@ function registerExecutionHandlers(io, socket, gameService) {
                 });
                 console.log('[TWOPLAYER] Execution completed:', executionResult);
                 await gameService.cleanupGameTimers(roomId);
+                await prisma.gameRoom.update({
+                    where: { id: roomId },
+                    data: { status: 'FINISHED' }
+                });
                 deleteVm(roomId);
                 io.to(roomId).emit('gameEnded');
                 await gameService.removePlayersFromSockets(gameRoom);
@@ -457,7 +461,7 @@ function registerExecutionHandlers(io, socket, gameService) {
                         const hiddenTestCaseIds = hiddenTests.map(t => t.id);
 
                         // Execute BOTH teams in parallel
-                        await Promise.all([
+                        const executionResults = await Promise.all([
                             executeAndPersist({
                                 roomId,
                                 gameResultId: gameResult.id,
@@ -487,6 +491,13 @@ function registerExecutionHandlers(io, socket, gameService) {
                                 return { success: false, error };
                             })
                         ]);
+
+                        const hasExecutionFailure = executionResults.some((result) => result?.success === false);
+                        if (hasExecutionFailure) {
+                            console.error('[FOURPLAYER] One or more team executions failed; not finalizing game room');
+                            socket.emit('error', { message: 'Code execution failed for one of the teams. Please try again.' });
+                            return;
+                        }
 
                         console.log('[FOURPLAYER] Both executions completed');
                     } catch (error) {
