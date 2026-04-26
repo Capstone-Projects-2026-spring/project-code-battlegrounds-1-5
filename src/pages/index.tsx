@@ -53,6 +53,7 @@ export default function Home() {
 
       <main>
 
+        {/* Samir I know this looks ugly in this file, forgive me LOL */}
         {session && (
           <>
             <Avatar
