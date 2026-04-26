@@ -113,8 +113,8 @@ class VMProvisioner:
                 metadata.items = [
                     {
                         # TODO: get source in startup script outta here and refer directly to location of python executable in venv
-                        "key":"startup-script", # TODO: MUST REMOVE THIS GIT SWITCH AS WE MERGE. vm is already on main. while i test, i want to be on my branch
-                        "value":"#!/bin/bash\ngit config --system --add safe.directory /home/juli4fasick/project-code-battlegrounds-1-5\ncd /home/juli4fasick/project-code-battlegrounds-1-5\ngit switch feat/prod-tweaks\ngit pull\nsource ./.venv/bin/activate\ncd ./code-executor\npip3 install -r requirements.txt\ncd ./executor-api\nfastapi run --host 0.0.0.0 --port 8000",
+                        "key":"startup-script",
+                        "value":"#!/bin/bash\ngit config --system --add safe.directory /home/juli4fasick/project-code-battlegrounds-1-5\ncd /home/juli4fasick/project-code-battlegrounds-1-5\ngit pull\nsource ./.venv/bin/activate\ncd ./code-executor\npip3 install -r requirements.txt\ncd ./executor-api\nfastapi run --host 0.0.0.0 --port 8000",
                     }
                 ]
                 instance.metadata = metadata
