@@ -3,29 +3,8 @@
 const GAME_DURATION_MS = 5 * 60 * 1000; // 5 minutes in milliseconds
 const SECONDS_BEFORE_ROLE_SWAP_WARNING = 60 * 1000; // 60 seconds in milliseconds
 
-function getDefaultTestCases() {
-  return [
-    {
-      id: 0,
-      functionInput: [
-        { name: "a", type: "number", value: "2" },
-        { name: "b", type: "number", value: "3" },
-      ],
-      expectedOutput: {
-        name: "result",
-        type: "number",
-        value: "5",
-        isOutputParameter: true,
-      },
-    },
-  ];
-}
 
-function getDefaultStarterCode() {
-  return "function solution(a, b) { \n\treturn a + b;\n}";
-}
-
-function createGameService(stateRedis) {
+function createGameService(stateRedis, io) {
   return {
     GAME_DURATION_MS,
 
@@ -153,7 +132,22 @@ function createGameService(stateRedis) {
       return stateRedis.del(key);
     },
 
-
+    async removePlayersFromSockets(gameRoom) {
+      for (const team of gameRoom.teams) {
+        for (const player of team.players) {
+          console.log('Looking up player:', player.userId);
+          const socketId = await stateRedis.get(`socket:${player.userId}`);
+          console.log('Found socketId:', socketId);
+          const socket = io.sockets.sockets.get(socketId);
+          console.log('Found socket:', socket?.id);
+          if (socket) {
+            await socket.leave(gameRoom.id);
+            await socket.leave(team.id);
+            console.log(`Socket: ${socket.id} left ${gameRoom.id} and ${team.id}`);
+          }
+        }
+      }
+    }
   };
 }
 
