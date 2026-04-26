@@ -144,6 +144,8 @@ function PlayGameRoom() {
   useEffect(() => {
     if (!session?.user.id || !gameId || !router.isReady || !socket) return;
 
+    localStorage.setItem("stored_game", gameId);
+
     setStatus('idle');
 
     gameStateCtx.setGameId(gameId);
@@ -277,7 +279,7 @@ function PlayGameRoom() {
       setIsWaitingForOtherTeam(false);
       setGameState(GameStatus.FINISHED);
       setStatus("idle"); // reset matchmaking status so players can queue again from results page
-      router.push(`/results/${gameId}`);
+      router.replace(`/results/${gameId}`);
     };
 
     const handleRoleSwapWarning = () => {

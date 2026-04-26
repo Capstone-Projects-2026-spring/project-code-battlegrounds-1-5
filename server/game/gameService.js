@@ -20,12 +20,12 @@ function createGameService(stateRedis, io) {
       if (started) {
         const flipRatio = Math.random() * (0.7 - 0.3) + 0.3; // random between 0.3 and 0.7
         const flipped_duration = Math.floor(GAME_DURATION_MS * flipRatio);
-        const flippedKey = `game:${gameId}:roleswap`
-        const warningKey = `game:${gameId}:roleswap:warning`
+        const flippedKey = `game:${gameId}:roleswap`;
+        const warningKey = `game:${gameId}:roleswap:warning`;
         console.log("Flipped key being set");
         await stateRedis.set(flippedKey, '1', 'PX', flipped_duration, 'NX'); // set flip timer at the same time
         const warning_trigger = Math.max(0, flipped_duration - SECONDS_BEFORE_ROLE_SWAP_WARNING); // set the warning popup time
-        console.log("Warning key being set")
+        console.log("Warning key being set");
         await stateRedis.set(warningKey, '1', 'PX', warning_trigger, 'NX');
         await stateRedis.sadd('activeGames', gameId);
         console.log(

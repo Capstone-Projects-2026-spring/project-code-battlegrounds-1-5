@@ -246,9 +246,13 @@ function registerExecutionHandlers(io, socket, gameService) {
                 });
                 console.log('[TWOPLAYER] Execution completed:', executionResult);
                 await gameService.cleanupGameTimers(roomId);
-                deleteVm(roomId);
+                await prisma.gameRoom.update({
+                    where: { id: roomId },
+                    data: { status: GameStatus.FINISHED }
+                });
                 io.to(roomId).emit('gameEnded');
                 await gameService.removePlayersFromSockets(gameRoom);
+                deleteVm(roomId);
             } catch (error) {
                 console.error("Error in TWOPLAYER execution:", error);
                 socket.emit('error', { message: 'Code execution failed! Try again in a bit...' });

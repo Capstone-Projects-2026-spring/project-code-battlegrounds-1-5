@@ -1,6 +1,5 @@
 const { getPrisma } = require('../prisma/index');
 const { Role } = require('@prisma/client');
-const { deleteVm } = require('../utils/vm/deleteVm');
 
 function startExpirationListener(io, pubClient) {
   const sub = pubClient.duplicate();
