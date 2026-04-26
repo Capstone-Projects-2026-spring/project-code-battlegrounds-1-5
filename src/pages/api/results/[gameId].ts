@@ -18,9 +18,7 @@ export interface TeamGameMadeTestCase {
   passed: boolean;
 }
 
-
 export interface TestsResponse {
-  // Problem & Game Details
   problem: {
     id: string;
     title: string;
@@ -33,7 +31,6 @@ export interface TestsResponse {
   team1Code: string | null;
   team2Code: string | null;
 
-  // Test Execution Results
   tests: TestCase[];
   team1Results: unknown[];
   team2Results: unknown[];
@@ -49,7 +46,6 @@ export interface TestsResponse {
   team1GameMadeTests: TeamGameMadeTestCase[];
   team2GameMadeTests: TeamGameMadeTestCase[];
 
-  // Submission & Time Metrics
   team1TimeLeftSeconds: number | null;
   team2TimeLeftSeconds: number | null;
 }
@@ -57,6 +53,39 @@ export interface TestsResponse {
 export interface ErrorResponse {
   message: string;
 }
+
+type MixedGameTestRow = {
+  id: string;
+  type: string;
+  position: number;
+  teamNumber: number;
+  functionInput: unknown;
+  expectedOutput: unknown;
+  actualOutput?: unknown;
+  passed?: boolean | null;
+  stderr?: string | null;
+  executionTimeMs?: number | null;
+  team1ActualOutput?: unknown;
+  team2ActualOutput?: unknown;
+  team1Stderr?: string | null;
+  team2Stderr?: string | null;
+  team1ExecutionTimeMs?: number | null;
+  team2ExecutionTimeMs?: number | null;
+  team1Passed?: boolean | null;
+  team2Passed?: boolean | null;
+};
+
+type HiddenScoringCase = {
+  testCase: TestCase;
+  team1Actual: unknown;
+  team2Actual: unknown;
+  team1Error: string | null;
+  team2Error: string | null;
+  team1Passed: boolean;
+  team2Passed: boolean;
+  team1ExecutionTimeMs: number | null;
+  team2ExecutionTimeMs: number | null;
+};
 
 function parseOutput(output: unknown): unknown {
   if (!output) return null;
@@ -94,22 +123,80 @@ function calculateTimeLeftSeconds(submittedAt: string | null | undefined): numbe
   return remainingSeconds === null ? null : Math.max(0, remainingSeconds);
 }
 
-function mapTeamGameMadeTestCase(gameTest: {
-  id: string;
-  functionInput: unknown;
-  expectedOutput: unknown;
-  actualOutput: unknown;
-  stderr: string | null;
-  passed: boolean | null;
-}): TeamGameMadeTestCase {
+function readTeamActual(row: MixedGameTestRow, teamNumber: 1 | 2): unknown {
+  if (teamNumber === 1) {
+    if (row.team1ActualOutput !== undefined) {
+      return parseOutput(row.team1ActualOutput);
+    }
+    if (row.teamNumber === 1) {
+      return parseOutput(row.actualOutput);
+    }
+    return null;
+  }
+
+  if (row.team2ActualOutput !== undefined) {
+    return parseOutput(row.team2ActualOutput);
+  }
+  if (row.teamNumber === 2) {
+    return parseOutput(row.actualOutput);
+  }
+  return null;
+}
+
+function readTeamError(row: MixedGameTestRow, teamNumber: 1 | 2): string | null {
+  if (teamNumber === 1) {
+    if (row.team1Stderr !== undefined) return row.team1Stderr ?? null;
+    if (row.teamNumber === 1) return row.stderr ?? null;
+    return null;
+  }
+
+  if (row.team2Stderr !== undefined) return row.team2Stderr ?? null;
+  if (row.teamNumber === 2) return row.stderr ?? null;
+  return null;
+}
+
+function readTeamPassed(row: MixedGameTestRow, teamNumber: 1 | 2): boolean {
+  if (teamNumber === 1) {
+    if (row.team1Passed !== undefined) return row.team1Passed === true;
+    if (row.teamNumber === 1) return row.passed === true;
+    return false;
+  }
+
+  if (row.team2Passed !== undefined) return row.team2Passed === true;
+  if (row.teamNumber === 2) return row.passed === true;
+  return false;
+}
+
+function readTeamExecutionTime(row: MixedGameTestRow, teamNumber: 1 | 2): number | null {
+  if (teamNumber === 1) {
+    if (row.team1ExecutionTimeMs !== undefined) return row.team1ExecutionTimeMs ?? null;
+    if (row.teamNumber === 1) return row.executionTimeMs ?? null;
+    return null;
+  }
+
+  if (row.team2ExecutionTimeMs !== undefined) return row.team2ExecutionTimeMs ?? null;
+  if (row.teamNumber === 2) return row.executionTimeMs ?? null;
+  return null;
+}
+
+function mapTeamGameMadeTestCase(gameTest: MixedGameTestRow, teamNumber: 1 | 2): TeamGameMadeTestCase {
   return {
     id: gameTest.id,
     input: gameTest.functionInput,
     expected: normalizeExpected(gameTest.expectedOutput),
-    actual: parseOutput(gameTest.actualOutput),
-    error: gameTest.stderr ?? null,
-    passed: Boolean(gameTest.passed),
+    actual: readTeamActual(gameTest, teamNumber),
+    error: readTeamError(gameTest, teamNumber),
+    passed: readTeamPassed(gameTest, teamNumber),
   };
+}
+
+function calculateAverageTime(times: Array<number | null>): number | null {
+  const validTimes = times.filter(
+    (t): t is number => t !== null && typeof t === "number" && t > 0
+  );
+
+  if (validTimes.length === 0) return null;
+  return Math.round(validTimes.reduce((a, b) => a + b, 0) / validTimes.length);
 }
 
 export default async function handler(
@@ -132,7 +219,6 @@ export default async function handler(
   }
 
   try {
-    // Get the game room and its problem
     const gameRoom = await prisma.gameRoom.findUnique({
       where: { id: gameId },
       include: {
@@ -158,14 +244,10 @@ export default async function handler(
         teams: {
           include: {
             players: {
-              select: {
-                userId: true,
-              },
+              select: { userId: true },
             },
           },
-          orderBy: {
-            createdAt: "asc",
-          },
+          orderBy: { createdAt: "asc" },
         },
       },
     });
@@ -174,7 +256,6 @@ export default async function handler(
       return res.status(404).json({ message: "Game room not found" });
     }
 
-    // Determine which team the current user is on (1 or 2 based on creation order)
     let userTeamNumber: 1 | 2 = 1;
     for (let i = 0; i < gameRoom.teams.length; i++) {
       const team = gameRoom.teams[i];
@@ -187,114 +268,121 @@ export default async function handler(
       }
     }
 
-    // QUERY GameTest records from database (no re-execution needed)
-    const gameTestResults = await prisma.gameTest.findMany({
-      where: {
-        gameResultId: gameRoom.gameResult?.id,
-      },
-      orderBy: [{ teamNumber: "asc" }, { position: "asc" }],
-    });
+    const gameResultId = gameRoom.gameResult?.id;
+    const gameTestResults = gameResultId
+      ? ((await prisma.gameTest.findMany({
+          where: { gameResultId },
+          orderBy: [{ teamNumber: "asc" }, { position: "asc" }],
+        })) as unknown as MixedGameTestRow[])
+      : [];
 
-    // Group by team
-    const team1GameTests = gameTestResults.filter((gt) => gt.teamNumber === 1);
-    const team2GameTests = gameTestResults.filter((gt) => gt.teamNumber === 2);
+    const sharedHiddenTests = gameTestResults
+      .filter((gt) => gt.type === "Hidden" && gt.teamNumber === 0)
+      .sort((a, b) => a.position - b.position);
 
-    // Build a map of tests grouped by input for unified display
-    // For each position, we want to show the input once with both teams' outputs
-    const testsByPosition = new Map<number, { team1: typeof team1GameTests[0] | undefined; team2: typeof team2GameTests[0] | undefined }>();
+    let hiddenScoringCases: HiddenScoringCase[] = [];
 
-    const ensureTestPosition = (position: number) => {
-      if (!testsByPosition.has(position)) {
-        testsByPosition.set(position, { team1: undefined, team2: undefined });
-      }
-    };
-
-    team1GameTests.forEach((gt) => {
-      ensureTestPosition(gt.position);
-      testsByPosition.get(gt.position)!.team1 = gt;
-    });
-
-    team2GameTests.forEach((gt) => {
-      ensureTestPosition(gt.position);
-      testsByPosition.get(gt.position)!.team2 = gt;
-    });
-
-    // Create unified hidden test cases with both team results (these are grading/scoring tests)
-    const sortedPositions = Array.from(testsByPosition.keys())
-      .filter(position => {
-        const pair = testsByPosition.get(position)!;
-        return (pair.team1?.type === "Hidden") || (pair.team2?.type === "Hidden");
-      })
-      .sort((a, b) => a - b);
-    const hiddenScoringCases = sortedPositions.map((position) => {
-      const testPair = testsByPosition.get(position)!;
-      const team1Test = testPair.team1;
-      const team2Test = testPair.team2;
-
-      return {
+    if (sharedHiddenTests.length > 0) {
+      hiddenScoringCases = sharedHiddenTests.map((row, index) => ({
         testCase: {
-          id: team1Test?.id || team2Test?.id || `test-${position}`,
-          input: team1Test?.functionInput ?? team2Test?.functionInput,
-          expected: normalizeExpected(team1Test?.expectedOutput ?? team2Test?.expectedOutput),
-        } as TestCase,
-        team1Actual: team1Test ? parseOutput(team1Test.actualOutput) : undefined,
-        team2Actual: team2Test ? parseOutput(team2Test.actualOutput) : undefined,
-        team1Error: team1Test?.stderr ?? null,
-        team2Error: team2Test?.stderr ?? null,
-      };
-    });
+          id: row.id || `hidden-${index}`,
+          input: row.functionInput,
+          expected: normalizeExpected(row.expectedOutput),
+        },
+        team1Actual: readTeamActual(row, 1),
+        team2Actual: readTeamActual(row, 2),
+        team1Error: readTeamError(row, 1),
+        team2Error: readTeamError(row, 2),
+        team1Passed: readTeamPassed(row, 1),
+        team2Passed: readTeamPassed(row, 2),
+        team1ExecutionTimeMs: readTeamExecutionTime(row, 1),
+        team2ExecutionTimeMs: readTeamExecutionTime(row, 2),
+      }));
+    } else {
+      const hiddenTeam1 = gameTestResults
+        .filter((gt) => gt.type === "Hidden" && gt.teamNumber === 1)
+        .sort((a, b) => a.position - b.position);
+      const hiddenTeam2 = gameTestResults
+        .filter((gt) => gt.type === "Hidden" && gt.teamNumber === 2)
+        .sort((a, b) => a.position - b.position);
+
+      const hiddenByPosition = new Map<number, { team1?: MixedGameTestRow; team2?: MixedGameTestRow }>();
+
+      hiddenTeam1.forEach((row) => {
+        const existing = hiddenByPosition.get(row.position) || {};
+        existing.team1 = row;
+        hiddenByPosition.set(row.position, existing);
+      });
+
+      hiddenTeam2.forEach((row) => {
+        const existing = hiddenByPosition.get(row.position) || {};
+        existing.team2 = row;
+        hiddenByPosition.set(row.position, existing);
+      });
+
+      hiddenScoringCases = Array.from(hiddenByPosition.entries())
+        .sort(([a], [b]) => a - b)
+        .map(([position, pair]) => ({
+          testCase: {
+            id: pair.team1?.id || pair.team2?.id || `hidden-${position}`,
+            input: pair.team1?.functionInput ?? pair.team2?.functionInput,
+            expected: normalizeExpected(pair.team1?.expectedOutput ?? pair.team2?.expectedOutput),
+          },
+          team1Actual: pair.team1 ? readTeamActual(pair.team1, 1) : null,
+          team2Actual: pair.team2 ? readTeamActual(pair.team2, 2) : null,
+          team1Error: pair.team1 ? readTeamError(pair.team1, 1) : null,
+          team2Error: pair.team2 ? readTeamError(pair.team2, 2) : null,
+          team1Passed: pair.team1 ? readTeamPassed(pair.team1, 1) : false,
+          team2Passed: pair.team2 ? readTeamPassed(pair.team2, 2) : false,
+          team1ExecutionTimeMs: pair.team1 ? readTeamExecutionTime(pair.team1, 1) : null,
+          team2ExecutionTimeMs: pair.team2 ? readTeamExecutionTime(pair.team2, 2) : null,
+        }));
+    }
 
     const unifiedTestCases: TestCase[] = hiddenScoringCases.map((caseData) => caseData.testCase);
 
-    // Game-made tests are shown separately from hidden scoring tests.
-    const team1GameMadeTests = team1GameTests
-      .filter((gt) => gt.type === "Game")
+    const team1GameMadeTests = gameTestResults
+      .filter((gt) => gt.type === "Game" && gt.teamNumber === 1)
       .sort((a, b) => a.position - b.position)
-      .map((gt) => mapTeamGameMadeTestCase(gt));
+      .map((gt) => mapTeamGameMadeTestCase(gt, 1));
 
-    const team2GameMadeTests = team2GameTests
-      .filter((gt) => gt.type === "Game")
+    const team2GameMadeTests = gameTestResults
+      .filter((gt) => gt.type === "Game" && gt.teamNumber === 2)
       .sort((a, b) => a.position - b.position)
-      .map((gt) => mapTeamGameMadeTestCase(gt));
-
-    // Calculate average execution times from GameTest records (only hidden tests)
-    const calculateAverageTime = (
-      gameTests: (typeof gameTestResults)[number][]
-    ) => {
-      // Only include hidden test cases for average calculation
-      const hiddenTests = gameTests.filter((gt) => gt.type === "Hidden");
-      const validTimes = hiddenTests
-        .map((gt) => gt.executionTimeMs)
-        .filter((t): t is number => t !== null && typeof t === "number" && t > 0);
-
-      if (validTimes.length === 0) return null;
-      return Math.round(
-        validTimes.reduce((a, b) => a + b, 0) / validTimes.length
-      );
-    };
-
-    const team1AverageExecutionTime = calculateAverageTime(team1GameTests);
-    const team2AverageExecutionTime = calculateAverageTime(team2GameTests);
+      .map((gt) => mapTeamGameMadeTestCase(gt, 2));
 
     const team1ActualOutputs = hiddenScoringCases.map((caseData) => caseData.team1Actual);
     const team2ActualOutputs = hiddenScoringCases.map((caseData) => caseData.team2Actual);
     const team1ErrorsArray = hiddenScoringCases.map((caseData) => caseData.team1Error);
     const team2ErrorsArray = hiddenScoringCases.map((caseData) => caseData.team2Error);
 
-    const team1PassedCount = team1GameTests.filter((gt) => gt.type === "Hidden" && gt.passed).length;
-    const team2PassedCount = team2GameTests.filter((gt) => gt.type === "Hidden" && gt.passed).length;
-    const team1TotalTests = team1GameTests.filter((gt) => gt.type === "Hidden").length;
-    const team2TotalTests = team2GameTests.filter((gt) => gt.type === "Hidden").length;
+    const team1PassedCount = hiddenScoringCases.filter((caseData) => caseData.team1Passed).length;
+    const team2PassedCountRaw = hiddenScoringCases.filter((caseData) => caseData.team2Passed).length;
+    const isTwoPlayer = gameRoom.gameType === "TWOPLAYER";
+    const team2PassedCount = isTwoPlayer ? 0 : team2PassedCountRaw;
+
+    const team1TotalTests = hiddenScoringCases.length;
+    const team2TotalTests = isTwoPlayer ? 0 : hiddenScoringCases.length;
     const scoringTotalTests = Math.max(team1TotalTests, team2TotalTests);
+
+    const team1AverageExecutionTime = calculateAverageTime(
+      hiddenScoringCases.map((caseData) => caseData.team1ExecutionTimeMs)
+    );
+    const team2AverageExecutionTimeRaw = calculateAverageTime(
+      hiddenScoringCases.map((caseData) => caseData.team2ExecutionTimeMs)
+    );
+    const team2AverageExecutionTime = isTwoPlayer ? null : team2AverageExecutionTimeRaw;
+
     const team1SubmittedAt: string | null = gameRoom.gameResult?.team1SubmittedAt ?? null;
     const team2SubmittedAt: string | null = gameRoom.gameResult?.team2SubmittedAt ?? null;
     const team1TimeLeftSeconds = calculateTimeLeftSeconds(team1SubmittedAt);
     const team2TimeLeftSeconds = calculateTimeLeftSeconds(team2SubmittedAt);
+
     const team1Id = gameRoom.teams[0]?.id ?? null;
     const team2Id = gameRoom.teams[1]?.id ?? null;
 
     let nextWinningTeamId: string | null = null;
-    if (gameRoom.gameType === "TWOPLAYER") {
+    if (isTwoPlayer) {
       nextWinningTeamId = team1Id;
     } else if (team1Id && team2Id) {
       const [team1Score, team2Score] = calculateScorePair(
@@ -322,7 +410,6 @@ export default async function handler(
     }
 
     return res.status(200).json({
-      // Problem & Game Details
       problem: {
         id: gameRoom.problem.id,
         title: gameRoom.problem.title,
@@ -335,7 +422,6 @@ export default async function handler(
       team1Code: gameRoom.gameResult?.team1Code ?? null,
       team2Code: gameRoom.gameResult?.team2Code ?? null,
 
-      // Test Execution Results
       tests: unifiedTestCases,
       team1Results: team1ActualOutputs,
       team2Results: team2ActualOutputs,
@@ -350,8 +436,6 @@ export default async function handler(
       team2Errors: team2ErrorsArray,
       team1GameMadeTests,
       team2GameMadeTests,
-
-      // Submission & Time Metrics
       team1TimeLeftSeconds,
       team2TimeLeftSeconds,
     });
