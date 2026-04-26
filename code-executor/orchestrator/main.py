@@ -27,7 +27,7 @@ class Status(Enum):
     ERROR = 5
 
 PROJECT_ID = "code-battlegrounds"
-MACHINE_IMAGE = "projects/code-battlegrounds/global/machineImages/executor-vm-v2"
+MACHINE_IMAGE = "projects/code-battlegrounds/global/machineImages/executor-vm-v4"
 # valid zones
 DEFAULT_ZONES = ["us-central1-a", "us-central1-b", "us-central1-c"]
 DEPLOYED = False
@@ -113,8 +113,8 @@ class VMProvisioner:
                 metadata.items = [
                     {
                         # TODO: get source in startup script outta here and refer directly to location of python executable in venv
-                        "key":"startup-script", # TODO: MUST REMOVE THIS GIT SWITCH AS WE MERGE. vm is already on main. while i test, i want to be on my branch
-                        "value":"#!/bin/bash\ngit config --system --add safe.directory /home/juli4fasick/project-code-battlegrounds-1-5\ncd /home/juli4fasick/project-code-battlegrounds-1-5\ngit switch feat/execution-in-prod\ngit pull\nsource ./.venv/bin/activate\ncd ./code-executor\npip3 install -r requirements.txt\ncd ./executor-api\nfastapi run --host 0.0.0.0 --port 8000",
+                        "key":"startup-script",
+                        "value":"#!/bin/bash\ngit config --system --add safe.directory /home/juli4fasick/project-code-battlegrounds-1-5\ncd /home/juli4fasick/project-code-battlegrounds-1-5\ngit pull\nsource ./.venv/bin/activate\ncd ./code-executor\npip3 install -r requirements.txt\ncd ./executor-api\nfastapi run --host 0.0.0.0 --port 8000",
                     }
                 ]
                 instance.metadata = metadata
@@ -134,7 +134,11 @@ class VMProvisioner:
 
 class VM:
     def __init__(self, game_id):
-        self.game_id = "{game_id}".format(game_id=game_id)
+        # need vm name to start with vm. but dont expect client to send it. looks like i already use it everywhere else and the raw req gameid is still dict key so this should be all we need tpo enforce that
+        normalized = str(game_id)
+        if not normalized.startswith("vm-"):
+            normalized = f"vm-{normalized}"
+        self.game_id = normalized
         self.ip = None
         self.zone = None
         self.status = Status.STARTING
@@ -316,11 +320,8 @@ def execute(req: ExecutionRequest, request: Request):
         # vm.status = Status.BUSY # mark this vm as busy right now
         # serialize quite carefully as this was breaking things earlier
         payload = req.model_dump(mode='json') if hasattr(req, 'model_dump') else req.dict()
-        if isinstance(payload["testCases"], str):
-            payload["testCases"] = json.loads(payload["testCases"])
-
-        if isinstance(payload["runIDs"], str):
-            payload["runIDs"] = json.loads(payload["runIDs"])
+        # Do not coerce types here; forward exactly as received to preserve backward compatibility
+        # with executor-api which may expect strings for testCases and runIDs.
         print(f"Forwarding /execute to http://{target_ip}:8000/execute")
         print(f"Payload (truncated): {json.dumps(payload)[:800]}")
         resp = requests.post(

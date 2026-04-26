@@ -142,7 +142,7 @@ function PlayGameRoom() {
 
   // ONLY HAPPENS ON PAGE LAUNCH
   useEffect(() => {
-    if (!session?.user.id || !gameId || !socket) return;
+    if (!session?.user.id || !gameId || !router.isReady || !socket) return;
 
     setStatus('idle');
 
@@ -195,10 +195,11 @@ function PlayGameRoom() {
             }
           }
         }
-        setLoading(false);
       } catch (error) {
         console.error("Failed to load room problem", error);
         router.replace("/");
+      } finally {
+        setLoading(false);
       }
     };
     loadRoomDetails();
@@ -214,6 +215,8 @@ function PlayGameRoom() {
     }
 
     const errorHandler = (data: JSON) => {
+      setRunningAllTests(false);
+      setIsWaitingForOtherTeam(false);
       console.error("Socket error:", data);
     };
 
@@ -230,7 +233,7 @@ function PlayGameRoom() {
       socket.off("error", errorHandler);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gameId, session?.user.id]);
+  }, [gameId, session?.user.id, socket, router.isReady]);
 
   useEffect(() => {
     if (!socket || !teamSelected) return;
@@ -244,7 +247,7 @@ function PlayGameRoom() {
     });
 
     console.log("Syncing default code");
-    socket.emit("codeChange", {teamId: teamSelected, code: liveCode});
+    socket.emit("codeChange", { teamId: teamSelected, code: liveCode });
   }, [socket, teamSelected]);
 
   useEffect(() => {
@@ -517,10 +520,10 @@ function PlayGameRoom() {
       prev.map((parameter) =>
         parameter.isOutputParameter
           ? {
-              ...parameter,
-              type,
-              value: null,
-            }
+            ...parameter,
+            type,
+            value: null,
+          }
           : parameter,
       ),
     );
@@ -556,7 +559,7 @@ function PlayGameRoom() {
 
   // --- RENDERING LOGIC ---
   // State A: Still connecting to the WebSocket server
-  if (!socket || loading) {
+  if (loading) {
     return <EnteringBattleground />;
   }
 
@@ -572,7 +575,7 @@ function PlayGameRoom() {
           if (role === Role.SPECTATOR) {
             setGameState(GameStatus.ACTIVE);
           }
-          socket.emit("requestTeamUpdate", { teamId, playerCount });
+          socket?.emit("requestTeamUpdate", { teamId, playerCount });
         }}
       />
     );
@@ -618,7 +621,7 @@ function PlayGameRoom() {
       {/* Waiting Modal */}
       <Modal
         opened={isWaitingForOtherTeam}
-        onClose={() => {}}
+        onClose={() => { }}
         centered
         withCloseButton={false}
         closeOnEscape={false}
@@ -725,13 +728,13 @@ function PlayGameRoom() {
                 >
                   {(gameState === GameStatus.ACTIVE ||
                     gameState === GameStatus.FLIPPING) && (
-                    <Box mb="md" p="1rem" pb={isProblemVisible ? "md" : "1rem"}>
-                      <GameTimer
-                        endTime={endTime}
-                        onExpire={handleTimerExpire}
-                      />
-                    </Box>
-                  )}
+                      <Box mb="md" p="1rem" pb={isProblemVisible ? "md" : "1rem"}>
+                        <GameTimer
+                          endTime={endTime}
+                          onExpire={handleTimerExpire}
+                        />
+                      </Box>
+                    )}
                   {isProblemVisible ? (
                     <Box
                       style={{
@@ -786,22 +789,6 @@ function PlayGameRoom() {
                     />
                     {effectiveRole === Role.CODER && (
                       <>
-                        <Button
-                          size="xs"
-                          color="cyan"
-                          disabled={isSpectator || isWaitingForOtherTeam}
-                          className={styles.runButton}
-                          onClick={() =>
-                            posthog.capture("code_run_triggered", { gameId })
-                          }
-                          rightSection={
-                            <IconPlayerPlay
-                              size={"var(--mantine-font-size-md)"}
-                            />
-                          }
-                        >
-                          RUN
-                        </Button>
                         <Button
                           size="xs"
                           color="green"
