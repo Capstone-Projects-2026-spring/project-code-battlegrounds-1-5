@@ -27,7 +27,6 @@ function registerExecutionHandlers(io, socket, gameService) {
 
         let testCases;
         try {
-            // testCases = await getOrCreateTeamTestCases(gameService, teamId);
             testCases = await gameService.getTestCases(teamId);
         } catch (e) {
             console.error('Error preparing test cases for submitCode', e);
