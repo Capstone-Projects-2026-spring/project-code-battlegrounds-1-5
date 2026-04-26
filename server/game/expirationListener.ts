@@ -13,8 +13,8 @@ export function startExpirationListener(io: Server, pubClient: Redis): void {
     }
   });
 
-  sub.on('message', (channel, expiredKey) => {
-    void (async (): Promise<void> => {
+  sub.on('message', async (channel, expiredKey) => {
+    try {
       if (!expiredKey.startsWith('game:')) {
         return;
       }
@@ -106,8 +106,8 @@ export function startExpirationListener(io: Server, pubClient: Redis): void {
         void deleteVm(gameId);
         io.to(gameId).emit('gameEnded');
       }
-    })().catch((error: unknown) => {
+    } catch (error) {
       console.error('Error while handling key expiration event', { channel, expiredKey, error });
-    });
+    }
   });
 }

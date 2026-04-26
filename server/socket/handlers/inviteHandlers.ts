@@ -32,225 +32,205 @@ export function registerInviteHandlers(
     inviteService: InviteService,
     gameService: GameService
 ): void {
-    socket.on('partyInvite', (data) => {
-        void (async (): Promise<void> => {
-            const payload = validate(partyInviteSchema, data);
-            if (!payload) {
-                socket.emit('error', { message: 'Invalid payload for partyInvite.' });
-                return;
-            }
-            if (!socket.userId) {
-                return;
-            }
+    socket.on('partyInvite', async (data) => {
+        const payload = validate(partyInviteSchema, data);
+        if (!payload) {
+            socket.emit('error', { message: 'Invalid payload for partyInvite.' });
+            return;
+        }
+        if (!socket.userId) {
+            return;
+        }
 
-            const result = await inviteService.sendPartyInvite(socket.userId, payload.toUserId);
-            if ('error' in result) {
-                socket.emit('error', { message: result.error });
-                return;
-            }
+        const result = await inviteService.sendPartyInvite(socket.userId, payload.toUserId);
+        if ('error' in result) {
+            socket.emit('error', { message: result.error });
+            return;
+        }
 
-            const toSocketId = await gameService.getSocketId(payload.toUserId);
-            if (toSocketId) {
-                io.to(toSocketId).emit('partyInviteReceived', result.invite);
-            }
-        })();
+        const toSocketId = await gameService.getSocketId(payload.toUserId);
+        if (toSocketId) {
+            io.to(toSocketId).emit('partyInviteReceived', result.invite);
+        }
     });
 
-    socket.on('partyInviteAccept', () => {
-        void (async (): Promise<void> => {
-            if (!socket.userId) {
-                return;
-            }
+    socket.on('partyInviteAccept', async () => {
+        if (!socket.userId) {
+            return;
+        }
 
-            const result = await inviteService.acceptPartyInvite(socket.userId);
-            if ('error' in result) {
-                socket.emit('error', { message: result.error });
-                return;
-            }
+        const result = await inviteService.acceptPartyInvite(socket.userId);
+        if ('error' in result) {
+            socket.emit('error', { message: result.error });
+            return;
+        }
 
-            socket.emit('partyJoined', result.partyOwner);
+        socket.emit('partyJoined', result.partyOwner);
 
-            const ownerSocketId = await gameService.getSocketId(result.partyOwner.userId);
-            if (ownerSocketId) {
-                io.to(ownerSocketId).emit('partyMemberJoined', result.member);
-            }
-        })();
+        const ownerSocketId = await gameService.getSocketId(result.partyOwner.userId);
+        if (ownerSocketId) {
+            io.to(ownerSocketId).emit('partyMemberJoined', result.member);
+        }
     });
 
-    socket.on('partyInviteDecline', () => {
-        void (async (): Promise<void> => {
-            if (!socket.userId) {
-                return;
-            }
+    socket.on('partyInviteDecline', async () => {
+        if (!socket.userId) {
+            return;
+        }
 
-            const result = await inviteService.declinePartyInvite(socket.userId);
-            if ('error' in result) {
-                socket.emit('error', { message: result.error });
-            }
-        })();
+        const result = await inviteService.declinePartyInvite(socket.userId);
+        if ('error' in result) {
+            socket.emit('error', { message: result.error });
+        }
     });
 
-    socket.on('partyKick', () => {
-        void (async (): Promise<void> => {
-            if (!socket.userId) {
-                return;
-            }
+    socket.on('partyKick', async () => {
+        if (!socket.userId) {
+            return;
+        }
 
-            const result = await inviteService.kickPartyMember(socket.userId);
-            if ('error' in result) {
-                socket.emit('error', { message: result.error });
-                return;
-            }
+        const result = await inviteService.kickPartyMember(socket.userId);
+        if ('error' in result) {
+            socket.emit('error', { message: result.error });
+            return;
+        }
 
-            const kickedSocketId = await gameService.getSocketId(result.kickedUserId);
-            if (kickedSocketId) {
-                io.to(kickedSocketId).emit('joinedPartyLeft');
-            }
-        })();
+        const kickedSocketId = await gameService.getSocketId(result.kickedUserId);
+        if (kickedSocketId) {
+            io.to(kickedSocketId).emit('joinedPartyLeft');
+        }
     });
 
-    socket.on('partyJoinByCode', (data) => {
-        void (async (): Promise<void> => {
-            const payload = validate(partyJoinByCodeSchema, data);
-            if (!payload) {
-                socket.emit('error', { message: 'Invalid payload for partyJoinByCode.' });
-                return;
-            }
-            if (!socket.userId) {
-                return;
-            }
+    socket.on('partyJoinByCode', async (data) => {
+        const payload = validate(partyJoinByCodeSchema, data);
+        if (!payload) {
+            socket.emit('error', { message: 'Invalid payload for partyJoinByCode.' });
+            return;
+        }
+        if (!socket.userId) {
+            return;
+        }
 
-            const result = await inviteService.joinPartyByCode(socket.userId, payload.code);
-            if ('error' in result) {
-                socket.emit('error', { message: result.error });
-                return;
-            }
+        const result = await inviteService.joinPartyByCode(socket.userId, payload.code);
+        if ('error' in result) {
+            socket.emit('error', { message: result.error });
+            return;
+        }
 
-            socket.emit('partyJoined', result.partyOwner);
+        socket.emit('partyJoined', result.partyOwner);
 
-            const ownerSocketId = await gameService.getSocketId(result.partyOwner.userId);
-            if (ownerSocketId) {
-                io.to(ownerSocketId).emit('partyMemberJoined', result.member);
-            }
-        })();
+        const ownerSocketId = await gameService.getSocketId(result.partyOwner.userId);
+        if (ownerSocketId) {
+            io.to(ownerSocketId).emit('partyMemberJoined', result.member);
+        }
     });
 
-    socket.on('partyLeave', () => {
-        void (async (): Promise<void> => {
-            if (!socket.userId) {
-                return;
-            }
+    socket.on('partyLeave', async () => {
+        if (!socket.userId) {
+            return;
+        }
 
-            const result = await inviteService.leaveParty(socket.userId);
-            if ('error' in result) {
-                socket.emit('error', { message: result.error });
-                return;
-            }
+        const result = await inviteService.leaveParty(socket.userId);
+        if ('error' in result) {
+            socket.emit('error', { message: result.error });
+            return;
+        }
 
-            const ownerSocketId = await gameService.getSocketId(result.ownerId);
-            if (ownerSocketId) {
-                io.to(ownerSocketId).emit('partyMemberLeft');
-            }
-        })();
+        const ownerSocketId = await gameService.getSocketId(result.ownerId);
+        if (ownerSocketId) {
+            io.to(ownerSocketId).emit('partyMemberLeft');
+        }
     });
 
-    socket.on('friendRequest', (data) => {
-        void (async (): Promise<void> => {
-            const payload = validate(friendRequestSchema, data);
-            if (!payload) {
-                socket.emit('error', { message: 'Invalid payload for friendRequest.' });
-                return;
-            }
-            if (!socket.userId) {
-                return;
-            }
+    socket.on('friendRequest', async (data) => {
+        const payload = validate(friendRequestSchema, data);
+        if (!payload) {
+            socket.emit('error', { message: 'Invalid payload for friendRequest.' });
+            return;
+        }
+        if (!socket.userId) {
+            return;
+        }
 
-            const result = await inviteService.sendFriendRequest(socket.userId, payload.friendCode);
-            if ('error' in result) {
-                socket.emit('error', { message: result.error });
-                return;
-            }
+        const result = await inviteService.sendFriendRequest(socket.userId, payload.friendCode);
+        if ('error' in result) {
+            socket.emit('error', { message: result.error });
+            return;
+        }
 
-            socket.emit('friendRequestSent', result.request);
+        socket.emit('friendRequestSent', result.request);
 
-            const toSocketId = await gameService.getSocketId(result.addresseeId);
-            if (toSocketId) {
-                io.to(toSocketId).emit('friendRequestReceived', {
-                    ...result.incomingRequest,
-                    direction: 'incoming',
-                });
-            }
-        })();
+        const toSocketId = await gameService.getSocketId(result.addresseeId);
+        if (toSocketId) {
+            io.to(toSocketId).emit('friendRequestReceived', {
+                ...result.incomingRequest,
+                direction: 'incoming',
+            });
+        }
     });
 
-    socket.on('friendRequestAccept', (data) => {
-        void (async (): Promise<void> => {
-            const payload = validate(friendRequestRespondSchema, data);
-            if (!payload) {
-                socket.emit('error', { message: 'Invalid payload for friendRequestAccept.' });
-                return;
-            }
-            if (!socket.userId) {
-                return;
-            }
+    socket.on('friendRequestAccept', async (data) => {
+        const payload = validate(friendRequestRespondSchema, data);
+        if (!payload) {
+            socket.emit('error', { message: 'Invalid payload for friendRequestAccept.' });
+            return;
+        }
+        if (!socket.userId) {
+            return;
+        }
 
-            const result = await inviteService.acceptFriendRequest(socket.userId, payload.requestId);
-            if ('error' in result) {
-                socket.emit('error', { message: result.error });
-                return;
-            }
+        const result = await inviteService.acceptFriendRequest(socket.userId, payload.requestId);
+        if ('error' in result) {
+            socket.emit('error', { message: result.error });
+            return;
+        }
 
-            socket.emit('friendRequestAccepted', result.friend);
+        socket.emit('friendRequestAccepted', result.friend);
 
-            const requesterSocketId = await gameService.getSocketId(result.requesterId);
-            if (requesterSocketId) {
-                io.to(requesterSocketId).emit('friendRequestAccepted', result.requesterFriend);
-            }
-        })();
+        const requesterSocketId = await gameService.getSocketId(result.requesterId);
+        if (requesterSocketId) {
+            io.to(requesterSocketId).emit('friendRequestAccepted', result.requesterFriend);
+        }
     });
 
-    socket.on('friendRequestDecline', (data) => {
-        void (async (): Promise<void> => {
-            const payload = validate(friendRequestRespondSchema, data);
-            if (!payload) {
-                socket.emit('error', { message: 'Invalid payload for friendRequestDecline.' });
-                return;
-            }
-            if (!socket.userId) {
-                return;
-            }
+    socket.on('friendRequestDecline', async (data) => {
+        const payload = validate(friendRequestRespondSchema, data);
+        if (!payload) {
+            socket.emit('error', { message: 'Invalid payload for friendRequestDecline.' });
+            return;
+        }
+        if (!socket.userId) {
+            return;
+        }
 
-            const result = await inviteService.declineFriendRequest(socket.userId, payload.requestId);
-            if ('error' in result) {
-                socket.emit('error', { message: result.error });
-                return;
-            }
+        const result = await inviteService.declineFriendRequest(socket.userId, payload.requestId);
+        if ('error' in result) {
+            socket.emit('error', { message: result.error });
+            return;
+        }
 
-            const requesterSocketId = await gameService.getSocketId(result.requesterId);
-            if (requesterSocketId) {
-                io.to(requesterSocketId).emit('friendRequestDeclined', { requestId: payload.requestId });
-            }
-        })();
+        const requesterSocketId = await gameService.getSocketId(result.requesterId);
+        if (requesterSocketId) {
+            io.to(requesterSocketId).emit('friendRequestDeclined', { requestId: payload.requestId });
+        }
     });
 
-    socket.on('friendDelete', (data) => {
-        void (async (): Promise<void> => {
-            const payload = validate(friendDeleteSchema, data);
-            if (!payload) {
-                socket.emit('error', { message: 'Invalid payload for friendDelete.' });
-                return;
-            }
+    socket.on('friendDelete', async (data) => {
+        const payload = validate(friendDeleteSchema, data);
+        if (!payload) {
+            socket.emit('error', { message: 'Invalid payload for friendDelete.' });
+            return;
+        }
 
-            const result = await inviteService.deleteFriend(payload.friendId);
-            if (result.status !== 'ok') {
-                socket.emit('error', { message: 'friendNotDeleted' });
-                return;
-            }
+        const result = await inviteService.deleteFriend(payload.friendId);
+        if (result.status !== 'ok') {
+            socket.emit('error', { message: 'friendNotDeleted' });
+            return;
+        }
 
-            const exFriendSocket = await gameService.getSocketId(payload.exFriendId);
-            if (exFriendSocket) {
-                io.to(exFriendSocket).emit('friendDeleted', { friendId: payload.friendId });
-            }
-        })();
+        const exFriendSocket = await gameService.getSocketId(payload.exFriendId);
+        if (exFriendSocket) {
+            io.to(exFriendSocket).emit('friendDeleted', { friendId: payload.friendId });
+        }
     });
 }

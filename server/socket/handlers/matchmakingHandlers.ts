@@ -38,83 +38,75 @@ export function registerMatchmakingHandlers(
   matchmakingService: MatchmakingService,
   gameService: GameService
 ): void {
-  socket.on('joinQueue', (data) => {
-    void (async (): Promise<void> => {
-      const payload = validate(joinQueueSchema, data);
-      if (!payload) {
-        socket.emit('error', { message: 'Invalid payload for joinQueue.' });
-        return;
-      }
+  socket.on('joinQueue', async (data) => {
+    const payload = validate(joinQueueSchema, data);
+    if (!payload) {
+      socket.emit('error', { message: 'Invalid payload for joinQueue.' });
+      return;
+    }
 
-      const result = await matchmakingService.joinQueue(
-        payload.userId,
-        payload.gameType,
-        payload.difficulty,
-        payload.partyId ?? payload.lobbyId ?? null
-      );
-      socket.emit('queueStatus', result);
-    })();
+    const result = await matchmakingService.joinQueue(
+      payload.userId,
+      payload.gameType,
+      payload.difficulty,
+      payload.partyId ?? payload.lobbyId ?? null
+    );
+    socket.emit('queueStatus', result);
   });
 
-  socket.on('leaveQueue', (data) => {
-    void (async (): Promise<void> => {
-      const payload = validate(leaveQueueSchema, data);
-      if (!payload) {
-        socket.emit('error', { message: 'Invalid payload for leaveQueue.' });
-        return;
-      }
+  socket.on('leaveQueue', async (data) => {
+    const payload = validate(leaveQueueSchema, data);
+    if (!payload) {
+      socket.emit('error', { message: 'Invalid payload for leaveQueue.' });
+      return;
+    }
 
-      if (!socket.userId) {
-        return;
-      }
+    if (!socket.userId) {
+      return;
+    }
 
-      const result = await matchmakingService.leaveQueue(
-        socket.userId,
-        payload.gameType,
-        payload.difficulty
-      );
-      socket.emit('queueStatus', result);
-    })();
+    const result = await matchmakingService.leaveQueue(
+      socket.userId,
+      payload.gameType,
+      payload.difficulty
+    );
+    socket.emit('queueStatus', result);
   });
 
-  socket.on('updateQueueSelection', (data) => {
-    void (async (): Promise<void> => {
-      const payload = validate(updateQueueSelectionSchema, data);
-      if (!payload) {
-        socket.emit('error', { message: 'Invalid payload for updateQueueSelection.' });
-        return;
-      }
+  socket.on('updateQueueSelection', async (data) => {
+    const payload = validate(updateQueueSelectionSchema, data);
+    if (!payload) {
+      socket.emit('error', { message: 'Invalid payload for updateQueueSelection.' });
+      return;
+    }
 
-      if (!socket.userId) {
-        return;
-      }
+    if (!socket.userId) {
+      return;
+    }
 
-      const partyMemberSocket = await gameService.getSocketId(payload.partyMember.userId);
-      if (partyMemberSocket) {
-        io.to(partyMemberSocket).emit('receiveQueueSelection', {
-          gameType: payload.gameType,
-          difficulty: payload.difficulty,
-        });
-      }
-    })();
+    const partyMemberSocket = await gameService.getSocketId(payload.partyMember.userId);
+    if (partyMemberSocket) {
+      io.to(partyMemberSocket).emit('receiveQueueSelection', {
+        gameType: payload.gameType,
+        difficulty: payload.difficulty,
+      });
+    }
   });
 
-  socket.on('partySearch', (data) => {
-    void (async (): Promise<void> => {
-      const payload = validate(partySearchSchema, data);
-      if (!payload) {
-        socket.emit('error', { message: 'Invalid payload for partySearch.' });
-        return;
-      }
+  socket.on('partySearch', async (data) => {
+    const payload = validate(partySearchSchema, data);
+    if (!payload) {
+      socket.emit('error', { message: 'Invalid payload for partySearch.' });
+      return;
+    }
 
-      if (!socket.userId || !payload.partyMember) {
-        return;
-      }
+    if (!socket.userId || !payload.partyMember) {
+      return;
+    }
 
-      const partyMemberSocket = await gameService.getSocketId(payload.partyMember.userId);
-      if (partyMemberSocket) {
-        io.to(partyMemberSocket).emit('partySearchUpdate', { state: payload.state });
-      }
-    })();
+    const partyMemberSocket = await gameService.getSocketId(payload.partyMember.userId);
+    if (partyMemberSocket) {
+      io.to(partyMemberSocket).emit('partySearchUpdate', { state: payload.state });
+    }
   });
 }

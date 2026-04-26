@@ -15,7 +15,7 @@ const port = Number(process.env.PORT) || 3000;
 const app = next({ dev, hostname, port });
 const handle = app.getRequestHandler();
 
-void (async (): Promise<void> => {
+async function main() {
   await app.prepare();
 
   const httpServer = createServer(handle);
@@ -86,7 +86,10 @@ void (async (): Promise<void> => {
       `Code BattleGrounds Server Ready on http://${hostname}:${port} (Redis @ ${REDIS_HOST}:${REDIS_PORT})`
     );
   });
-})().catch((error: unknown) => {
-  console.error('Failed to prepare Next.js app', error);
-  process.exit(1);
-});
+}
+
+main()
+  .catch((error: unknown) => {
+    console.error('Failed to prepare Next.js app', error);
+    process.exit(1);
+  });

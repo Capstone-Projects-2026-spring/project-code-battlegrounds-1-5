@@ -251,11 +251,11 @@ export function createInviteService(stateRedis: Redis) {
         ): Promise<
             | { error: 'user_not_found' | 'cannot_add_self' | 'already_friends' | 'request_already_sent' }
             | {
-                    status: 'sent';
-                    request: FriendRequestPayload;
-                    incomingRequest: FriendRequestPayload;
-                    addresseeId: string;
-                }
+                status: 'sent';
+                request: FriendRequestPayload;
+                incomingRequest: FriendRequestPayload;
+                addresseeId: string;
+            }
         > {
             const target = await prisma.user.findUnique({
                 where: { friendCode },

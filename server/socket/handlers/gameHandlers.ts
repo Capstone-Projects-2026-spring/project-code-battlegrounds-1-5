@@ -93,133 +93,127 @@ export function registerGameHandlers(io: Server, socket: SocketWithState, gameSe
         })();
     });
 
-    socket.on('joinGame', (data) => {
-        void (async (): Promise<void> => {
-            const payload = validate(joinGameSchema, data);
-            if (!payload) {
-                socket.emit('error', { message: 'Invalid payload for joinGame.' });
-                return;
-            }
+    socket.on('joinGame', async (data) => {
+        const payload = validate(joinGameSchema, data);
+        if (!payload) {
+            socket.emit('error', { message: 'Invalid payload for joinGame.' });
+            return;
+        }
 
-            const { gameId, teamId, gameType } = payload;
+        const { gameId, teamId, gameType } = payload;
+        try {
+            await socket.join(teamId);
+            await socket.join(gameId);
+        } catch (error: unknown) {
+            console.error('Error joining game room', error);
+            socket.emit('error', { message: 'Failed to join game room.' });
+        }
+
+        socket.teamId = teamId;
+        socket.gameId = gameId;
+
+        let numPlayers = 0;
+        try {
+            const socketsInRoom = await io.in(gameId).allSockets();
+            numPlayers = socketsInRoom.size;
+            console.log(`Room ${gameId} now has ${numPlayers} sockets`);
+        } catch (error: unknown) {
+            console.error('Error fetching sockets in room', error);
+            socket.emit('error', { message: 'Failed to fetch room information.' });
+        }
+
+        let gameExists = false;
+        try {
+            gameExists = await gameService.isGameStarted(gameId);
+            console.log(`Game Exists: ${gameExists}`);
+        } catch (error: unknown) {
+            console.error('Error checking if game exists', error);
+            socket.emit('error', { message: 'Failed to check game status.' });
+        }
+
+        if (gameExists) {
             try {
-                await socket.join(teamId);
-                await socket.join(gameId);
+                const time = await gameService.startGameIfNeeded(gameId);
+                socket.emit('gameStarted', {
+                    start: time.remaining,
+                    _duration: gameService.GAME_DURATION_MS,
+                });
             } catch (error: unknown) {
-                console.error('Error joining game room', error);
-                socket.emit('error', { message: 'Failed to join game room.' });
+                console.error('Error starting game', error);
+                socket.emit('error', { message: 'Failed to start game.' });
             }
+        } else if (
+            (numPlayers === 4 && gameType === GameType.FOURPLAYER) ||
+            (numPlayers === 2 && gameType === GameType.TWOPLAYER)
+        ) {
+            io.to(gameId).emit('gameStarting');
 
-            socket.teamId = teamId;
-            socket.gameId = gameId;
-
-            let numPlayers = 0;
-            try {
-                const socketsInRoom = await io.in(gameId).allSockets();
-                numPlayers = socketsInRoom.size;
-                console.log(`Room ${gameId} now has ${numPlayers} sockets`);
-            } catch (error: unknown) {
-                console.error('Error fetching sockets in room', error);
-                socket.emit('error', { message: 'Failed to fetch room information.' });
-            }
-
-            let gameExists = false;
-            try {
-                gameExists = await gameService.isGameStarted(gameId);
-                console.log(`Game Exists: ${gameExists}`);
-            } catch (error: unknown) {
-                console.error('Error checking if game exists', error);
-                socket.emit('error', { message: 'Failed to check game status.' });
-            }
-
-            if (gameExists) {
-                try {
+            setTimeout(() => {
+                void (async (): Promise<void> => {
                     const time = await gameService.startGameIfNeeded(gameId);
-                    socket.emit('gameStarted', {
+                    console.log('game ttl:', time.remaining, 'of', time.duration);
+                    io.to(gameId).emit('gameStarted', {
                         start: time.remaining,
                         _duration: gameService.GAME_DURATION_MS,
                     });
-                } catch (error: unknown) {
-                    console.error('Error starting game', error);
+                })().catch((error: unknown) => {
+                    console.error('Failed to start game after countdown', error);
                     socket.emit('error', { message: 'Failed to start game.' });
-                }
-            } else if (
-                (numPlayers === 4 && gameType === GameType.FOURPLAYER) ||
-                (numPlayers === 2 && gameType === GameType.TWOPLAYER)
-            ) {
-                io.to(gameId).emit('gameStarting');
+                });
+            }, 3000);
+        }
 
-                setTimeout(() => {
-                    void (async (): Promise<void> => {
-                        const time = await gameService.startGameIfNeeded(gameId);
-                        console.log('game ttl:', time.remaining, 'of', time.duration);
-                        io.to(gameId).emit('gameStarted', {
-                            start: time.remaining,
-                            _duration: gameService.GAME_DURATION_MS,
-                        });
-                    })().catch((error: unknown) => {
-                        console.error('Failed to start game after countdown', error);
-                        socket.emit('error', { message: 'Failed to start game.' });
-                    });
-                }, 3000);
+        try {
+            const latestCode = await gameService.getLatestCode(teamId);
+            if (latestCode !== null) {
+                socket.emit('receiveCodeUpdate', latestCode);
             }
+        } catch (error: unknown) {
+            console.error('Error fetching code from Redis', error);
+            socket.emit('error', { message: 'Failed to fetch latest code.' });
+        }
 
-            try {
-                const latestCode = await gameService.getLatestCode(teamId);
-                if (latestCode !== null) {
-                    socket.emit('receiveCodeUpdate', latestCode);
-                }
-            } catch (error: unknown) {
-                console.error('Error fetching code from Redis', error);
-                socket.emit('error', { message: 'Failed to fetch latest code.' });
-            }
-
-            console.log(`Socket ${socket.id} joined room ${gameId} and team ${teamId}`);
-        })();
+        console.log(`Socket ${socket.id} joined room ${gameId} and team ${teamId}`);
     });
 
-    socket.on('codeChange', (data) => {
-        void (async (): Promise<void> => {
-            const payload = validate(codeChangeSchema, data);
-            if (!payload) {
-                socket.emit('error', { message: 'Invalid payload for codeChange.' });
-                return;
-            }
+    socket.on('codeChange', async (data) => {
+        const payload = validate(codeChangeSchema, data);
+        if (!payload) {
+            socket.emit('error', { message: 'Invalid payload for codeChange.' });
+            return;
+        }
 
-            const { teamId, code } = payload;
-            try {
-                await gameService.saveLatestCode(teamId, code);
-            } catch (error: unknown) {
-                console.error('Error saving code to Redis', error);
-                socket.emit('error', { message: 'Failed to save code update.' });
-            }
+        const { teamId, code } = payload;
+        try {
+            await gameService.saveLatestCode(teamId, code);
+        } catch (error: unknown) {
+            console.error('Error saving code to Redis', error);
+            socket.emit('error', { message: 'Failed to save code update.' });
+        }
 
-            socket.to(teamId).emit('receiveCodeUpdate', code);
-        })();
+        socket.to(teamId).emit('receiveCodeUpdate', code);
     });
 
-    socket.on('sendChat', (data) => {
-        void (async (): Promise<void> => {
-            const payload = validate(chatMessageSchema, data);
-            if (!payload) {
-                socket.emit('error', { message: 'Invalid payload for sendChat.' });
-                return;
-            }
+    socket.on('sendChat', async (data) => {
+        const payload = validate(chatMessageSchema, data);
+        if (!payload) {
+            socket.emit('error', { message: 'Invalid payload for sendChat.' });
+            return;
+        }
 
-            const { teamId, message } = payload;
-            try {
-                await gameService.saveChatMessage(teamId, message);
-            } catch (error: unknown) {
-                console.error('Error saving chat message to Redis', error);
-                socket.emit('error', { message: 'Failed to send chat message.' });
-            }
+        const { teamId, message } = payload;
+        try {
+            await gameService.saveChatMessage(teamId, message);
+        } catch (error: unknown) {
+            console.error('Error saving chat message to Redis', error);
+            socket.emit('error', { message: 'Failed to send chat message.' });
+        }
 
-            socket.to(teamId).emit('receiveChat', message);
-        })();
+        socket.to(teamId).emit('receiveChat', message);
     });
 
-    socket.on('requestChatSync', (data) => {
-        void (async (): Promise<void> => {
+    socket.on('requestChatSync', async (data) => {
+        try {
             const payload = validate(requestSyncSchema, data);
             if (!payload) {
                 socket.emit('error', { message: 'Invalid payload for requestChatSync.' });
@@ -228,14 +222,14 @@ export function registerGameHandlers(io: Server, socket: SocketWithState, gameSe
 
             const parsed = await gameService.getChatMessages(payload.teamId);
             socket.emit('receiveChatHistory', parsed);
-        })().catch((error: unknown) => {
+        } catch (error) {
             console.error('Error fetching chat history', error);
             socket.emit('error', { message: 'Failed to fetch chat history.' });
-        });
+        }
     });
 
-    socket.on('updateTestCases', (data) => {
-        void (async (): Promise<void> => {
+    socket.on('updateTestCases', async (data) => {
+        try {
             const payload = validate(updateTestCasesSchema, data);
             if (!payload) {
                 socket.emit('error', { message: 'Invalid payload for updateTestCases.' });
@@ -243,14 +237,14 @@ export function registerGameHandlers(io: Server, socket: SocketWithState, gameSe
             }
 
             await gameService.saveTestCases(payload.teamId, payload.testCases);
-        })().catch((error: unknown) => {
+        } catch (error) {
             console.error('Error saving test cases', error);
             socket.emit('error', { message: 'Failed to save test cases.' });
-        });
+        }
     });
 
-    socket.on('requestTestCaseSync', (data) => {
-        void (async (): Promise<void> => {
+    socket.on('requestTestCaseSync', async (data) => {
+        try {
             const payload = validate(requestSyncSchema, data);
             if (!payload) {
                 socket.emit('error', { message: 'Invalid payload for requestTestCaseSync.' });
@@ -261,10 +255,10 @@ export function registerGameHandlers(io: Server, socket: SocketWithState, gameSe
             if (testCases) {
                 socket.emit('receiveTestCaseSync', testCases);
             }
-        })().catch((error: unknown) => {
+        } catch (error) {
             console.error('Error fetching test cases', error);
             socket.emit('error', { message: 'Failed to fetch test cases.' });
-        });
+        }
     });
 
     socket.on('requestTeamUpdate', (data) => {
@@ -280,33 +274,29 @@ export function registerGameHandlers(io: Server, socket: SocketWithState, gameSe
         io.emit('teamUpdated', { teamId: payload.teamId, playerCount: payload.playerCount });
     });
 
-    socket.on('creatingRoomWithParty', (data) => {
-        void (async (): Promise<void> => {
-            const payload = validate(createRoomWithPartySchema, data);
-            if (!payload) {
-                socket.emit('error', { message: 'Invalid payload for creatingRoomWithParty.' });
-                return;
-            }
+    socket.on('creatingRoomWithParty', async (data) => {
+        const payload = validate(createRoomWithPartySchema, data);
+        if (!payload) {
+            socket.emit('error', { message: 'Invalid payload for creatingRoomWithParty.' });
+            return;
+        }
 
-            const partyMemberSocket = await gameService.getSocketId(payload.partyMember);
-            if (partyMemberSocket) {
-                io.to(partyMemberSocket).emit('creatingRoomFromHost');
-            }
-        })();
+        const partyMemberSocket = await gameService.getSocketId(payload.partyMember);
+        if (partyMemberSocket) {
+            io.to(partyMemberSocket).emit('creatingRoomFromHost');
+        }
     });
 
-    socket.on('sendGameWithParty', (data) => {
-        void (async (): Promise<void> => {
-            const payload = validate(sendGameWithPartySchema, data);
-            if (!payload) {
-                socket.emit('error', { message: 'Invalid payload for sendGameWithParty.' });
-                return;
-            }
+    socket.on('sendGameWithParty', async (data) => {
+        const payload = validate(sendGameWithPartySchema, data);
+        if (!payload) {
+            socket.emit('error', { message: 'Invalid payload for sendGameWithParty.' });
+            return;
+        }
 
-            const partyMemberSocket = await gameService.getSocketId(payload.partyMember);
-            if (partyMemberSocket) {
-                io.to(partyMemberSocket).emit('createdRoomFromHost', { gameId: payload.gameId });
-            }
-        })();
+        const partyMemberSocket = await gameService.getSocketId(payload.partyMember);
+        if (partyMemberSocket) {
+            io.to(partyMemberSocket).emit('createdRoomFromHost', { gameId: payload.gameId });
+        }
     });
 }
