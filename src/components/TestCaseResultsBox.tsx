@@ -385,7 +385,7 @@ export default function TestCaseResultsBox({ tests, team1Results, team2Results, 
         </Tabs.List>
         
         <Tabs.Panel value="scored" pt="md">
-          <ScrollArea h={550} className={styles.scrollRegion} type="auto" offsetScrollbars>
+          <ScrollArea.Autosize mah={550} mih={240} className={styles.scrollRegion} type="auto" offsetScrollbars>
             <Table highlightOnHover verticalSpacing="sm" striped className={styles.table}>
               <Table.Thead>
                 <Table.Tr>
@@ -409,11 +409,11 @@ export default function TestCaseResultsBox({ tests, team1Results, team2Results, 
                 )}
               </Table.Tbody>
             </Table>
-          </ScrollArea>
+          </ScrollArea.Autosize>
         </Tabs.Panel>
 
         <Tabs.Panel value="your-tests" pt="md">
-          <ScrollArea h={550} className={styles.scrollRegion} type="auto" offsetScrollbars>
+          <ScrollArea.Autosize mah={550} mih={240} className={styles.scrollRegion} type="auto" offsetScrollbars>
             <Table highlightOnHover verticalSpacing="sm" striped className={styles.table}>
               <Table.Thead>
                 <Table.Tr>
@@ -436,12 +436,12 @@ export default function TestCaseResultsBox({ tests, team1Results, team2Results, 
                 )}
               </Table.Tbody>
             </Table>
-          </ScrollArea>
+          </ScrollArea.Autosize>
         </Tabs.Panel>
 
         {!isCoOp && (
           <Tabs.Panel value="other-team-tests" pt="md">
-            <ScrollArea h={550} className={styles.scrollRegion} type="auto" offsetScrollbars>
+            <ScrollArea.Autosize mah={550} mih={240} className={styles.scrollRegion} type="auto" offsetScrollbars>
               <Table highlightOnHover verticalSpacing="sm" striped className={styles.table}>
                 <Table.Thead>
                   <Table.Tr>
@@ -464,7 +464,7 @@ export default function TestCaseResultsBox({ tests, team1Results, team2Results, 
                   )}
                 </Table.Tbody>
               </Table>
-            </ScrollArea>
+            </ScrollArea.Autosize>
           </Tabs.Panel>
         )}
       </Tabs>
