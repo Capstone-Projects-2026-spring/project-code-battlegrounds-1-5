@@ -5,6 +5,7 @@ import { useForm } from "@mantine/form";
 import { Button, Card, Flex, PasswordInput, TextInput, Title, Text, Anchor } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { usePostHog } from "posthog-js/react";
+import { showErrorNotification } from "@/components/notifications";
 import Brand from "@/components/Brand";
 import greenTheme from "@/styles/shared/GreenTheme.module.css";
 import styles from "@/styles/Signup.module.css";
@@ -20,7 +21,7 @@ export default function SignUpPage() {
 
   useEffect(() => {
       if (session && !isPending) {
-        router.push("/matchmaking");
+        router.replace("/matchmaking");
       }
     }, [session, isPending, router]);
 
@@ -54,8 +55,7 @@ export default function SignUpPage() {
       },
       onError: (ctx) => {
         posthog.capture("user_signup_failure");
-        // display the error message
-        alert(ctx.error.message);
+        showErrorNotification(ctx.error.message, 'Sign Up Failed');
         setLoading(false);
       },
     });

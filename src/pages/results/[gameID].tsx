@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import Head from "next/head";
 import {
   Container,
@@ -21,6 +21,7 @@ import {
   IconArrowRight,
   // IconHome,
   IconEye,
+  IconEqual,
 } from "@tabler/icons-react";
 import { useRouter } from "next/router";
 import { authClient } from "@/lib/auth-client";
@@ -29,6 +30,8 @@ import styles from "@/styles/Results.module.css";
 import AnalysisBox, { type AnalysisBoxProps } from "@/components/Analysisbox";
 import ProblemBox, { type ActiveProblem } from "@/components/ProblemBox";
 import TestCaseResultsBox, { type TestResultsSummary } from "@/components/TestCaseResultsBox";
+import { calculateScorePair } from "@/util/scoring";
+import { useGameResults } from "@/hooks/useGameResults";
 
 // Mock data - replace with actual data from backend
 interface TeamResult {
@@ -38,14 +41,6 @@ interface TeamResult {
   totalTests: number;
   time: number; // in seconds
   isWinner: boolean;
-}
-
-interface RoomDetailsResponse {
-  problem: ActiveProblem;
-  gameType: GameType;
-  team1Code: string | null;
-  team2Code: string | null;
-  userTeamNumber: 1 | 2;
 }
 
 // Animated counter hook
@@ -115,14 +110,15 @@ export function Results() {
   const router = useRouter();
   const gameId = router.query.gameID as string;
   const { data: session } = authClient.useSession();
-  const [problem, setProblem] = useState<ActiveProblem | null>(null);
-  const [analysisProps, setAnalysisProps] = useState<AnalysisBoxProps | null>(null);
-  const [userTeamNumber, setUserTeamNumber] = useState<1 | 2>(1);
+
+  // Fetch game results once
+  const { data: gameResults, loading: isGameDataLoading } = useGameResults(
+    router.isReady && session?.user.id ? gameId : undefined
+  );
+
   const [isProblemVisible, setIsProblemVisible] = useState(true);
   const toggleProblemVisibility = () => setIsProblemVisible((prev) => !prev);
 
-  const [gameType, setGameType] = useState<GameType>(GameType.FOURPLAYER);
-  const [isGameDataLoading, setIsGameDataLoading] = useState(true);
   const [testResultsSummary, setTestResultsSummary] = useState<TestResultsSummary | null>(null);
 
   useEffect(() => {
@@ -144,108 +140,128 @@ export function Results() {
     });
   }, []);
 
-  const handleExecutionMetrics = useCallback((metrics: { team1AverageExecutionTime: number | null; team2AverageExecutionTime: number | null }) => {
-    setAnalysisProps((prev) => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        team1AverageExecutionTime: metrics.team1AverageExecutionTime,
-        team2AverageExecutionTime: metrics.team2AverageExecutionTime,
-      };
-    });
-  }, []);
-
-  useEffect(() => {
-    if (!router.isReady || !session?.user.id || !gameId) return;
-
-    const loadGameData = async () => {
-      try {
-        const response = await fetch(`/api/rooms/${gameId}`);
-        if (!response.ok) return;
-
-        const roomDetails = (await response.json()) as RoomDetailsResponse;
-        setProblem(roomDetails.problem);
-        setGameType(roomDetails.gameType);
-        setUserTeamNumber(roomDetails.userTeamNumber);
-
-        if (roomDetails.team1Code || roomDetails.team2Code) {
-          setAnalysisProps({
-            team1Code: roomDetails.team1Code ?? "",
-            team2Code: roomDetails.team2Code ?? undefined,
-            gameType: roomDetails.gameType,
-            userTeamNumber: roomDetails.userTeamNumber,
-            team1AverageExecutionTime: null,
-            team2AverageExecutionTime: null,
-          });
-        } else {
-          setAnalysisProps(null);
-        }
-      } catch (error) {
-        console.error("Failed to load room details for results page", error);
-      } finally {
-        setIsGameDataLoading(false);
+  // Extract data from gameResults for easier access
+  const problem = gameResults?.problem ?? null;
+  const gameType = (gameResults?.gameType as GameType) ?? GameType.FOURPLAYER;
+  const userTeamNumber = gameResults?.userTeamNumber ?? 1;
+  const analysisProps = gameResults?.team1Code || gameResults?.team2Code
+    ? {
+        team1Code: gameResults.team1Code ?? "",
+        team2Code: gameResults.team2Code ?? undefined,
+        gameType: gameResults.gameType as "TWOPLAYER" | "FOURPLAYER",
+        userTeamNumber: gameResults.userTeamNumber,
+        team1AverageExecutionTime: gameResults.team1AverageExecutionTime,
+        team2AverageExecutionTime: gameResults.team2AverageExecutionTime,
       }
-    };
-
-    loadGameData();
-  }, [gameId, router.isReady, session?.user.id]);
+    : null;
 
   const isCoOp = gameType === GameType.TWOPLAYER;
+
+  // Calculate team scores
+  const [team1Score, team2Score] = useMemo(() => {
+    if (!testResultsSummary || !analysisProps) return [0, 0];
+
+    return calculateScorePair(
+      testResultsSummary.yourPassedCount ?? 0,
+      testResultsSummary.otherTeamPassedCount ?? 0,
+      testResultsSummary.totalTests,
+      analysisProps.team1AverageExecutionTime ?? null,
+      analysisProps.team2AverageExecutionTime ?? null,
+      userTeamNumber === 1 ? "Your Team (Team 1)" : "Other Team (Team 1)",
+      userTeamNumber === 2 ? "Your Team (Team 2)" : "Other Team (Team 2)"
+    );
+  }, [testResultsSummary, analysisProps, userTeamNumber]);
 
   // Mock data - replace with actual fetched data
   const coOpTeam: TeamResult = {
     name: "Co-Op Crew",
-    score: 810,
-    testsPassed: 9,
-    totalTests: 10,
-    time: 236, // 3:56
+    score: team1Score,
+    testsPassed: testResultsSummary?.yourPassedCount ?? 0,
+    totalTests: testResultsSummary?.totalTests ?? 0,
+    time: 0, // Calculated later
     isWinner: true
   };
 
   const greenTeam: TeamResult = {
     name: "Green Hackers",
-    score: 850,
-    testsPassed: 8,
-    totalTests: 10,
-    time: 245, // 4:05
+    score: userTeamNumber === 1 ? team1Score : team2Score,
+    testsPassed: userTeamNumber === 1
+      ? (testResultsSummary?.yourPassedCount ?? 0)
+      : (testResultsSummary?.otherTeamPassedCount ?? 0),
+    totalTests: testResultsSummary?.totalTests ?? 0,
+    time: 0, // Calculated later
     isWinner: true
   };
 
   const redTeam: TeamResult = {
     name: "Red Coders",
-    score: 720,
-    testsPassed: 7,
-    totalTests: 10,
-    time: 312, // 5:12
+    score: userTeamNumber === 1 ? team2Score : team1Score,
+    testsPassed: userTeamNumber === 1
+      ? (testResultsSummary?.otherTeamPassedCount ?? 0)
+      : (testResultsSummary?.yourPassedCount ?? 0),
+    totalTests: testResultsSummary?.totalTests ?? 0,
+    time: 0, // Calculated later
     isWinner: false
   };
 
-  const primaryTeam = isCoOp ? coOpTeam : greenTeam;
-  const secondaryTeam = isCoOp ? null : redTeam;
+  const primaryTeam = isCoOp ? coOpTeam : (userTeamNumber === 1 ? greenTeam : redTeam);
+  const secondaryTeam = isCoOp ? null : (userTeamNumber === 1 ? redTeam : greenTeam);
 
-  const winner = secondaryTeam ? (primaryTeam.isWinner ? primaryTeam : secondaryTeam) : primaryTeam;
+  // Helper to get team color class based on team name
+  const getTeamColorClass = (team: TeamResult) => {
+    if (team.name === "Green Hackers") return styles.teamNameGreen;
+    if (team.name === "Red Coders") return styles.teamNameRed;
+    return styles.teamName;
+  };
+
+  // Determine if it's a tie
+  const isTie = secondaryTeam ? primaryTeam.score === secondaryTeam.score : false;
+
+  // Update team winner status based on tie (create new objects instead of mutating)
+  const updatedPrimaryTeam = {
+    ...primaryTeam,
+    isWinner: secondaryTeam
+      ? isTie
+        ? false
+        : primaryTeam.score > secondaryTeam.score
+      : true
+  };
+
+  const updatedSecondaryTeam = secondaryTeam
+    ? {
+        ...secondaryTeam,
+        isWinner: isTie ? false : primaryTeam.score < secondaryTeam.score
+      }
+    : null;
+
+  // Determine winner based on actual score comparison
+  const winner = updatedSecondaryTeam
+    ? isTie
+      ? updatedPrimaryTeam
+      : updatedPrimaryTeam.isWinner ? updatedPrimaryTeam : updatedSecondaryTeam
+    : updatedPrimaryTeam;
   const areTestResultsLoading = testResultsSummary === null;
   const testsPassedForMetric = testResultsSummary?.yourPassedCount ?? 0;
   const totalTestsForMetric = testResultsSummary?.totalTests ?? 0;
 
   const primaryTeamTestsPassed = !areTestResultsLoading && !isCoOp
-    ? userTeamNumber === 1
-      ? (testResultsSummary?.yourPassedCount ?? 0)
-      : (testResultsSummary?.otherTeamPassedCount ?? 0)
+    ? (testResultsSummary?.yourPassedCount ?? 0)
     : 0;
 
   const secondaryTeamTestsPassed = !areTestResultsLoading && !isCoOp
-    ? userTeamNumber === 1
-      ? (testResultsSummary?.otherTeamPassedCount ?? 0)
-      : (testResultsSummary?.yourPassedCount ?? 0)
+    ? (testResultsSummary?.otherTeamPassedCount ?? 0)
     : 0;
 
   const comparisonTotalTests = testResultsSummary?.totalTests ?? 0;
 
-  // Animated counters
-  const animatedScore = useCounter(winner.score, 2000, 200);
+  // Animated counters - show user's team metrics
+  const userTeamScore = team1Score;  // team1Score is always yourScore from calculateScorePair
+  const animatedScore = useCounter(userTeamScore, 2000, 200);
   const animatedTests = useCounter(areTestResultsLoading ? 0 : testsPassedForMetric, 1500, 400);
   const animatedTime = useCounter(winner.time, 1800, 600);
+
+  // Determine if user's team won
+  const userTeamWon = !isTie && updatedPrimaryTeam.score > (updatedSecondaryTeam?.score ?? 0);
 
   if (!session) return null;
 
@@ -271,15 +287,27 @@ export function Results() {
         <div className={styles.gradient} />
 
         <Container className={styles.container} size="xl">
-          {/* Victory Banner */}
+          {/* Victory/Defeat Banner */}
           <Box className={styles.victoryBanner}>
-            <IconTrophy size={80} className={styles.trophyIcon} />
-            <h1 className={styles.victoryTitle}>
-              Victory!
+            {userTeamWon ? (
+              <IconTrophy size={80} className={styles.trophyIcon} />
+            ) : isTie ? (
+              <IconEqual size={80} className={styles.tieIcon} />
+            ) : (
+              <div style={{ fontSize: '80px', fontWeight: 'bold', color: '#ff0000', lineHeight: 1 }}>L</div>
+            )}
+            <h1 className={userTeamWon ? styles.victoryTitle : isTie ? styles.tieTitle : styles.defeatTitle}>
+              {userTeamWon ? "Victory!" : isTie ? "Perfectly Matched!" : "Defeat!"}
             </h1>
             <p className={styles.victorySubtitle}>
-              <span className={styles.winnerTeamName}>{winner.name}</span>{" "}
-              {isCoOp ? "made it out of the battleground!" : "dominated the battlefield"}
+              {isCoOp
+                ? "made it out of the battleground!"
+                : isTie
+                ? "Both teams showcased equal skill!"
+                : userTeamWon
+                ? <span><span className={styles.winnerTeamName}>{winner.name}</span> dominated the battlefield!</span>
+                : <span><span className={styles.winnerTeamName}>{winner.name}</span> dominated the battlefield!</span>
+              }
             </p>
           </Box>
 
@@ -321,21 +349,26 @@ export function Results() {
           </div>
 
           {/* Team Comparison */}
-          {!isCoOp && secondaryTeam && (
+          {!isCoOp && updatedSecondaryTeam && (
             <div className={styles.comparisonSection}>
               <h2 className={styles.sectionTitle}>Team Performance</h2>
 
               <div className={styles.comparisonCard}>
                 <div className={styles.comparisonHeader}>
                   <div className={styles.teamHeader}>
-                    <div className={`${styles.teamName} ${primaryTeam.isWinner ? styles.teamNameWinner : styles.teamNameLoser}`}>
-                      {primaryTeam.name}
+                    <div className={`${styles.teamName} ${getTeamColorClass(updatedPrimaryTeam)}`}>
+                      {updatedPrimaryTeam.name}
                     </div>
-                    <div className={`${styles.teamBadge} ${primaryTeam.isWinner ? styles.winnerBadge : styles.loserBadge}`}>
-                      {primaryTeam.isWinner ? (
+                    <div className={`${styles.teamBadge} ${updatedPrimaryTeam.isWinner ? styles.winnerBadge : isTie ? styles.tieBadge : styles.loserBadge}`}>
+                      {updatedPrimaryTeam.isWinner ? (
                         <>
                           <IconTrophy size={16} />
                           Winner
+                        </>
+                      ) : isTie ? (
+                        <>
+                          <IconEqual size={16} />
+                          Tied
                         </>
                       ) : (
                         "Runner-up"
@@ -346,14 +379,19 @@ export function Results() {
                   <div className={styles.vsText}>VS</div>
 
                   <div className={styles.teamHeader}>
-                    <div className={`${styles.teamName} ${secondaryTeam.isWinner ? styles.teamNameWinner : styles.teamNameLoser}`}>
-                      {secondaryTeam.name}
+                    <div className={`${styles.teamName} ${getTeamColorClass(updatedSecondaryTeam)}`}>
+                      {updatedSecondaryTeam.name}
                     </div>
-                    <div className={`${styles.teamBadge} ${secondaryTeam.isWinner ? styles.winnerBadge : styles.loserBadge}`}>
-                      {secondaryTeam.isWinner ? (
+                    <div className={`${styles.teamBadge} ${updatedSecondaryTeam.isWinner ? styles.winnerBadge : isTie ? styles.tieBadge : styles.loserBadge}`}>
+                      {updatedSecondaryTeam.isWinner ? (
                         <>
                           <IconTrophy size={16} />
                           Winner
+                        </>
+                      ) : isTie ? (
+                        <>
+                          <IconEqual size={16} />
+                          Tied
                         </>
                       ) : (
                         "Runner-up"
@@ -364,12 +402,12 @@ export function Results() {
 
                 <div className={styles.comparisonBody}>
                   <div className={styles.comparisonRow}>
-                    <div className={`${styles.statValue} ${primaryTeam.score >= secondaryTeam.score ? styles.statValueWinner : styles.statValueLoser}`}>
-                      {primaryTeam.score}
+                    <div className={`${styles.statValue} ${isTie ? styles.statValueTie : updatedPrimaryTeam.score > updatedSecondaryTeam.score ? styles.statValueWinner : styles.statValueLoser}`}>
+                      {updatedPrimaryTeam.score}
                     </div>
                     <div className={styles.statLabel}>Score</div>
-                    <div className={`${styles.statValue} ${secondaryTeam.score >= primaryTeam.score ? styles.statValueWinner : styles.statValueLoser}`}>
-                      {secondaryTeam.score}
+                    <div className={`${styles.statValue} ${isTie ? styles.statValueTie : updatedSecondaryTeam.score > updatedPrimaryTeam.score ? styles.statValueWinner : styles.statValueLoser}`}>
+                      {updatedSecondaryTeam.score}
                     </div>
                   </div>
 
@@ -382,11 +420,11 @@ export function Results() {
                       </>
                     ) : (
                       <>
-                        <div className={`${styles.statValue} ${primaryTeamTestsPassed >= secondaryTeamTestsPassed ? styles.statValueWinner : styles.statValueLoser}`}>
+                        <div className={`${styles.statValue} ${primaryTeamTestsPassed === secondaryTeamTestsPassed ? styles.statValueTie : primaryTeamTestsPassed > secondaryTeamTestsPassed ? styles.statValueWinner : styles.statValueLoser}`}>
                           {primaryTeamTestsPassed}/{comparisonTotalTests}
                         </div>
                         <div className={styles.statLabel}>Tests Passed</div>
-                        <div className={`${styles.statValue} ${secondaryTeamTestsPassed >= primaryTeamTestsPassed ? styles.statValueWinner : styles.statValueLoser}`}>
+                        <div className={`${styles.statValue} ${primaryTeamTestsPassed === secondaryTeamTestsPassed ? styles.statValueTie : secondaryTeamTestsPassed > primaryTeamTestsPassed ? styles.statValueWinner : styles.statValueLoser}`}>
                           {secondaryTeamTestsPassed}/{comparisonTotalTests}
                         </div>
                       </>
@@ -394,12 +432,12 @@ export function Results() {
                   </div>
 
                   <div className={styles.comparisonRow}>
-                    <div className={`${styles.statValue} ${primaryTeam.time <= secondaryTeam.time ? styles.statValueWinner : styles.statValueLoser}`}>
-                      {formatTime(primaryTeam.time)}
+                    <div className={`${styles.statValue} ${updatedPrimaryTeam.time === updatedSecondaryTeam.time ? styles.statValueTie : updatedPrimaryTeam.time < updatedSecondaryTeam.time ? styles.statValueWinner : styles.statValueLoser}`}>
+                      {formatTime(updatedPrimaryTeam.time)}
                     </div>
                     <div className={styles.statLabel}>Time</div>
-                    <div className={`${styles.statValue} ${secondaryTeam.time <= primaryTeam.time ? styles.statValueWinner : styles.statValueLoser}`}>
-                      {formatTime(secondaryTeam.time)}
+                    <div className={`${styles.statValue} ${updatedPrimaryTeam.time === updatedSecondaryTeam.time ? styles.statValueTie : updatedSecondaryTeam.time < updatedPrimaryTeam.time ? styles.statValueWinner : styles.statValueLoser}`}>
+                      {formatTime(updatedSecondaryTeam.time)}
                     </div>
                   </div>
                 </div>
@@ -459,12 +497,15 @@ export function Results() {
                   })}
                 />
                 <TestCaseResultsBox
-                  gameId={gameId}
-                  showOtherTeamColumn={!isCoOp}
+                  tests={gameResults?.tests}
+                  team1Results={gameResults?.team1Results}
+                  team2Results={gameResults?.team2Results}
+                  team1Errors={gameResults?.team1Errors}
+                  team2Errors={gameResults?.team2Errors}
+                  showOtherTeamColumn={gameType !== GameType.TWOPLAYER}
                   gameType={gameType as "TWOPLAYER" | "FOURPLAYER"}
                   userTeamNumber={userTeamNumber}
                   onSummaryChange={handleSummaryChange}
-                  onExecutionMetrics={handleExecutionMetrics}
                 />
               </Stack>
             </Flex>

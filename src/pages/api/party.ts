@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import type { PartyMember } from "@/contexts/PartyContext";
-import { nanoid } from "nanoid";
+import { nanoid } from "@/lib/nanoid";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const session = await auth.api.getSession({ headers: req.headers as Record<string, string> });

@@ -2,7 +2,7 @@ import base64
 
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse, PlainTextResponse
-from pydantic import BaseModel, ValidationError
+from pydantic import ValidationError
 from starlette import status
 from starlette.responses import Response
 
@@ -29,7 +29,7 @@ class DeleteVMRequest(BaseModel):
 @app.post("/delete-vm", response_class=Response, responses={
     200: {"description": "VM queued for deletion"},
 })
-def request_warm_vm(payload: DeleteVMRequest):
+def delete_vm(payload: DeleteVMRequest):
     return Response(status_code=status.HTTP_200_OK)
 
 

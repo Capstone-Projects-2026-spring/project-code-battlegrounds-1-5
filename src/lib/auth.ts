@@ -1,7 +1,7 @@
 import { betterAuth } from "better-auth";
 import { createAuthMiddleware } from "better-auth/api";
 import { prismaAdapter } from "better-auth/adapters/prisma";
-import { nanoid } from "nanoid";
+import { nanoid } from "@/lib/nanoid";
 
 import { prisma } from "./prisma";
 
@@ -19,7 +19,7 @@ export const auth = betterAuth({
                 if (newSession) {
                     await prisma.user.update({
                         where: { id: newSession.user.id },
-                        data: { friendCode: nanoid(8) }
+                        data: { friendCode: nanoid(6) }
                     });
                     await prisma.party.create({
                         data: {

@@ -2,7 +2,7 @@ import { ActionIcon, Box, Button, Center, Group, Loader, Modal, Select, Stack, T
 import { Editor } from '@monaco-editor/react';
 import { useRouter } from 'next/router';
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { io, Socket } from 'socket.io-client';
+import { Socket } from 'socket.io-client';
 import { IconEye, IconPlayerPlay, IconPlayerTrackNextFilled, IconPlus } from '@tabler/icons-react';
 import { usePostHog } from 'posthog-js/react';
 import { Panel, Group as PanelGroup, Separator as PanelResizeHandle } from 'react-resizable-panels';
@@ -34,8 +34,6 @@ import { useSocket } from '@/contexts/SocketContext';
 import { useMatchmaking } from '@/contexts/MatchmakingContext';
 
 import styles from "@/styles/GameRoom.module.css";
-import { convertSegmentPathToStaticExportFilename } from 'next/dist/shared/lib/segment-cache/segment-value-encoding';
-import { ReactServerDOMTurbopackServer } from 'next/dist/server/route-modules/app-page/vendored/rsc/entrypoints';
 
 interface RoomDetailsResponse {
   problem: ActiveProblem;
@@ -90,7 +88,7 @@ function PlayGameRoom() {
   const [problem, setProblem] = useState<ActiveProblem | null>(null);
   const [teams, setTeams] = useState<TeamCount[]>([]);
   const [teamSelected, setTeamSelected] = useState<string | null>(null);
-  const [liveCode, setLiveCode] = useState<string>("// Waiting for code...");
+  const [liveCode, setLiveCode] = useState<string>("// Make sure your function is named solution \nfunction solution(a, b) { \n\treturn a + b;\n}");
   const [activeTestId, setActiveTestId] = useState<number>(0);
   const [gameType, setGameType] = useState<GameType | null>(null);
   const [isWaitingForOtherTeam, setIsWaitingForOtherTeam] = useState(false);
@@ -145,7 +143,9 @@ function PlayGameRoom() {
 
   // ONLY HAPPENS ON PAGE LAUNCH
   useEffect(() => {
-    if (!session?.user.id || !gameId || !socket) return;
+    if (!session?.user.id || !gameId || !router.isReady || !socket) return;
+
+    setStatus('idle');
 
     gameStateCtx.setGameId(gameId);
 
@@ -196,10 +196,11 @@ function PlayGameRoom() {
             }
           }
         }
-        setLoading(false);
       } catch (error) {
         console.error("Failed to load room problem", error);
         router.replace("/");
+      } finally {
+        setLoading(false);
       }
     };
     loadRoomDetails();
@@ -215,6 +216,8 @@ function PlayGameRoom() {
     }
 
     const errorHandler = (data: JSON) => {
+      setRunningAllTests(false);
+      setIsWaitingForOtherTeam(false);
       console.error("Socket error:", data);
     };
 
@@ -231,7 +234,7 @@ function PlayGameRoom() {
       socket.off("error", errorHandler);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gameId, session?.user.id]);
+  }, [gameId, session?.user.id, socket, router.isReady]);
 
   useEffect(() => {
     // Runs after team gets selected - join rooms first, then set up room-specific listeners
@@ -505,10 +508,10 @@ function PlayGameRoom() {
       prev.map((parameter) =>
         parameter.isOutputParameter
           ? {
-              ...parameter,
-              type,
-              value: null,
-            }
+            ...parameter,
+            type,
+            value: null,
+          }
           : parameter,
       ),
     );
@@ -535,6 +538,7 @@ function PlayGameRoom() {
 
     setRunningAllTests(true);
     socket.emit("submitTestCases", {
+      roomId: gameId,
       code: liveCode,
       testCases: testCaseCtx.cases,
       runIDs: testCaseCtx.cases.map((t) => t.id), // all of em!
@@ -543,7 +547,7 @@ function PlayGameRoom() {
 
   // --- RENDERING LOGIC ---
   // State A: Still connecting to the WebSocket server
-  if (!socket || loading) {
+  if (loading) {
     return <EnteringBattleground />;
   }
 
@@ -559,7 +563,7 @@ function PlayGameRoom() {
           if (role === Role.SPECTATOR) {
             setGameState(GameStatus.ACTIVE);
           }
-          socket.emit("requestTeamUpdate", { teamId, playerCount });
+          socket?.emit("requestTeamUpdate", { teamId, playerCount });
         }}
       />
     );
@@ -605,7 +609,7 @@ function PlayGameRoom() {
       {/* Waiting Modal */}
       <Modal
         opened={isWaitingForOtherTeam}
-        onClose={() => {}}
+        onClose={() => { }}
         centered
         withCloseButton={false}
         closeOnEscape={false}
@@ -712,19 +716,13 @@ function PlayGameRoom() {
                 >
                   {(gameState === GameStatus.ACTIVE ||
                     gameState === GameStatus.FLIPPING) && (
-                    <Box mb="md" p="1rem" pb={isProblemVisible ? "md" : "1rem"}>
-                      <GameTimer
-                        endTime={endTime}
-                        onExpire={() => {
-                          if (role === Role.CODER)
-                            socket.emit("submitCode", {
-                              roomId: gameId,
-                              code: liveCode,
-                            });
-                        }}
-                      />
-                    </Box>
-                  )}
+                      <Box mb="md" p="1rem" pb={isProblemVisible ? "md" : "1rem"}>
+                        <GameTimer
+                          endTime={endTime}
+                          onExpire={handleTimerExpire}
+                        />
+                      </Box>
+                    )}
                   {isProblemVisible ? (
                     <Box
                       style={{
@@ -781,25 +779,9 @@ function PlayGameRoom() {
                       <>
                         <Button
                           size="xs"
-                          color="cyan"
-                          disabled={isSpectator || isWaitingForOtherTeam}
-                          className={styles.runButton}
-                          onClick={() =>
-                            posthog.capture("code_run_triggered", { gameId })
-                          }
-                          rightSection={
-                            <IconPlayerPlay
-                              size={"var(--mantine-font-size-md)"}
-                            />
-                          }
-                        >
-                          RUN
-                        </Button>
-                        <Button
-                          size="xs"
                           color="green"
                           onClick={submitFinalCode}
-                          disabled={isSpectator || isWaitingForOtherTeam}
+                          disabled={isSpectator || isWaitingForOtherTeam} // TODO: disable this for first thirty seconds
                         >
                           {isWaitingForOtherTeam
                             ? "Waiting for other team..."

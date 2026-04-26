@@ -11,6 +11,11 @@ data "google_secret_manager_secret_version" "postgres_password" {
   version = "latest"
 }
 
+data "google_secret_manager_secret_version" "test_accs_password" {
+  secret  = "test-accs-password"
+  version = "latest"
+}
+
 # cloud sql
 resource "google_sql_database_instance" "postgres" {
   name                = "app-postgres"
@@ -63,8 +68,8 @@ resource "google_cloud_run_v2_job" "migrate" {
           name  = "DATABASE_URL"
           value = "postgresql://${var.db_user}:${data.google_secret_manager_secret_version.postgres_password.secret_data}@localhost/appdb?host=%2Fcloudsql%2F${google_sql_database_instance.postgres.connection_name}"
         }
-        command = ["npx"]
-        args    = ["prisma", "migrate", "deploy"]
+        command = ["bun"]
+        args = ["prisma", "migrate", "deploy"]
         resources {
           limits = {
             memory = "1024Mi"
@@ -84,6 +89,90 @@ resource "google_cloud_run_v2_job" "migrate" {
       }
     }
   }
+}
+
+# cloud run db seed job to apply db seeds
+# execute with: gcloud run jobs execute db-seed-job --region ${var.region}
+resource "google_cloud_run_v2_job" "db-seed" {
+  name     = "db-seed-job"
+  location = var.region
+
+  template {
+    template {
+      containers {
+        image = "us-central1-docker.pkg.dev/code-battlegrounds/app/migrate:latest"
+        env {
+          name  = "DATABASE_URL"
+          value = "postgresql://${var.db_user}:${data.google_secret_manager_secret_version.postgres_password.secret_data}@localhost/appdb?host=%2Fcloudsql%2F${google_sql_database_instance.postgres.connection_name}"
+        }
+
+        env {
+          name = "TEST_ACCS_PASSWORD"
+          value = data.google_secret_manager_secret_version.test_accs_password.secret_data
+        }
+
+        env {
+          name = "DEMO_MODE"
+          value = "true"
+        }
+
+        command = ["sh"]
+        args    = ["-lc", "bun prisma migrate deploy && bun prisma db seed"]
+
+        resources {
+          limits = {
+            memory = "1024Mi"
+          }
+        }
+      }
+      vpc_access {
+        connector = var.vpc_connector_id
+        egress    = "PRIVATE_RANGES_ONLY"
+      }
+
+      volumes {
+        name = "cloudsql"
+        cloud_sql_instance {
+          instances = [google_sql_database_instance.postgres.connection_name]
+        }
+      }
+    }
+  }
+}
+
+# orchestrator Cloud Run service for code execution
+# public for simplicity; tighten IAM in production
+resource "google_cloud_run_service" "orchestrator" {
+  name     = "orchestrator"
+  location = var.region
+
+  template {
+    metadata {
+      annotations = {
+        "run.googleapis.com/vpc-access-connector" = var.vpc_connector_name
+        "run.googleapis.com/vpc-access-egress"    = "private-ranges-only"
+      }
+    }
+
+    spec {
+      containers {
+        image = "us-central1-docker.pkg.dev/code-battlegrounds/app/orchestrator:latest"
+      }
+    }
+  }
+
+  traffic {
+    percent         = 100
+    latest_revision = true
+  }
+}
+
+# make orchestrator service public (so app can call it easily). this will need to change after testing
+resource "google_cloud_run_service_iam_member" "orchestrator_public" {
+  service  = google_cloud_run_service.orchestrator.name
+  location = google_cloud_run_service.orchestrator.location
+  role     = "roles/run.invoker"
+  member   = "allUsers"
 }
 
 # cloud run itself for the app
@@ -106,7 +195,7 @@ resource "google_cloud_run_service" "app" {
 
         env {
           name  = "BETTER_AUTH_URL"
-          value = "https://app-hnjkqlohiq-uc.a.run.app"
+          value = "https://codebattlegrounds.com"
         }
 
         env {
@@ -145,6 +234,22 @@ resource "google_cloud_run_service" "app" {
           name  = "REDIS_PORT"
           value = "6379"
         }
+
+        # posthog config
+        env {
+          name  = "NEXT_PUBLIC_POSTHOG_KEY"
+          value = "phc_Io7LeSThy8dz3wDLgPJCcKsWny6zZkapNnyrnPRI1gN"
+        }
+        env {
+          name  = "NEXT_PUBLIC_POSTHOG_HOST"
+          value = "https://cbt.strange.boats"
+        }
+
+        # execution addr
+        env {
+          name  = "EXECUTOR_ADDR"
+          value = google_cloud_run_service.orchestrator.status[0].url
+        }
       }
     }
   }
@@ -152,6 +257,20 @@ resource "google_cloud_run_service" "app" {
   traffic {
     percent         = 100
     latest_revision = true
+  }
+}
+
+# this shouldnt be permanent, but it should work for now
+resource "google_cloud_run_domain_mapping" "app_domain" {
+  location = var.region
+  name     = "codebattlegrounds.com"
+
+  metadata {
+    namespace = "code-battlegrounds"
+  }
+
+  spec {
+    route_name = google_cloud_run_service.app.name
   }
 }
 

@@ -36,25 +36,25 @@ RUN bunx prisma generate
 ENV NODE_ENV=production
 RUN bun run build
 
-# ================ runner stage ================
-FROM node:20-bookworm-slim
-WORKDIR /app
-
-# make sure we get openssl for prisma
-RUN apt-get update -y && apt-get install -y --no-install-recommends \
-    openssl \
-    ca-certificates \
- && rm -rf /var/lib/apt/lists/*
-
-# just copy all the deps and install, since this is not really a prod image and will only be run in contained environments
-COPY package.json bun.lock* ./
-RUN npm install
-
-# copy everything else
-COPY . .
-
-# set prod env
-ENV NODE_ENV=production
-
-# set command to run the prisma deployment, can be overriden in cloud run job as well
-CMD ["npx", "prisma", "migrate", "deploy"]
+## ================ runner stage ================
+#FROM node:20-bookworm-slim
+#WORKDIR /app
+#
+## make sure we get openssl for prisma
+#RUN apt-get update -y && apt-get install -y --no-install-recommends \
+#    openssl \
+#    ca-certificates \
+# && rm -rf /var/lib/apt/lists/*
+#
+## just copy all the deps and install, since this is not really a prod image and will only be run in contained environments
+#COPY package.json bun.lock* ./
+#RUN npm install
+#
+## copy everything else
+#COPY . .
+#
+## set prod env
+#ENV NODE_ENV=production
+#
+## set command to run the prisma deployment, can be overriden in cloud run job as well
+#CMD ["npx", "prisma", "migrate", "deploy"]

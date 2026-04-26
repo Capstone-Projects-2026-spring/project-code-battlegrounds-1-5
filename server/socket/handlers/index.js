@@ -9,7 +9,7 @@ function registerSocketHandlers(io, socket, services) {
 
   registerGameHandlers(io, socket, gameService);
   registerExecutionHandlers(io, socket, gameService);
-  registerMatchmakingHandlers(io, socket, matchmakingService);
+  registerMatchmakingHandlers(io, socket, matchmakingService, gameService);
   registerInviteHandlers(io, socket, inviteService, gameService);
 
   socket.on('disconnect', async () => {

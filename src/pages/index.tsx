@@ -21,14 +21,6 @@ const CTASection = dynamic(() => import("@/components/home/CTASection"), {
 });
 
 export default function Home() {
-  const router = useRouter();
-  const { data: session, isPending } = authClient.useSession();
-  useEffect(() => {
-      if (session && !isPending) {
-        router.push("/matchmaking");
-      }
-    }, [session, isPending, router]);
-
   const posthog = usePostHog();
 
   useEffect(() => {

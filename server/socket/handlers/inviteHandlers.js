@@ -1,5 +1,5 @@
 const { z } = require("zod");
-const { validate } = require("./utils");
+const { validate } = require("../../utils/validate");
 
 const partyInviteSchema = z.object({
     toUserId: z.string(),
@@ -144,7 +144,7 @@ function registerInviteHandlers(io, socket, inviteService, gameService) {
         // Notify the addressee so their InvitesTab updates immediately
         const toSocketId = await gameService.getSocketId(result.addresseeId);
         if (toSocketId) {
-            io.to(toSocketId).emit('friendRequestReceived', { ...result.request, direction: 'incoming' });
+            io.to(toSocketId).emit('friendRequestReceived', { ...result.incomingRequest, direction: 'incoming' });
         }
     });
 
