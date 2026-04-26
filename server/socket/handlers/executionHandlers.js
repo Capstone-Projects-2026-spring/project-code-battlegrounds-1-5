@@ -154,7 +154,7 @@ function registerExecutionHandlers(io, socket, gameService) {
             socket.emit('error', { message: 'Invalid payload for submitCode.' });
             return;
         }
-        const { roomId, code, type, team, teamId, testCases, runIDs } = payload;
+        const { roomId, code, type, team, teamId } = payload;
         console.log(`Submitting code for Room ${roomId}`);
 
         if (!roomId) return;
