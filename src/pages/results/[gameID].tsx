@@ -122,7 +122,14 @@ export function Results() {
   const [testResultsSummary, setTestResultsSummary] = useState<TestResultsSummary | null>(null);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setTestResultsSummary(null);
+
+    const storedGame = localStorage.getItem("stored_game");
+    if(storedGame) {
+      console.log("Found stored game! Clearing now...");
+      localStorage.removeItem("stored_game");
+    }
   }, [gameId]);
 
   const handleSummaryChange = useCallback((summary: TestResultsSummary) => {

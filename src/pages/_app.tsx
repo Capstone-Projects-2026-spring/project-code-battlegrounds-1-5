@@ -73,6 +73,16 @@ export default function App({ Component, pageProps }: AppProps) {
     });
   }, []);
 
+  useEffect(() => {
+    const storedGame = localStorage.getItem("stored_game");
+    if(!storedGame) return;
+
+    if(storedGame) {
+      console.log("Found stored game!", storedGame);
+      router.replace(`/game/${storedGame}`);
+    }
+  }, [router]);
+
   return (
     <PostHogProvider client={posthog}>
       <MantineProvider theme={theme} defaultColorScheme="auto">
