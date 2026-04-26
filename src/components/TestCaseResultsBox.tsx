@@ -3,6 +3,7 @@ import { useEffect, useState, useMemo } from "react";
 import { ParameterType, ParameterPrimitiveType } from "@/lib/ProblemInputOutput";
 import { IconCheck, IconX } from "@tabler/icons-react";
 import deepEqual from "@/util/deepEqual";
+import { groupScoredCases } from "@/util/groupScoredCases";
 import styles from '@/styles/comps/TestCaseResultsBox.module.css';
 import { type TeamGameMadeTestCase } from "@/pages/api/results/[gameId]";
 
@@ -17,16 +18,6 @@ interface TestCase {
   input: ParameterType[];
   expected: ParameterType[];
 }
-
-type ScoredCase = {
-  id: string;
-  input: ParameterType[];
-  expected: ParameterType[];
-  yourResult: unknown;
-  otherTeamResult: unknown;
-  yourError: string | null;
-  otherTeamError: string | null;
-};
 
 interface TestCaseResultsBoxProps {
   tests?: Array<{ id: string; input: unknown; expected: unknown }>;
@@ -116,61 +107,6 @@ function extractAndCompare(actual: unknown, expected: ParameterType[]): boolean 
     console.error("Error in extractAndCompare:", { actualValue, expectedValue: expectedParam.value, type, error: e });
     return false;
   }
-}
-
-function groupScoredCases(
-  convertedTests: TestCase[],
-  userTeamNumber: 1 | 2,
-  team1TestResults: unknown[],
-  team2TestResults: unknown[],
-  team1ErrorsArray: (string | null)[],
-  team2ErrorsArray: (string | null)[]
-): ScoredCase[] {
-  if (!convertedTests.length) return [];
-
-  const keyForInput = (input: ParameterType[]) => JSON.stringify(input);
-  const grouped = new Map<string, ScoredCase>();
-  const yourResults = userTeamNumber === 2 ? team2TestResults : team1TestResults;
-  const otherTeamResults = userTeamNumber === 2 ? team1TestResults : team2TestResults;
-  const yourErrors = userTeamNumber === 2 ? team2ErrorsArray : team1ErrorsArray;
-  const otherTeamErrors = userTeamNumber === 2 ? team1ErrorsArray : team2ErrorsArray;
-
-  convertedTests.forEach((element, index) => {
-    const key = keyForInput(element.input);
-    const existing = grouped.get(key);
-    const yourResult = yourResults?.[index];
-    const otherTeamResult = otherTeamResults?.[index];
-    const yourError = yourErrors?.[index] ?? null;
-    const otherTeamError = otherTeamErrors?.[index] ?? null;
-
-    if (!existing) {
-      grouped.set(key, {
-        id: element.id,
-        input: element.input,
-        expected: element.expected,
-        yourResult,
-        otherTeamResult,
-        yourError,
-        otherTeamError,
-      });
-      return;
-    }
-
-    if (existing.yourResult === undefined && yourResult !== undefined) {
-      existing.yourResult = yourResult;
-    }
-    if (existing.otherTeamResult === undefined && otherTeamResult !== undefined) {
-      existing.otherTeamResult = otherTeamResult;
-    }
-    if (!existing.yourError && yourError) {
-      existing.yourError = yourError;
-    }
-    if (!existing.otherTeamError && otherTeamError) {
-      existing.otherTeamError = otherTeamError;
-    }
-  });
-
-  return Array.from(grouped.values());
 }
 
 export default function TestCaseResultsBox({ tests, team1Results, team2Results, team1Errors, team2Errors, team1GameMadeTests, team2GameMadeTests, showOtherTeamColumn = true, gameType = "FOURPLAYER", userTeamNumber = 1, onSummaryChange }: TestCaseResultsBoxProps) {

@@ -19,7 +19,6 @@ import {
   IconTarget,
   IconBolt,
   IconArrowRight,
-  // IconHome,
   IconEye,
   IconEqual,
 } from "@tabler/icons-react";
@@ -550,17 +549,6 @@ export function Results() {
             >
               Play Again
             </Button>
-
-            {/* <Button
-              size="lg"
-              variant="outline"
-              color="console"
-              className={styles.secondaryButton}
-              leftSection={<IconHome size={20} />}
-              onClick={() => router.push('/dashboard')}
-            >
-              Back to Dashboard
-            </Button> */}
           </div>
         </Container>
       </div>
