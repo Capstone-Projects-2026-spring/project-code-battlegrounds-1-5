@@ -23,7 +23,7 @@ export interface GameTestCaseProps {
 
   // because we might want to show these test cases
   // on the results screen
-  disabled?: boolean,
+  disabled: boolean,
 }
 
 export default function GameTestCase(props: GameTestCaseProps) {
@@ -106,6 +106,7 @@ export default function GameTestCase(props: GameTestCaseProps) {
                           parameter: param
                         });
                       }}
+                      disabled={props.disabled}
                     >
                       <IconTrash />
                     </ActionIcon>
@@ -146,6 +147,7 @@ export default function GameTestCase(props: GameTestCaseProps) {
                   onTypeChanged={(type) => {
                     props.onExpectedOutputTypeChange(type);
                   }}
+                  disabled={props.disabled}
                 />
               </Group>
             </Table.Td>
@@ -183,6 +185,7 @@ export default function GameTestCase(props: GameTestCaseProps) {
 
 interface ChangeParameterTypeButtonProps {
   onTypeChanged: (type: ParameterPrimitiveType) => void;
+  disabled: boolean;
 }
 function ChangeParameterTypeButton(props: ChangeParameterTypeButtonProps) {
   interface FormValues {
@@ -247,6 +250,7 @@ function ChangeParameterTypeButton(props: ChangeParameterTypeButtonProps) {
             variant="light"
             size="sm"
             onClick={toggle}
+            disabled={props.disabled}
           >
             <IconCode />
           </ActionIcon>
