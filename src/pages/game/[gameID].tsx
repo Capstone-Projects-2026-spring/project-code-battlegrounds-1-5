@@ -143,13 +143,6 @@ function PlayGameRoom() {
     });
   }, [socket, gameType, teamSelected, gameId, gameStateCtx, liveCode, teams]);
 
-  useEffect(() => {
-    if (router.query.teamId && router.query.role) {
-      setTeamSelected(router.query.teamId as string);
-      setRole(router.query.role as Role);
-    }
-  }, [router.query.teamId, router.query.role]);
-
   // ONLY HAPPENS ON PAGE LAUNCH
   useEffect(() => {
     if (!session?.user.id || !gameId || !socket) return;
