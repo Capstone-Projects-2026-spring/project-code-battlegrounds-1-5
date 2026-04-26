@@ -37,7 +37,17 @@ def health():
 
 @app.post("/execute")
 def execute(req: ExecutionRequest):
-    print(json.dumps(req.dict()))
+    # Safely log the incoming request without serializing Pydantic models directly
+    try:
+        if hasattr(req, 'model_dump'):
+            _log_payload = req.model_dump(mode='json')
+        else:
+            _log_payload = req.dict()
+        _log_payload = jsonable_encoder(_log_payload)
+        print(json.dumps(_log_payload))
+    except Exception:
+        # Fallback minimal log
+        print("{\"message\": \"Received /execute request\"}")
     # validate language support
     if not Languages.is_supported(req.language):
         return JSONResponse(

@@ -142,7 +142,7 @@ function PlayGameRoom() {
 
   // ONLY HAPPENS ON PAGE LAUNCH
   useEffect(() => {
-    if (!session?.user.id || !gameId || !socket) return;
+    if (!session?.user.id || !gameId || !router.isReady || !socket) return;
 
     setStatus('idle');
 
@@ -195,10 +195,11 @@ function PlayGameRoom() {
             }
           }
         }
-        setLoading(false);
       } catch (error) {
         console.error("Failed to load room problem", error);
         router.replace("/");
+      } finally {
+        setLoading(false);
       }
     };
     loadRoomDetails();
@@ -214,6 +215,8 @@ function PlayGameRoom() {
     }
 
     const errorHandler = (data: JSON) => {
+      setRunningAllTests(false);
+      setIsWaitingForOtherTeam(false);
       console.error("Socket error:", data);
     };
 
@@ -230,7 +233,7 @@ function PlayGameRoom() {
       socket.off("error", errorHandler);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gameId, session?.user.id]);
+  }, [gameId, session?.user.id, socket, router.isReady]);
 
   useEffect(() => {
     if (!socket || !teamSelected) return;
@@ -556,7 +559,7 @@ function PlayGameRoom() {
 
   // --- RENDERING LOGIC ---
   // State A: Still connecting to the WebSocket server
-  if (!socket || loading) {
+  if (loading) {
     return <EnteringBattleground />;
   }
 
@@ -572,23 +575,34 @@ function PlayGameRoom() {
           if (role === Role.SPECTATOR) {
             setGameState(GameStatus.ACTIVE);
           }
-          socket.emit("requestTeamUpdate", { teamId, playerCount });
+          socket?.emit("requestTeamUpdate", { teamId, playerCount });
         }}
       />
     );
   }
 
   if (gameState == GameStatus.STARTING) {
+    const roleInfo = {
+      [Role.CODER]: { label: "Coder", blurb: "Write code that passes the tester's cases." },
+      [Role.TESTER]: { label: "Tester", blurb: "Write test cases that break the coder's solution." },
+      [Role.SPECTATOR]: { label: "Spectator", blurb: "Watch the battle unfold." },
+    };
+    const info = role ? roleInfo[role] : null;
+
     return (
       <Center h="100vh">
-        <Group align="center">
+        <Stack align="center" gap="xs">
           <Text size="xl" c="dimmed" data-testid="waiting-for-second">
             Starting in 3...2...1...Battle!
           </Text>
-          <Text size="md" fw={600}>
-            Room ID: {gameId}
-          </Text>
-        </Group>
+          <Text size="md" fw={600}>Room ID: {gameId}</Text>
+          {info && (
+            <Stack align="center" gap={4} mt="sm">
+              <Text size="lg" fw={700}>You are the <span style={{ color: role === Role.CODER ? "#22d3ee" : "#4ade80" }}>{info.label}</span></Text>
+              <Text size="sm" c="dimmed">{info.blurb}</Text>
+            </Stack>
+          )}
+        </Stack>
       </Center>
     );
   }
@@ -700,7 +714,7 @@ function PlayGameRoom() {
           h="100vh"
           style={{ display: "flex", flexDirection: "column" }}
         >
-          <RoleFlipPopup gameState={gameState} />
+          <RoleFlipPopup gameState={gameState} role={effectiveRole as Role} />
 
           <Box style={{ flex: 1, display: "flex", overflow: "hidden" }}>
             <PanelGroup orientation="horizontal">
@@ -785,24 +799,26 @@ function PlayGameRoom() {
                       defaultValue="Javascript"
                       disabled={isSpectator || role !== Role.CODER}
                     />
+                    {/* Role badge */}
+                    {role && (
+                      <Text
+                        size="xs"
+                        fw={600}
+                        px="sm"
+                        py={4}
+                        style={{
+                          borderRadius: 4,
+                          backgroundColor: role === Role.CODER ? "#0e7490" : role === Role.TESTER ? "#166534" : "#374151",
+                          color: "white",
+                          textTransform: "uppercase",
+                          letterSpacing: "0.05em",
+                        }}
+                      >
+                        {role === Role.CODER ? "Coder" : role === Role.TESTER ? "Tester" : "Spectator"}
+                      </Text>
+                    )}
                     {effectiveRole === Role.CODER && (
                       <>
-                        <Button
-                          size="xs"
-                          color="cyan"
-                          disabled={isSpectator || isWaitingForOtherTeam}
-                          className={styles.runButton}
-                          onClick={() =>
-                            posthog.capture("code_run_triggered", { gameId })
-                          }
-                          rightSection={
-                            <IconPlayerPlay
-                              size={"var(--mantine-font-size-md)"}
-                            />
-                          }
-                        >
-                          RUN
-                        </Button>
                         <Button
                           size="xs"
                           color="green"

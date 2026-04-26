@@ -195,7 +195,7 @@ resource "google_cloud_run_service" "app" {
 
         env {
           name  = "BETTER_AUTH_URL"
-          value = "https://app-376875580312.us-central1.run.app"
+          value = "https://codebattlegrounds.com"
         }
 
         env {
@@ -257,6 +257,20 @@ resource "google_cloud_run_service" "app" {
   traffic {
     percent         = 100
     latest_revision = true
+  }
+}
+
+# this shouldnt be permanent, but it should work for now
+resource "google_cloud_run_domain_mapping" "app_domain" {
+  location = var.region
+  name     = "codebattlegrounds.com"
+
+  metadata {
+    namespace = "code-battlegrounds"
+  }
+
+  spec {
+    route_name = google_cloud_run_service.app.name
   }
 }
 

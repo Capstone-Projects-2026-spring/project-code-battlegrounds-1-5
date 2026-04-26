@@ -158,6 +158,7 @@ function createMatchmakingService(stateRedis, io) {
             const gameRoom = await this._createGameInDB(players, gameType, difficulty);
             const gameId = gameRoom.id;
             warmVm(gameId);
+            await this._notifyPlayers(gameRoom);
             return { status: 'matched', gameId: gameRoom.id };
         },
 
