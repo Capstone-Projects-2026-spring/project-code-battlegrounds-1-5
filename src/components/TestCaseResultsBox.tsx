@@ -1,4 +1,4 @@
-import { Paper, Title, Table, Text, Box, Badge, Tooltip, Tabs } from "@mantine/core";
+import { Paper, Title, Table, Text, Box, Badge, Tooltip, Tabs, ScrollArea } from "@mantine/core";
 import { useEffect, useState, useMemo } from "react";
 import { ParameterType, ParameterPrimitiveType } from "@/lib/ProblemInputOutput";
 import { IconCheck, IconX } from "@tabler/icons-react";
@@ -357,9 +357,9 @@ export default function TestCaseResultsBox({ tests, team1Results, team2Results, 
             </Tabs.Tab>
           )}
         </Tabs.List>
-
+        
         <Tabs.Panel value="scored" pt="md">
-          <Box className={styles.scrollRegion}>
+          <ScrollArea h={550} className={styles.scrollRegion} type="auto" offsetScrollbars>
             <Table highlightOnHover verticalSpacing="sm" striped className={styles.table}>
               <Table.Thead>
                 <Table.Tr>
@@ -370,7 +370,7 @@ export default function TestCaseResultsBox({ tests, team1Results, team2Results, 
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
-                {!convertedTests || convertedTests.length === 0 ? (
+                {convertedTests.length === 0 ? (
                   <Table.Tr>
                     <Table.Td colSpan={colSpan}>
                       <Text size="sm" ta="center" c="dimmed" className={styles.stateText}>
@@ -383,11 +383,11 @@ export default function TestCaseResultsBox({ tests, team1Results, team2Results, 
                 )}
               </Table.Tbody>
             </Table>
-          </Box>
+          </ScrollArea>
         </Tabs.Panel>
 
         <Tabs.Panel value="your-tests" pt="md">
-          <Box className={styles.scrollRegion}>
+          <ScrollArea h={550} className={styles.scrollRegion} type="auto" offsetScrollbars>
             <Table highlightOnHover verticalSpacing="sm" striped className={styles.table}>
               <Table.Thead>
                 <Table.Tr>
@@ -410,12 +410,12 @@ export default function TestCaseResultsBox({ tests, team1Results, team2Results, 
                 )}
               </Table.Tbody>
             </Table>
-          </Box>
+          </ScrollArea>
         </Tabs.Panel>
 
         {!isCoOp && (
           <Tabs.Panel value="other-team-tests" pt="md">
-            <Box className={styles.scrollRegion}>
+            <ScrollArea h={550} className={styles.scrollRegion} type="auto" offsetScrollbars>
               <Table highlightOnHover verticalSpacing="sm" striped className={styles.table}>
                 <Table.Thead>
                   <Table.Tr>
@@ -438,7 +438,7 @@ export default function TestCaseResultsBox({ tests, team1Results, team2Results, 
                   )}
                 </Table.Tbody>
               </Table>
-            </Box>
+            </ScrollArea>
           </Tabs.Panel>
         )}
       </Tabs>
