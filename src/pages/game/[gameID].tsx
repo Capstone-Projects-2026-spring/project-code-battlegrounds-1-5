@@ -279,7 +279,7 @@ function PlayGameRoom() {
       setIsWaitingForOtherTeam(false);
       setGameState(GameStatus.FINISHED);
       setStatus("idle"); // reset matchmaking status so players can queue again from results page
-      router.push(`/results/${gameId}`);
+      router.replace(`/results/${gameId}`);
     };
 
     const handleRoleSwapWarning = () => {

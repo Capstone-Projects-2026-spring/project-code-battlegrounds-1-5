@@ -250,9 +250,9 @@ function registerExecutionHandlers(io, socket, gameService) {
                     where: { id: roomId },
                     data: { status: GameStatus.FINISHED }
                 });
-                deleteVm(roomId);
                 io.to(roomId).emit('gameEnded');
                 await gameService.removePlayersFromSockets(gameRoom);
+                deleteVm(roomId);
             } catch (error) {
                 console.error("Error in TWOPLAYER execution:", error);
                 socket.emit('error', { message: 'Code execution failed! Try again in a bit...' });
