@@ -237,21 +237,6 @@ function PlayGameRoom() {
   }, [gameId, session?.user.id, socket, router.isReady]);
 
   useEffect(() => {
-    if (!socket || !teamSelected) return;
-    // Emit the default test cases ONCE to the socket
-    // so that they're at least synced and ready to go should somebody
-    // hit the run button or attempt to make a new case.
-    console.log("Syncing default test cases :3");
-    socket.emit("updateTestCases", {
-      teamId: teamSelected,
-      testCases: DEFAULT_TEST_CASES,
-    });
-
-    console.log("Syncing default code");
-    socket.emit("codeChange", { teamId: teamSelected, code: liveCode });
-  }, [socket, teamSelected]);
-
-  useEffect(() => {
     // Runs after team gets selected - join rooms first, then set up room-specific listeners
     if (!socket || !teamSelected || !gameId || !gameType) return;
     socket.emit("joinGame", { gameId, teamId: teamSelected, gameType });
