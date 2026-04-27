@@ -37,13 +37,13 @@ COPY . .
 RUN bunx prisma generate
 
 # build!
-ENV NODE_ENV=development
+ENV NODE_ENV=production
 RUN bun run build
 
 # ================ runner image ================
 FROM oven/bun:1-debian AS runner
 WORKDIR /app
-ENV NODE_ENV=development
+ENV NODE_ENV=production
 ENV PORT=8080
 
 # make sure we get openssl for prisma
