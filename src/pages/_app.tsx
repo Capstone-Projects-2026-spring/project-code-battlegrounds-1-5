@@ -77,11 +77,11 @@ export default function App({ Component, pageProps }: AppProps) {
     const storedGame = localStorage.getItem("stored_game");
     if(!storedGame) return;
 
-    if(storedGame) {
+    if (storedGame && router.pathname !== `/game/${storedGame}`) {
       console.log("Found stored game!", storedGame);
       router.replace(`/game/${storedGame}`);
     }
-  }, [router]);
+  }, [router.isReady, router.pathname]);
 
   return (
     <PostHogProvider client={posthog}>
