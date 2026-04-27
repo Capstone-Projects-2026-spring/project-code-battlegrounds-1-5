@@ -33,6 +33,18 @@ export default function QueuePage() {
 
   const { socket } = useSocket();
 
+  useEffect(() => {
+    const storedGame = localStorage.getItem("stored_game");
+    if(!storedGame) return;
+
+    if(storedGame) {
+      console.log("Found stored game!", storedGame);
+      router.replace(`/game/${storedGame}`);
+    }
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const {
     status,
     setStatus,
