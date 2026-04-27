@@ -6,9 +6,9 @@ const { deleteVm } = require("../../utils/vm/deleteVm");
 
 const prisma = getPrisma();
 
-function normalizeHiddenTests(hiddenTests, gameTestCount) {
+function normalizeHiddenTests(hiddenTests) {
     return hiddenTests.map((t, idx) => ({
-        id: gameTestCount + idx,
+        id: idx,
         functionInput: Array.isArray(t.functionInput) ? t.functionInput : [t.functionInput],
         expectedOutput: Array.isArray(t.expectedOutput) ? t.expectedOutput[0] : t.expectedOutput
     }));
@@ -22,7 +22,31 @@ const submitCodeSchema = z.object({
     teamId: z.string().optional(),
     testCases: z.array(z.any()).optional(),
     runIDs: z.array(z.any()).optional(),
+    submitTime: z.union([z.string(), z.number(), z.date()]).nullable().optional(),
+    submitTimer: z.string().nullable().optional(),
 });
+
+function toSubmissionTimestamp(submitTime) {
+    if (submitTime instanceof Date && !Number.isNaN(submitTime.getTime())) {
+        return submitTime.toISOString();
+    }
+
+    if (typeof submitTime === "number" && Number.isFinite(submitTime)) {
+        const parsedFromNumber = new Date(submitTime);
+        if (!Number.isNaN(parsedFromNumber.getTime())) {
+            return parsedFromNumber.toISOString();
+        }
+    }
+
+    if (typeof submitTime === "string") {
+        const parsedFromString = new Date(submitTime);
+        if (!Number.isNaN(parsedFromString.getTime())) {
+            return parsedFromString.toISOString();
+        }
+    }
+
+    return new Date().toISOString();
+}
 
 /**
  * Executes code against test cases and persists results to database
@@ -50,10 +74,30 @@ async function executeAndPersist({
     hiddenTestCases = [],
     hiddenTestCaseIds = []
 }) {
-    // STEP 1: Call executor with combined game + hidden tests
-    const allTestCases = [...testCases, ...hiddenTestCases];
-    const allTestCaseIds = [...testCaseIds, ...hiddenTestCaseIds];
-    const gameTestCount = testCases.length;
+    // STEP 1: Build execution list with stable metadata for persistence keys
+    const executionCases = [];
+
+    for (let idx = 0; idx < testCases.length; idx++) {
+        executionCases.push({
+            testCase: testCases[idx],
+            testCaseId: String(testCaseIds[idx] ?? `game-${teamNumber}-${idx}`),
+            type: "Game",
+            position: idx,
+            teamBucket: teamNumber,
+        });
+    }
+
+    for (let idx = 0; idx < hiddenTestCases.length; idx++) {
+        executionCases.push({
+            testCase: hiddenTestCases[idx],
+            testCaseId: String(hiddenTestCaseIds[idx] ?? `hidden-${idx}`),
+            type: "Hidden",
+            position: idx,
+            teamBucket: 0,
+        });
+    }
+
+    const allTestCases = executionCases.map((entry) => entry.testCase);
 
     const executorPayload = {
         gameId: roomId,
@@ -88,46 +132,79 @@ async function executeAndPersist({
     // Expected format: { results: Array<{ id, actual, passed, stderr, execution_time_ms }> }
     const results = executorResponse.results || [];
 
-    // STEP 3: Create GameTest records to persist (both game and hidden)
-    const gameTestsToCreate = [];
+    // STEP 3: Upsert GameTest records with team-scoped result columns
+    const upsertOperations = [];
     const executionTimes = [];
 
-    for (let position = 0; position < allTestCases.length; position++) {
-        const result = results[position] || {};
-        const testCaseId = allTestCaseIds[position];
-        const isHidden = position >= gameTestCount;
-        const testType = isHidden ? "Hidden" : "Game";
+    for (let idx = 0; idx < executionCases.length; idx++) {
+        const result = results[idx] || {};
+        const entry = executionCases[idx];
+        const testType = entry.type;
 
         const execTime = result.execution_time_ms || 0;
         executionTimes.push(execTime);
 
-        gameTestsToCreate.push({
+        const teamUpdate = teamNumber === 1
+            ? {
+                team1ActualOutput: result.actual ?? null,
+                team1Passed: result.passed === true,
+                team1Stderr: result.stderr || null,
+                team1ExecutionTimeMs: result.execution_time_ms || null,
+            }
+            : {
+                team2ActualOutput: result.actual ?? null,
+                team2Passed: result.passed === true,
+                team2Stderr: result.stderr || null,
+                team2ExecutionTimeMs: result.execution_time_ms || null,
+            };
+
+        const baseData = {
             gameResultId,
             gameRoomId,
-            testCaseId: String(testCaseId),
-            position,
-            teamNumber,
-            functionInput: allTestCases[position]?.functionInput || null,
-            expectedOutput: allTestCases[position]?.expectedOutput || null,
-            actualOutput: result.actual ? JSON.stringify(result.actual) : null,
-            passed: result.passed === true,
-            stderr: result.stderr || null,
-            executionTimeMs: result.execution_time_ms || null,
+            testCaseId: entry.testCaseId,
+            position: entry.position,
+            teamNumber: entry.teamBucket,
+            functionInput: entry.testCase?.functionInput || null,
+            expectedOutput: entry.testCase?.expectedOutput || null,
             type: testType
-        });
+        };
+
+        upsertOperations.push(
+            prisma.gameTest.upsert({
+                where: {
+                    gameResultId_type_teamNumber_testCaseId: {
+                        gameResultId,
+                        type: testType,
+                        teamNumber: entry.teamBucket,
+                        testCaseId: entry.testCaseId,
+                    },
+                },
+                create: {
+                    ...baseData,
+                    team1ActualOutput: teamNumber === 1 ? result.actual ?? null : null,
+                    team2ActualOutput: teamNumber === 2 ? result.actual ?? null : null,
+                    team1Passed: teamNumber === 1 ? result.passed === true : null,
+                    team2Passed: teamNumber === 2 ? result.passed === true : null,
+                    team1Stderr: teamNumber === 1 ? result.stderr || null : null,
+                    team2Stderr: teamNumber === 2 ? result.stderr || null : null,
+                    team1ExecutionTimeMs: teamNumber === 1 ? result.execution_time_ms || null : null,
+                    team2ExecutionTimeMs: teamNumber === 2 ? result.execution_time_ms || null : null,
+                },
+                update: {
+                    gameRoomId,
+                    position: entry.position,
+                    functionInput: entry.testCase?.functionInput || null,
+                    expectedOutput: entry.testCase?.expectedOutput || null,
+                    ...teamUpdate,
+                },
+            })
+        );
     }
 
-    // STEP 4: Persist to database (create new GameTest records)
+    // STEP 4: Persist to database
     try {
-        // Batch create all GameTest records in transaction
-        await prisma.$transaction(
-            gameTestsToCreate.map(testData =>
-                prisma.gameTest.create({
-                    data: testData
-                })
-            )
-        );
-        console.log(`[PERSISTENCE] Persisted ${gameTestsToCreate.length} GameTest records for team ${teamNumber}`);
+        await prisma.$transaction(upsertOperations);
+        console.log(`[PERSISTENCE] Persisted ${upsertOperations.length} GameTest records for team ${teamNumber}`);
     } catch (error) {
         console.error(`[PERSISTENCE] Failed to persist GameTest records:`, error);
         throw new Error(`Failed to persist test results: ${error.message}`);
@@ -135,11 +212,11 @@ async function executeAndPersist({
 
     // STEP 5: Return execution metadata; average runtime is computed in results API from persisted hidden tests.
 
-    const passedCount = gameTestsToCreate.filter(t => t.passed).length;
+    const passedCount = results.filter((r) => r?.passed === true).length;
 
     return {
         teamNumber,
-        totalTests: gameTestsToCreate.length,
+        totalTests: executionCases.length,
         passedCount,
         executionTimeMs: executionTimes,
         success: true
@@ -154,12 +231,14 @@ function registerExecutionHandlers(io, socket, gameService) {
             socket.emit('error', { message: 'Invalid payload for submitCode.' });
             return;
         }
-        const { roomId, code, type, team, teamId, testCases, runIDs } = payload;
+        const { roomId, code, type, team, teamId, testCases, runIDs, submitTime, submitTimer } = payload;
+        const submissionTimestamp = toSubmissionTimestamp(submitTime);
+        const submissionTimer = typeof submitTimer === "string" && submitTimer.trim() ? submitTimer.trim() : submissionTimestamp;
         console.log(`Submitting code for Room ${roomId}`);
 
         if (!roomId) return;
 
-        console.log('submitCode received for roomId:', roomId, 'with code length:', code?.length, 'and type:', type);
+        console.log('submitCode received for roomId:', roomId, 'with code length:', code?.length, 'and type:', type, 'at time:', submitTime, 'timer:', submitTimer);
 
         if (type === GameType.TWOPLAYER) {
             console.log('verify its a twoplayer game');
@@ -194,7 +273,10 @@ function registerExecutionHandlers(io, socket, gameService) {
                 // Save code to DB
                 await prisma.gameResult.update({
                     where: { id: gameResult.id },
-                    data: { team1Code: code }
+                    data: {
+                        team1Code: code,
+                        team1SubmittedAt: submissionTimer
+                    }
                 });
                 console.log('code submitted for two-player game');
 
@@ -227,7 +309,7 @@ function registerExecutionHandlers(io, socket, gameService) {
 
                 // Normalize hidden test cases to match game test structure
                 // For TWOPLAYER: Single shared set (not duplicated per team like FOURPLAYER)
-                const normalizedHiddenTests = normalizeHiddenTests(hiddenTests, gameTestCases.length);
+                const normalizedHiddenTests = normalizeHiddenTests(hiddenTests);
 
                 const hiddenTestCaseIds = hiddenTests.map(t => t.id);
 
@@ -302,7 +384,9 @@ function registerExecutionHandlers(io, socket, gameService) {
                 await prisma.gameResult.update({
                     where: { id: gameResult.id },
                     data: {
-                        ...(team === "team1" ? { team1Code: code } : { team2Code: code })
+                        ...(team === "team1"
+                            ? { team1Code: code, team1SubmittedAt: submissionTimer }
+                            : { team2Code: code, team2SubmittedAt: submissionTimer })
                     }
                 });
                 console.log(`code submitted for four-player game by ${team}`);
@@ -371,15 +455,13 @@ function registerExecutionHandlers(io, socket, gameService) {
                             select: { id: true, functionInput: true, expectedOutput: true }
                         });
 
-                        // Create normalized hidden tests for each team (they get separate sets)
-                        const normalizedHiddenTestsTeam1 = normalizeHiddenTests(hiddenTests, team1GameTestCases.length);
-
-                        const normalizedHiddenTestsTeam2 = normalizeHiddenTests(hiddenTests, team2GameTestCases.length);
+                        // Shared hidden tests: one row per hidden test with team1/team2 outputs updated via upsert.
+                        const normalizedHiddenTests = normalizeHiddenTests(hiddenTests);
 
                         const hiddenTestCaseIds = hiddenTests.map(t => t.id);
 
                         // Execute BOTH teams in parallel
-                        await Promise.all([
+                        const executionResults = await Promise.all([
                             executeAndPersist({
                                 roomId,
                                 gameResultId: gameResult.id,
@@ -388,7 +470,7 @@ function registerExecutionHandlers(io, socket, gameService) {
                                 testCases: team1GameTestCases,
                                 testCaseIds: team1GameTestCaseIds,
                                 gameRoomId: roomId,
-                                hiddenTestCases: normalizedHiddenTestsTeam1,
+                                hiddenTestCases: normalizedHiddenTests,
                                 hiddenTestCaseIds
                             }).catch(error => {
                                 console.error('[FOURPLAYER] Team 1 execution failed:', error);
@@ -402,13 +484,20 @@ function registerExecutionHandlers(io, socket, gameService) {
                                 testCases: team2GameTestCases,
                                 testCaseIds: team2GameTestCaseIds,
                                 gameRoomId: roomId,
-                                hiddenTestCases: normalizedHiddenTestsTeam2,
+                                hiddenTestCases: normalizedHiddenTests,
                                 hiddenTestCaseIds
                             }).catch(error => {
                                 console.error('[FOURPLAYER] Team 2 execution failed:', error);
                                 return { success: false, error };
                             })
                         ]);
+
+                        const hasExecutionFailure = executionResults.some((result) => result?.success === false);
+                        if (hasExecutionFailure) {
+                            console.error('[FOURPLAYER] One or more team executions failed; not finalizing game room');
+                            socket.emit('error', { message: 'Code execution failed for one of the teams. Please try again.' });
+                            return;
+                        }
 
                         console.log('[FOURPLAYER] Both executions completed');
                     } catch (error) {

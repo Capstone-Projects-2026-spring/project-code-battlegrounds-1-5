@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Head from "next/head";
 import {
   Container,
@@ -19,7 +19,6 @@ import {
   IconTarget,
   IconBolt,
   IconArrowRight,
-  // IconHome,
   IconEye,
   IconEqual,
 } from "@tabler/icons-react";
@@ -27,13 +26,12 @@ import { useRouter } from "next/router";
 import { authClient } from "@/lib/auth-client";
 import { GameType } from "@prisma/client";
 import styles from "@/styles/Results.module.css";
-import AnalysisBox, { type AnalysisBoxProps } from "@/components/Analysisbox";
-import ProblemBox, { type ActiveProblem } from "@/components/ProblemBox";
+import AnalysisBox from "@/components/Analysisbox";
+import ProblemBox from "@/components/ProblemBox";
 import TestCaseResultsBox, { type TestResultsSummary } from "@/components/TestCaseResultsBox";
 import { calculateScorePair } from "@/util/scoring";
 import { useGameResults } from "@/hooks/useGameResults";
 
-// Mock data - replace with actual data from backend
 interface TeamResult {
   name: string;
   score: number;
@@ -91,6 +89,15 @@ function formatTime(seconds: number): string {
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
+function deriveCompletionSeconds(timeLeftSeconds: number | null | undefined): number {
+  //Shows the time taken to complete a given problem, derived from the time left on the timer when the team submitted their solution.
+  if (typeof timeLeftSeconds !== "number" || Number.isNaN(timeLeftSeconds)) {
+    return 0;
+  }
+
+  return Math.max(0, 300 - timeLeftSeconds);
+}
+
 export default function Page() {
   const { data: session, isPending } = authClient.useSession();
   const router = useRouter();
@@ -119,12 +126,12 @@ export function Results() {
   const [isProblemVisible, setIsProblemVisible] = useState(true);
   const toggleProblemVisibility = () => setIsProblemVisible((prev) => !prev);
 
-  const [testResultsSummary, setTestResultsSummary] = useState<TestResultsSummary | null>(null);
+  const [testResultsSummaryByGame, setTestResultsSummaryByGame] = useState<{
+    gameId: string;
+    summary: TestResultsSummary;
+  } | null>(null);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setTestResultsSummary(null);
-
     const storedGame = localStorage.getItem("stored_game");
     if(storedGame) {
       console.log("Found stored game! Clearing now...");
@@ -133,24 +140,39 @@ export function Results() {
   }, [gameId]);
 
   const handleSummaryChange = useCallback((summary: TestResultsSummary) => {
-    setTestResultsSummary((previous) => {
+    setTestResultsSummaryByGame((previous) => {
+      if (!gameId) {
+        return previous;
+      }
+
       if (
+        previous?.gameId === gameId &&
         previous &&
-        previous.yourPassedCount === summary.yourPassedCount &&
-        previous.otherTeamPassedCount === summary.otherTeamPassedCount &&
-        previous.totalTests === summary.totalTests
+        previous.summary.yourPassedCount === summary.yourPassedCount &&
+        previous.summary.otherTeamPassedCount === summary.otherTeamPassedCount &&
+        previous.summary.totalTests === summary.totalTests
       ) {
         return previous;
       }
 
-      return summary;
+      return {
+        gameId,
+        summary,
+      };
     });
-  }, []);
+  }, [gameId]);
+
+  const testResultsSummary =
+    testResultsSummaryByGame && testResultsSummaryByGame.gameId === gameId
+      ? testResultsSummaryByGame.summary
+      : null;
 
   // Extract data from gameResults for easier access
   const problem = gameResults?.problem ?? null;
   const gameType = (gameResults?.gameType as GameType) ?? GameType.FOURPLAYER;
   const userTeamNumber = gameResults?.userTeamNumber ?? 1;
+  const team1CompletionSeconds = deriveCompletionSeconds(gameResults?.team1TimeLeftSeconds);
+  const team2CompletionSeconds = deriveCompletionSeconds(gameResults?.team2TimeLeftSeconds);
   const analysisProps = gameResults?.team1Code || gameResults?.team2Code
     ? {
         team1Code: gameResults.team1Code ?? "",
@@ -164,54 +186,54 @@ export function Results() {
 
   const isCoOp = gameType === GameType.TWOPLAYER;
 
-  // Calculate team scores
-  const [team1Score, team2Score] = useMemo(() => {
-    if (!testResultsSummary || !analysisProps) return [0, 0];
+  const team1PassedCount = gameResults?.team1PassedCount ?? 0;
+  const team2PassedCount = gameResults?.team2PassedCount ?? 0;
+  const team1TotalTests = gameResults?.team1TotalTests ?? gameResults?.totalTests ?? 0;
+  const team2TotalTests = gameResults?.team2TotalTests ?? gameResults?.totalTests ?? 0;
+  const scoringTotalTests = Math.max(team1TotalTests, team2TotalTests);
 
-    return calculateScorePair(
-      testResultsSummary.yourPassedCount ?? 0,
-      testResultsSummary.otherTeamPassedCount ?? 0,
-      testResultsSummary.totalTests,
-      analysisProps.team1AverageExecutionTime ?? null,
-      analysisProps.team2AverageExecutionTime ?? null,
-      userTeamNumber === 1 ? "Your Team (Team 1)" : "Other Team (Team 1)",
-      userTeamNumber === 2 ? "Your Team (Team 2)" : "Other Team (Team 2)"
-    );
-  }, [testResultsSummary, analysisProps, userTeamNumber]);
-
-  // Mock data - replace with actual fetched data
-  const coOpTeam: TeamResult = {
-    name: "Co-Op Crew",
-    score: team1Score,
-    testsPassed: testResultsSummary?.yourPassedCount ?? 0,
-    totalTests: testResultsSummary?.totalTests ?? 0,
-    time: 0, // Calculated later
-    isWinner: true
-  };
+  // Calculate team scores using the actual team identifiers from the API.
+  const [team1Score, team2Score] = gameResults
+    ? calculateScorePair(
+        team1PassedCount,
+        team2PassedCount,
+        scoringTotalTests,
+        gameResults.team1AverageExecutionTime ?? null,
+        gameResults.team2AverageExecutionTime ?? null,
+        gameResults.team1TimeLeftSeconds ?? null,
+        gameResults.team2TimeLeftSeconds ?? null,
+        "Team 1",
+        "Team 2"
+      )
+    : [0, 0];
 
   const greenTeam: TeamResult = {
     name: "Green Hackers",
-    score: userTeamNumber === 1 ? team1Score : team2Score,
-    testsPassed: userTeamNumber === 1
-      ? (testResultsSummary?.yourPassedCount ?? 0)
-      : (testResultsSummary?.otherTeamPassedCount ?? 0),
-    totalTests: testResultsSummary?.totalTests ?? 0,
-    time: 0, // Calculated later
-    isWinner: true
+    score: team1Score,
+    testsPassed: team1PassedCount,
+    totalTests: team1TotalTests,
+    time: team1CompletionSeconds,
+    isWinner: false
   };
 
   const redTeam: TeamResult = {
     name: "Red Coders",
-    score: userTeamNumber === 1 ? team2Score : team1Score,
-    testsPassed: userTeamNumber === 1
-      ? (testResultsSummary?.otherTeamPassedCount ?? 0)
-      : (testResultsSummary?.yourPassedCount ?? 0),
-    totalTests: testResultsSummary?.totalTests ?? 0,
-    time: 0, // Calculated later
+    score: team2Score,
+    testsPassed: team2PassedCount,
+    totalTests: team2TotalTests,
+    time: team2CompletionSeconds,
     isWinner: false
   };
 
-  const primaryTeam = isCoOp ? coOpTeam : (userTeamNumber === 1 ? greenTeam : redTeam);
+  const winningTeamName = isCoOp
+    ? greenTeam.name
+    : team1Score === team2Score
+      ? null
+      : team1Score > team2Score
+        ? greenTeam.name
+        : redTeam.name;
+
+  const primaryTeam = userTeamNumber === 1 ? greenTeam : redTeam;
   const secondaryTeam = isCoOp ? null : (userTeamNumber === 1 ? redTeam : greenTeam);
 
   // Helper to get team color class based on team name
@@ -222,7 +244,7 @@ export function Results() {
   };
 
   // Determine if it's a tie
-  const isTie = secondaryTeam ? primaryTeam.score === secondaryTeam.score : false;
+  const isTie = !isCoOp && team1Score === team2Score;
 
   // Update team winner status based on tie (create new objects instead of mutating)
   const updatedPrimaryTeam = {
@@ -241,34 +263,39 @@ export function Results() {
       }
     : null;
 
-  // Determine winner based on actual score comparison
-  const winner = updatedSecondaryTeam
-    ? isTie
-      ? updatedPrimaryTeam
-      : updatedPrimaryTeam.isWinner ? updatedPrimaryTeam : updatedSecondaryTeam
-    : updatedPrimaryTeam;
-  const areTestResultsLoading = testResultsSummary === null;
-  const testsPassedForMetric = testResultsSummary?.yourPassedCount ?? 0;
-  const totalTestsForMetric = testResultsSummary?.totalTests ?? 0;
+  const areTestResultsLoading = !gameResults;
+  const userTeamTestsPassed = userTeamNumber === 1 ? greenTeam.testsPassed : redTeam.testsPassed;
+  const userTeamTotalTests = userTeamNumber === 1 ? greenTeam.totalTests : redTeam.totalTests;
+  const testsPassedForMetric = isCoOp
+    ? (testResultsSummary?.yourPassedCount ?? userTeamTestsPassed)
+    : userTeamTestsPassed;
+  const totalTestsForMetric = isCoOp
+    ? (testResultsSummary?.totalTests ?? userTeamTotalTests)
+    : userTeamTotalTests;
 
   const primaryTeamTestsPassed = !areTestResultsLoading && !isCoOp
-    ? (testResultsSummary?.yourPassedCount ?? 0)
+    ? primaryTeam.testsPassed
     : 0;
 
   const secondaryTeamTestsPassed = !areTestResultsLoading && !isCoOp
-    ? (testResultsSummary?.otherTeamPassedCount ?? 0)
+    ? (secondaryTeam?.testsPassed ?? 0)
     : 0;
 
-  const comparisonTotalTests = testResultsSummary?.totalTests ?? 0;
+  const comparisonTotalTests = !isCoOp ? primaryTeam.totalTests : 0;
 
   // Animated counters - show user's team metrics
-  const userTeamScore = team1Score;  // team1Score is always yourScore from calculateScorePair
+  const userTeamScore = userTeamNumber === 1 ? team1Score : team2Score;
   const animatedScore = useCounter(userTeamScore, 2000, 200);
   const animatedTests = useCounter(areTestResultsLoading ? 0 : testsPassedForMetric, 1500, 400);
-  const animatedTime = useCounter(winner.time, 1800, 600);
+  const animatedTime = useCounter(primaryTeam.time, 1800, 600);
 
-  // Determine if user's team won
-  const userTeamWon = !isTie && updatedPrimaryTeam.score > (updatedSecondaryTeam?.score ?? 0);
+  // Determine if user's team won based on score values rather than object identity.
+  const userTeamWon = isCoOp
+    ? true
+    : !isTie && (
+      (userTeamNumber === 1 && team1Score > team2Score)
+      || (userTeamNumber === 2 && team2Score > team1Score)
+    );
 
   if (!session) return null;
 
@@ -311,9 +338,7 @@ export function Results() {
                 ? "made it out of the battleground!"
                 : isTie
                 ? "Both teams showcased equal skill!"
-                : userTeamWon
-                ? <span><span className={styles.winnerTeamName}>{winner.name}</span> dominated the battlefield!</span>
-                : <span><span className={styles.winnerTeamName}>{winner.name}</span> dominated the battlefield!</span>
+                : <span><span className={styles.winnerTeamName}>{winningTeamName}</span> dominated the battlefield!</span>
               }
             </p>
           </Box>
@@ -509,6 +534,8 @@ export function Results() {
                   team2Results={gameResults?.team2Results}
                   team1Errors={gameResults?.team1Errors}
                   team2Errors={gameResults?.team2Errors}
+                  team1GameMadeTests={gameResults?.team1GameMadeTests}
+                  team2GameMadeTests={gameResults?.team2GameMadeTests}
                   showOtherTeamColumn={gameType !== GameType.TWOPLAYER}
                   gameType={gameType as "TWOPLAYER" | "FOURPLAYER"}
                   userTeamNumber={userTeamNumber}
@@ -530,17 +557,6 @@ export function Results() {
             >
               Play Again
             </Button>
-
-            {/* <Button
-              size="lg"
-              variant="outline"
-              color="console"
-              className={styles.secondaryButton}
-              leftSection={<IconHome size={20} />}
-              onClick={() => router.push('/dashboard')}
-            >
-              Back to Dashboard
-            </Button> */}
           </div>
         </Container>
       </div>

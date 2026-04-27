@@ -8,7 +8,7 @@ import { usePostHog } from 'posthog-js/react';
 import { Panel, Group as PanelGroup, Separator as PanelResizeHandle } from 'react-resizable-panels';
 
 import ChatBox from '@/components/ChatBox';
-import GameTimer from '@/components/GameTimer';
+import GameTimer, { GameTimerHandle } from '@/components/GameTimer';
 import TeamSelect from "@/components/TeamSelect";
 import { TeamCount } from "@/components/TeamSelect";
 import type { ActiveProblem } from "@/components/ProblemBox";
@@ -96,6 +96,8 @@ function PlayGameRoom() {
 
   const [runningAllTests, setRunningAllTests] = useState<boolean>(false);
 
+  const gameTimerRef = useRef<GameTimerHandle>(null);
+
   // Context <3
   const testCaseCtx = useTestCases();
   const gameStateCtx = useGameState();
@@ -114,12 +116,11 @@ function PlayGameRoom() {
 
   const handleTimerExpire = useCallback(() => {
     if (!socket || !gameType || !teamSelected) return;
-    const team = getTeamLabel();
     setIsWaitingForOtherTeam(true);
-    const indexes = Array.from(
-      { length: testCaseCtx.cases.length }, (_, i) => i);
 
     const codeToSubmit = gameStateCtx.code || liveCode || "";
+    const submitMetadata = emitSubmitCode(codeToSubmit);
+    if (!submitMetadata) return;
 
     console.log("Timer expired - submitting code:", {
       liveCode,
@@ -127,16 +128,8 @@ function PlayGameRoom() {
       codeToSubmit,
       teamSelected,
       gameId,
-    });
-
-    socket.emit("submitCode", {
-      roomId: gameId,
-      code: codeToSubmit,
-      type: gameType,
-      team,
-      teamId: teamSelected,
-      testCases: testCaseCtx.cases,
-      runIDs: indexes,
+      submitTime: submitMetadata.submitTime,
+      submitTimer: submitMetadata.submitTimer,
     });
   }, [socket, gameType, teamSelected, gameId, gameStateCtx, testCaseCtx.cases, liveCode]);
 
@@ -376,27 +369,40 @@ function PlayGameRoom() {
     return null;
   };
 
-  const submitFinalCode = () => {
-    //Send bother Coder and Tester to the results page
-    //Store submission and evaluate results on the backend
-    //server broadcasts the event to both player
-    if (!socket || !gameType || !teamSelected) return; //make sure the socket is connected before emitting
+  const getSubmitMetadata = () => ({
+    submitTime: new Date().toISOString(),
+    submitTimer: gameTimerRef.current?.getTimeRemainingDisplay() ?? "0:00",
+  });
+
+  const emitSubmitCode = (codeToSubmit: string) => {
+    if (!socket || !gameType || !teamSelected) return null;
+
     const team = getTeamLabel();
-    setIsWaitingForOtherTeam(true);
-    const indexes = Array.from(
-      { length: testCaseCtx.cases.length },
-      (_, i) => i,
-    );
+    const indexes = Array.from({ length: testCaseCtx.cases.length }, (_, i) => i);
+    const { submitTime, submitTimer } = getSubmitMetadata();
 
     socket.emit("submitCode", {
       roomId: gameId,
-      code: gameStateCtx.code,
+      code: codeToSubmit,
       type: gameType,
       team,
       teamId: teamSelected,
       testCases: testCaseCtx.cases,
       runIDs: indexes,
+      submitTime,
+      submitTimer,
     });
+
+    return { submitTime, submitTimer };
+  };
+
+  const submitFinalCode = () => {
+    //Send bother Coder and Tester to the results page
+    //Store submission and evaluate results on the backend
+    //server broadcasts the event to both player
+    if (!socket || !gameType || !teamSelected) return; //make sure the socket is connected before emitting
+    setIsWaitingForOtherTeam(true);
+    emitSubmitCode(gameStateCtx.code ?? "");
   };
 
   const addNewTest = () => {
@@ -741,13 +747,14 @@ function PlayGameRoom() {
                 >
                   {(gameState === GameStatus.ACTIVE ||
                     gameState === GameStatus.FLIPPING) && (
-                      <Box mb="md" p="1rem" pb={isProblemVisible ? "md" : "1rem"}>
-                        <GameTimer
-                          endTime={endTime}
-                          onExpire={handleTimerExpire}
-                        />
-                      </Box>
-                    )}
+                    <Box mb="md" p="1rem" pb={isProblemVisible ? "md" : "1rem"}>
+                      <GameTimer
+                        endTime={endTime}
+                        onExpire={handleTimerExpire}
+                        ref={gameTimerRef}
+                      />
+                    </Box>
+                  )}
                   {isProblemVisible ? (
                     <Box
                       style={{
