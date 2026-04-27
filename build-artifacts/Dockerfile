@@ -37,7 +37,7 @@ COPY . .
 RUN bunx prisma generate
 
 # build!
-ENV NODE_ENV=production
+ENV NODE_ENV=development
 RUN bun run build
 
 # ================ runner image ================
