@@ -106,7 +106,7 @@ export default function Page() {
   // if we aren't even logged in
   useEffect(() => {
     if (!isPending && !session) {
-      router.replace("/login");
+      router.replace("/auth");
     }
   }, [isPending, session, router]);
   return <Results />;
