@@ -62,18 +62,6 @@ export default function App({ Component, pageProps }: AppProps) {
   const showNavbar = router.pathname !== '/' && router.pathname !== '/login' && router.pathname !== '/signup';
 
   useEffect(() => {
-    const handleRouteChange = () => {
-      const el = document.getElementById("app-root");
-      el?.scrollTo({ top: 0, behavior: "auto" });
-    };
-
-    router.events.on("routeChangeComplete", handleRouteChange);
-
-    return () => {
-      router.events.off("routeChangeComplete", handleRouteChange);
-    };
-  }, [router.events]);
-  useEffect(() => {
     posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY as string, {
       api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST,
       ui_host: "https://us.posthog.com",
@@ -96,27 +84,25 @@ export default function App({ Component, pageProps }: AppProps) {
   }, [router]);
 
   return (
-    <div id="app-root">
-      <PostHogProvider client={posthog}>
-        <MantineProvider theme={theme} defaultColorScheme="auto">
-          <SocketProvider>
-            <PartyProvider>
-              <MatchmakingProvider>
-                <FriendshipProvider>
-                  {showNavbar && (
-                    <HeaderSimple
-                      title="Code BattleGrounds"
-                      links={["Dashboard", "Matchmaking", "Settings"]}
-                    />
-                  )}
-                  <Notifications position="bottom-right" autoClose={5000} />
-                  <Component {...pageProps} />
-                </FriendshipProvider>
-              </MatchmakingProvider>
-            </PartyProvider>
-          </SocketProvider>
-        </MantineProvider>
-      </PostHogProvider>
-    </div>
+    <PostHogProvider client={posthog}>
+      <MantineProvider theme={theme} defaultColorScheme="auto">
+        <SocketProvider>
+          <PartyProvider>
+            <MatchmakingProvider>
+              <FriendshipProvider>
+                {showNavbar && (
+                  <HeaderSimple
+                    title="Code BattleGrounds"
+                    links={["Dashboard", "Matchmaking", "Settings"]}
+                  />
+                )}
+                <Notifications position="bottom-right" autoClose={5000} />
+                <Component {...pageProps} />
+              </FriendshipProvider>
+            </MatchmakingProvider>
+          </PartyProvider>
+        </SocketProvider>
+      </MantineProvider>
+    </PostHogProvider>
   );
 }
