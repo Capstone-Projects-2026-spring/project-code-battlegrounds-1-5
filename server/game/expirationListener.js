@@ -1,6 +1,5 @@
 const { getPrisma } = require('../prisma/index');
 const { Role } = require('@prisma/client');
-const { deleteVm } = require('../utils/vm/deleteVm');
 
 function startExpirationListener(io, pubClient) {
   const sub = pubClient.duplicate();
@@ -95,14 +94,6 @@ function startExpirationListener(io, pubClient) {
         data: { status: 'FINISHED' },
       });
       await pubClient.srem('activeGames', gameId);
-      /** class DeleteVMRequest(BaseModel):
-              gameId: str
-          @app.post("/delete-vm", response_class=Response, responses={
-              200: {"description": "VM queued for deletion."},
-          }) 
-      */
-     // deletes vm after game is over
-      deleteVm(gameId);
       io.to(gameId).emit('gameEnded');
     }
 

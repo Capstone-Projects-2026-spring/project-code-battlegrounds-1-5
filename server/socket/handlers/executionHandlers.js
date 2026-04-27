@@ -1,5 +1,5 @@
 const { z } = require("zod");
-const { GameType } = require("@prisma/client");
+const { GameType, GameStatus } = require("@prisma/client");
 const { getPrisma } = require("../../prisma");
 const { validate } = require("../../utils/validate");
 const { deleteVm } = require("../../utils/vm/deleteVm");
@@ -330,11 +330,11 @@ function registerExecutionHandlers(io, socket, gameService) {
                 await gameService.cleanupGameTimers(roomId);
                 await prisma.gameRoom.update({
                     where: { id: roomId },
-                    data: { status: 'FINISHED' }
+                    data: { status: GameStatus.FINISHED }
                 });
-                deleteVm(roomId);
                 io.to(roomId).emit('gameEnded');
                 await gameService.removePlayersFromSockets(gameRoom);
+                deleteVm(roomId);
             } catch (error) {
                 console.error("Error in TWOPLAYER execution:", error);
                 socket.emit('error', { message: 'Code execution failed! Try again in a bit...' });
