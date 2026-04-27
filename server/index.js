@@ -71,6 +71,22 @@ app.prepare().then(async () => {
     socket.on('error', (err) => {
       console.error('[WS] socket error:', socket.id, err);
     });
+
+    socket.on('reconnect_attempt', (attempt) => {
+      console.log('reconnect attempt:', attempt);
+    });
+
+    socket.on('reconnect', (attempt) => {
+      console.log('reconnected after', attempt, 'attempts');
+    });
+
+    socket.on('reconnect_error', (err) => {
+      console.log('reconnect error:', err);
+    });
+
+    socket.on('reconnect_failed', () => {
+      console.log('reconnect failed — gave up');
+    });
   });
 
   // set redis to notify us of events and start listening. note that in production, this line will stop the deploy as it will not return correctly. instead, this config needs to be set in memorystore config.
