@@ -659,36 +659,35 @@ function PlayGameRoom() {
       {/* Spectator view switcher buttons */}
       {/* spectator view bug for 4PLAYER (Teams ordered wrong?) */}
       {isSpectator && (
-        <Group
+        <Box
           data-testid="spectating-box"
-          gap="xs"
-          style={{ position: "absolute", top: 12, right: 12, zIndex: 20 }}
+          style={{ position: "absolute", top: 12, left: 12, zIndex: 20 }}
         >
           {teams.map((team, i) => (
-            <>
+            <Group key={team.teamId} gap="xs">
               <Button
-                key={`${team.teamId}-coder`}
                 data-testid={`team-${i + 1}-coder`}
                 size="sm"
                 onClick={() => {
                   setTeamSelected(team.teamId);
                   setSpectatorView(Role.CODER);
+                  console.log("Effective role: ", effectiveRole);
                 }}
               >
                 Team {i + 1} Coder
               </Button>
               <Button
-                key={`${team.teamId}-tester`}
                 data-testid={`team-${i + 1}-tester`}
                 size="sm"
                 onClick={() => {
                   setTeamSelected(team.teamId);
                   setSpectatorView(Role.TESTER);
+                  console.log("Effective role: ", effectiveRole);
                 }}
               >
                 Team {i + 1} Tester
               </Button>
-            </>
+            </Group>
           ))}
           <Button
             className={styles.spectatorButton}
@@ -701,7 +700,7 @@ function PlayGameRoom() {
           >
             Exit View
           </Button>
-        </Group>
+        </Box>
       )}
 
       {/* Spectator waiting message */}
@@ -953,7 +952,6 @@ function PlayGameRoom() {
                                   <Group gap="xs">
                                     <NewParameterButton
                                       onNewParameter={handleNewParameter}
-                                      disabled={isSpectator}
                                     />
                                     <Button
                                       size="compact-sm"
@@ -988,7 +986,7 @@ function PlayGameRoom() {
                                       showDelete={
                                         testCaseCtx.cases.length !== 1
                                       }
-                                      disabled={runningAllTests || isSpectator}
+                                      disabled={runningAllTests}
                                       onExpectedOutputTypeChange={
                                         handleExpectedOutputTypeChange
                                       }

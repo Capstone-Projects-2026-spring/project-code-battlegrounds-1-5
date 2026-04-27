@@ -214,7 +214,6 @@ function registerGameHandlers(io, socket, gameService) {
 
         try {
             await gameService.saveTestCases(teamId, testCases);
-            socket.to(teamId).emit('receiveTestCaseSync', testCases);
         } catch (e) {
             console.error('Error saving test cases', e);
             socket.emit('error', { e, message: 'Failed to save test cases.' });
@@ -231,7 +230,7 @@ function registerGameHandlers(io, socket, gameService) {
 
         try {
             const testCases = await gameService.getTestCases(teamId);
-            if (testCases) socket.to(teamId).emit('receiveTestCaseSync', testCases);
+            if (testCases) socket.emit('receiveTestCaseSync', testCases);
         } catch (e) {
             console.error('Error fetching test cases', e);
             socket.emit('error', { e, message: 'Failed to fetch test cases.' });

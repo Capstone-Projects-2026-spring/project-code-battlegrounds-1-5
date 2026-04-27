@@ -591,13 +591,7 @@ function registerExecutionHandlers(io, socket, gameService) {
                 });
             }
 
-            const teamId = socket.teamId;
-
-            if (teamId) {
-                io.to(teamId).emit("receiveTestCaseSync", toReceive);
-            } else {
-                socket.emit("receiveTestCaseSync", toReceive);
-            }
+            socket.emit("receiveTestCaseSync", toReceive);
         } catch (error) {
             console.error(error);
             socket.emit("error", { message: "Sorry that didn't work try again in a few seconds" });

@@ -6,7 +6,6 @@ import { IconTextSize, IconHash, IconToggleRight, IconList, IconListNumbers, Ico
 
 export interface NewParameterButtonProps {
   onNewParameter: (p: ParameterType) => void;
-  disabled: boolean;
 }
 export default function NewParameterButton(props: NewParameterButtonProps) {
   interface FormValues {
@@ -79,7 +78,6 @@ export default function NewParameterButton(props: NewParameterButtonProps) {
           onClick={toggle}
           size="compact-sm"
           color="blue"
-          disabled={props.disabled}
         >
           New Parameter
         </Button>
