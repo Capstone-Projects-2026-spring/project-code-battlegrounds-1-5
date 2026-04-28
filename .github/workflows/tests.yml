@@ -122,4 +122,4 @@ jobs:
           exit 1
 
       - name: Run tests
-        run: bun test 2>&1 | tee test-output.txt
+        run: bun test
