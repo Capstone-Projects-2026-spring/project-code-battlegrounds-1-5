@@ -23,7 +23,7 @@ export interface GameTestCaseProps {
 
   // because we might want to show these test cases
   // on the results screen
-  disabled?: boolean,
+  disabled: boolean,
 }
 
 export default function GameTestCase(props: GameTestCaseProps) {
@@ -32,7 +32,6 @@ export default function GameTestCase(props: GameTestCaseProps) {
   const { socket } = useSocket();
   const posthog = usePostHog();
   const { testableCase } = props;
-  const [error, setError] = useState<string | null>(null);
 
   const [running, setRunning] = useState<boolean>(false);
 
@@ -41,6 +40,7 @@ export default function GameTestCase(props: GameTestCaseProps) {
     setRunning(true);
 
     socket.emit("submitTestCases", {
+      roomId: gameStateCtx.gameId,
       code: gameStateCtx.code,
       testCases: testCaseCtx.cases,
       runIDs: [testableCase.id]
@@ -52,18 +52,6 @@ export default function GameTestCase(props: GameTestCaseProps) {
       testableCase
     });
   };
-
-  const errorTestHandler = ({ message }: { message: string }) => {
-    setTimeout(() => {setError(message)}, 4000);
-
-  };
-
-  useEffect(() => {
-    if (!socket) return;
-
-    socket.on('errorTests', errorTestHandler);
-
-  }, [socket]);
 
   useEffect(() => {
     if (!running) return;
@@ -118,6 +106,7 @@ export default function GameTestCase(props: GameTestCaseProps) {
                           parameter: param
                         });
                       }}
+                      disabled={props.disabled}
                     >
                       <IconTrash />
                     </ActionIcon>
@@ -150,7 +139,7 @@ export default function GameTestCase(props: GameTestCaseProps) {
                     });
                   }}
                   disabled={props.disabled}
-                  computedValue={testableCase.computedOutput || error}
+                  computedValue={testableCase.computedOutput}
                   flex={1}
                 />
 
@@ -158,6 +147,7 @@ export default function GameTestCase(props: GameTestCaseProps) {
                   onTypeChanged={(type) => {
                     props.onExpectedOutputTypeChange(type);
                   }}
+                  disabled={props.disabled}
                 />
               </Group>
             </Table.Td>
@@ -195,6 +185,7 @@ export default function GameTestCase(props: GameTestCaseProps) {
 
 interface ChangeParameterTypeButtonProps {
   onTypeChanged: (type: ParameterPrimitiveType) => void;
+  disabled: boolean;
 }
 function ChangeParameterTypeButton(props: ChangeParameterTypeButtonProps) {
   interface FormValues {
@@ -259,6 +250,7 @@ function ChangeParameterTypeButton(props: ChangeParameterTypeButtonProps) {
             variant="light"
             size="sm"
             onClick={toggle}
+            disabled={props.disabled}
           >
             <IconCode />
           </ActionIcon>

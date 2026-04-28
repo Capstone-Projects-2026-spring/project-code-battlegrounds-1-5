@@ -12,6 +12,9 @@ WORKDIR /app
 ARG DATABASE_URL="postgresql://user:pass@localhost:5432/db"
 ENV DATABASE_URL=$DATABASE_URL
 
+ENV NEXT_PUBLIC_POSTHOG_KEY="phc_Io7LeSThy8dz3wDLgPJCcKsWny6zZkapNnyrnPRI1gN"
+ENV NEXT_PUBLIC_POSTHOG_HOST="https://cbt.strange.boats"
+
 # make sure we get openssl for prisma
 RUN apt-get update -y && apt-get install -y --no-install-recommends \
     openssl \

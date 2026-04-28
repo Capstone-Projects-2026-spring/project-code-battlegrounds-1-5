@@ -9,6 +9,7 @@ import {
 } from "react";
 import { io, type Socket } from "socket.io-client";
 import { authClient } from "@/lib/auth-client";
+import { showErrorNotification } from "@/components/notifications";
 
 export interface SocketContextAPI {
   socket: Socket | undefined;
@@ -29,7 +30,13 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
 
     const socketInstance = io({ autoConnect: true });
 
-    socketInstance.emit("register", { userId: session.user.id });
+    socketInstance.on("connect", () => {
+      socketInstance.emit("register", { userId: session.user.id });
+    });
+    
+    socketInstance.on("error", ({ message }: {message: string}) => {
+      showErrorNotification(message);
+    });
 
     setSocket(socketInstance);
 

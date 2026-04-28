@@ -8,6 +8,7 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
   background: light-dark(
     rgba(255, 255, 255, 0.95),
     rgba(26, 27, 30, 0.95)
@@ -25,17 +26,6 @@
   box-shadow: 0 4px 20px light-dark(rgba(49, 176, 0, 0.15), rgba(113, 211, 73, 0.25));
 }
 
-.title {
-  font-size: 1.125rem;
-  font-weight: 700;
-  text-align: center;
-  background: linear-gradient(135deg, var(--mantine-color-console-5), var(--mantine-color-console-3));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  animation: fadeInDown 0.5s ease-out;
-}
-
 .table {
   min-width: 620px;
   animation: fadeIn 0.5s ease-out 0.1s both;
@@ -44,7 +34,6 @@
 .scrollRegion {
   flex: 1;
   min-height: 0;
-  overflow: auto;
   border: 1px solid light-dark(
     var(--mantine-color-gray-3),
     var(--mantine-color-dark-4)

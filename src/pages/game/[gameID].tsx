@@ -8,7 +8,7 @@ import { usePostHog } from 'posthog-js/react';
 import { Panel, Group as PanelGroup, Separator as PanelResizeHandle } from 'react-resizable-panels';
 
 import ChatBox from '@/components/ChatBox';
-import GameTimer from '@/components/GameTimer';
+import GameTimer, { GameTimerHandle } from '@/components/GameTimer';
 import TeamSelect from "@/components/TeamSelect";
 import { TeamCount } from "@/components/TeamSelect";
 import type { ActiveProblem } from "@/components/ProblemBox";
@@ -96,6 +96,8 @@ function PlayGameRoom() {
 
   const [runningAllTests, setRunningAllTests] = useState<boolean>(false);
 
+  const gameTimerRef = useRef<GameTimerHandle>(null);
+
   // Context <3
   const testCaseCtx = useTestCases();
   const gameStateCtx = useGameState();
@@ -114,12 +116,11 @@ function PlayGameRoom() {
 
   const handleTimerExpire = useCallback(() => {
     if (!socket || !gameType || !teamSelected) return;
-    const team = getTeamLabel();
     setIsWaitingForOtherTeam(true);
-    const indexes = Array.from(
-      { length: testCaseCtx.cases.length }, (_, i) => i);
 
     const codeToSubmit = gameStateCtx.code || liveCode || "";
+    const submitMetadata = emitSubmitCode(codeToSubmit);
+    if (!submitMetadata) return;
 
     console.log("Timer expired - submitting code:", {
       liveCode,
@@ -127,22 +128,16 @@ function PlayGameRoom() {
       codeToSubmit,
       teamSelected,
       gameId,
-    });
-
-    socket.emit("submitCode", {
-      roomId: gameId,
-      code: codeToSubmit,
-      type: gameType,
-      team,
-      teamId: teamSelected,
-      testCases: testCaseCtx.cases,
-      runIDs: indexes,
+      submitTime: submitMetadata.submitTime,
+      submitTimer: submitMetadata.submitTimer,
     });
   }, [socket, gameType, teamSelected, gameId, gameStateCtx, testCaseCtx.cases, liveCode]);
 
   // ONLY HAPPENS ON PAGE LAUNCH
   useEffect(() => {
-    if (!session?.user.id || !gameId || !socket) return;
+    if (!session?.user.id || !gameId || !router.isReady || !socket) return;
+
+    localStorage.setItem("stored_game", gameId);
 
     setStatus('idle');
 
@@ -195,10 +190,11 @@ function PlayGameRoom() {
             }
           }
         }
-        setLoading(false);
       } catch (error) {
         console.error("Failed to load room problem", error);
         router.replace("/");
+      } finally {
+        setLoading(false);
       }
     };
     loadRoomDetails();
@@ -214,6 +210,8 @@ function PlayGameRoom() {
     }
 
     const errorHandler = (data: JSON) => {
+      setRunningAllTests(false);
+      setIsWaitingForOtherTeam(false);
       console.error("Socket error:", data);
     };
 
@@ -230,7 +228,7 @@ function PlayGameRoom() {
       socket.off("error", errorHandler);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gameId, session?.user.id]);
+  }, [gameId, session?.user.id, socket, router.isReady]);
 
   useEffect(() => {
     if (!socket || !teamSelected) return;
@@ -244,7 +242,7 @@ function PlayGameRoom() {
     });
 
     console.log("Syncing default code");
-    socket.emit("codeChange", {teamId: teamSelected, code: liveCode});
+    socket.emit("codeChange", { teamId: teamSelected, code: liveCode });
   }, [socket, teamSelected]);
 
   useEffect(() => {
@@ -274,7 +272,7 @@ function PlayGameRoom() {
       setIsWaitingForOtherTeam(false);
       setGameState(GameStatus.FINISHED);
       setStatus("idle"); // reset matchmaking status so players can queue again from results page
-      router.push(`/results/${gameId}`);
+      router.replace(`/results/${gameId}`);
     };
 
     const handleRoleSwapWarning = () => {
@@ -371,27 +369,40 @@ function PlayGameRoom() {
     return null;
   };
 
-  const submitFinalCode = () => {
-    //Send bother Coder and Tester to the results page
-    //Store submission and evaluate results on the backend
-    //server broadcasts the event to both player
-    if (!socket || !gameType || !teamSelected) return; //make sure the socket is connected before emitting
+  const getSubmitMetadata = () => ({
+    submitTime: new Date().toISOString(),
+    submitTimer: gameTimerRef.current?.getTimeRemainingDisplay() ?? "0:00",
+  });
+
+  const emitSubmitCode = (codeToSubmit: string) => {
+    if (!socket || !gameType || !teamSelected) return null;
+
     const team = getTeamLabel();
-    setIsWaitingForOtherTeam(true);
-    const indexes = Array.from(
-      { length: testCaseCtx.cases.length },
-      (_, i) => i,
-    );
+    const indexes = Array.from({ length: testCaseCtx.cases.length }, (_, i) => i);
+    const { submitTime, submitTimer } = getSubmitMetadata();
 
     socket.emit("submitCode", {
       roomId: gameId,
-      code: gameStateCtx.code,
+      code: codeToSubmit,
       type: gameType,
       team,
       teamId: teamSelected,
       testCases: testCaseCtx.cases,
       runIDs: indexes,
+      submitTime,
+      submitTimer,
     });
+
+    return { submitTime, submitTimer };
+  };
+
+  const submitFinalCode = () => {
+    //Send bother Coder and Tester to the results page
+    //Store submission and evaluate results on the backend
+    //server broadcasts the event to both player
+    if (!socket || !gameType || !teamSelected) return; //make sure the socket is connected before emitting
+    setIsWaitingForOtherTeam(true);
+    emitSubmitCode(gameStateCtx.code ?? "");
   };
 
   const addNewTest = () => {
@@ -517,10 +528,10 @@ function PlayGameRoom() {
       prev.map((parameter) =>
         parameter.isOutputParameter
           ? {
-              ...parameter,
-              type,
-              value: null,
-            }
+            ...parameter,
+            type,
+            value: null,
+          }
           : parameter,
       ),
     );
@@ -556,7 +567,7 @@ function PlayGameRoom() {
 
   // --- RENDERING LOGIC ---
   // State A: Still connecting to the WebSocket server
-  if (!socket || loading) {
+  if (loading) {
     return <EnteringBattleground />;
   }
 
@@ -572,23 +583,34 @@ function PlayGameRoom() {
           if (role === Role.SPECTATOR) {
             setGameState(GameStatus.ACTIVE);
           }
-          socket.emit("requestTeamUpdate", { teamId, playerCount });
+          socket?.emit("requestTeamUpdate", { teamId, playerCount });
         }}
       />
     );
   }
 
   if (gameState == GameStatus.STARTING) {
+    const roleInfo = {
+      [Role.CODER]: { label: "Coder", blurb: "Write code that passes the tester's cases." },
+      [Role.TESTER]: { label: "Tester", blurb: "Write test cases that break the coder's solution." },
+      [Role.SPECTATOR]: { label: "Spectator", blurb: "Watch the battle unfold." },
+    };
+    const info = role ? roleInfo[role] : null;
+
     return (
       <Center h="100vh">
-        <Group align="center">
+        <Stack align="center" gap="xs">
           <Text size="xl" c="dimmed" data-testid="waiting-for-second">
             Starting in 3...2...1...Battle!
           </Text>
-          <Text size="md" fw={600}>
-            Room ID: {gameId}
-          </Text>
-        </Group>
+          <Text size="md" fw={600}>Room ID: {gameId}</Text>
+          {info && (
+            <Stack align="center" gap={4} mt="sm">
+              <Text size="lg" fw={700}>You are the <span style={{ color: role === Role.CODER ? "#22d3ee" : "#4ade80" }}>{info.label}</span></Text>
+              <Text size="sm" c="dimmed">{info.blurb}</Text>
+            </Stack>
+          )}
+        </Stack>
       </Center>
     );
   }
@@ -618,7 +640,7 @@ function PlayGameRoom() {
       {/* Waiting Modal */}
       <Modal
         opened={isWaitingForOtherTeam}
-        onClose={() => {}}
+        onClose={() => { }}
         centered
         withCloseButton={false}
         closeOnEscape={false}
@@ -637,35 +659,36 @@ function PlayGameRoom() {
       {/* Spectator view switcher buttons */}
       {/* spectator view bug for 4PLAYER (Teams ordered wrong?) */}
       {isSpectator && (
-        <Box
+        <Group
           data-testid="spectating-box"
-          style={{ position: "absolute", top: 12, left: 12, zIndex: 20 }}
+          gap="xs"
+          style={{ position: "absolute", top: 12, right: 12, zIndex: 20 }}
         >
           {teams.map((team, i) => (
-            <Group key={team.teamId} gap="xs">
+            <>
               <Button
+                key={`${team.teamId}-coder`}
                 data-testid={`team-${i + 1}-coder`}
                 size="sm"
                 onClick={() => {
                   setTeamSelected(team.teamId);
                   setSpectatorView(Role.CODER);
-                  console.log("Effective role: ", effectiveRole);
                 }}
               >
                 Team {i + 1} Coder
               </Button>
               <Button
+                key={`${team.teamId}-tester`}
                 data-testid={`team-${i + 1}-tester`}
                 size="sm"
                 onClick={() => {
                   setTeamSelected(team.teamId);
                   setSpectatorView(Role.TESTER);
-                  console.log("Effective role: ", effectiveRole);
                 }}
               >
                 Team {i + 1} Tester
               </Button>
-            </Group>
+            </>
           ))}
           <Button
             className={styles.spectatorButton}
@@ -678,7 +701,7 @@ function PlayGameRoom() {
           >
             Exit View
           </Button>
-        </Box>
+        </Group>
       )}
 
       {/* Spectator waiting message */}
@@ -699,7 +722,7 @@ function PlayGameRoom() {
           h="100vh"
           style={{ display: "flex", flexDirection: "column" }}
         >
-          <RoleFlipPopup gameState={gameState} />
+          <RoleFlipPopup gameState={gameState} role={effectiveRole as Role} />
 
           <Box style={{ flex: 1, display: "flex", overflow: "hidden" }}>
             <PanelGroup orientation="horizontal">
@@ -729,6 +752,7 @@ function PlayGameRoom() {
                       <GameTimer
                         endTime={endTime}
                         onExpire={handleTimerExpire}
+                        ref={gameTimerRef}
                       />
                     </Box>
                   )}
@@ -784,24 +808,26 @@ function PlayGameRoom() {
                       defaultValue="Javascript"
                       disabled={isSpectator || role !== Role.CODER}
                     />
+                    {/* Role badge */}
+                    {role && (
+                      <Text
+                        size="xs"
+                        fw={600}
+                        px="sm"
+                        py={4}
+                        style={{
+                          borderRadius: 4,
+                          backgroundColor: role === Role.CODER ? "#0e7490" : role === Role.TESTER ? "#166534" : "#374151",
+                          color: "white",
+                          textTransform: "uppercase",
+                          letterSpacing: "0.05em",
+                        }}
+                      >
+                        {role === Role.CODER ? "Coder" : role === Role.TESTER ? "Tester" : "Spectator"}
+                      </Text>
+                    )}
                     {effectiveRole === Role.CODER && (
                       <>
-                        <Button
-                          size="xs"
-                          color="cyan"
-                          disabled={isSpectator || isWaitingForOtherTeam}
-                          className={styles.runButton}
-                          onClick={() =>
-                            posthog.capture("code_run_triggered", { gameId })
-                          }
-                          rightSection={
-                            <IconPlayerPlay
-                              size={"var(--mantine-font-size-md)"}
-                            />
-                          }
-                        >
-                          RUN
-                        </Button>
                         <Button
                           size="xs"
                           color="green"
@@ -927,6 +953,7 @@ function PlayGameRoom() {
                                   <Group gap="xs">
                                     <NewParameterButton
                                       onNewParameter={handleNewParameter}
+                                      disabled={isSpectator}
                                     />
                                     <Button
                                       size="compact-sm"
@@ -961,7 +988,7 @@ function PlayGameRoom() {
                                       showDelete={
                                         testCaseCtx.cases.length !== 1
                                       }
-                                      disabled={runningAllTests}
+                                      disabled={runningAllTests || isSpectator}
                                       onExpectedOutputTypeChange={
                                         handleExpectedOutputTypeChange
                                       }

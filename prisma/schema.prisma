@@ -237,20 +237,39 @@ model ProblemTest {
 }
 
 model GameTest {
-  id             String @id @default(uuid())
+  id             String   @id @default(uuid())
+  gameRoomId     String   // Direct reference for efficient filtering
   gameResultId   String
-  teamNumber     Int
+  testCaseId     String   // Changed from Int to match ProblemTest.id
   position       Int
-  testCaseId     Int
+  teamNumber     Int      // 0 = shared hidden test row, 1/2 = team-scoped game test row
   functionInput  Json
   expectedOutput Json
 
+  // Team-specific execution results
+  team1ActualOutput    Json?
+  team2ActualOutput    Json?
+  team1Passed          Boolean?
+  team2Passed          Boolean?
+  team1Stderr          String?
+  team2Stderr          String?
+  team1ExecutionTimeMs Int?
+  team2ExecutionTimeMs Int?
+
+  // Classification
+  type           String   @default("Game") // "Game" (player submitted) or "Hidden" (DB held for grading)
+  createdAt      DateTime @default(now())  // Audit trail
+
   gameResult GameResult @relation(fields: [gameResultId], references: [id], onDelete: Cascade)
 
+  @@index([gameRoomId])
+  @@index([gameResultId, type])
   @@index([gameResultId])
   @@index([gameResultId, teamNumber])
-  @@unique([gameResultId, teamNumber, position])
-  @@unique([gameResultId, teamNumber, testCaseId])
+  @@index([gameResultId, teamNumber, type]) // For filtering by test type
+  @@index([gameRoomId, teamNumber])         // For game-level filtering
+  @@unique([gameResultId, type, teamNumber, position])
+  @@unique([gameResultId, type, teamNumber, testCaseId])
 }
 
 model GameResult {
@@ -259,8 +278,8 @@ model GameResult {
   winningTeamId     String? @unique
   team1Code         String?
   team2Code         String?
-  team1TimeToPassMs Int?
-  team2TimeToPassMs Int?
+  team1SubmittedAt   String?
+  team2SubmittedAt   String?
   gameTests         GameTest[]
 
   winningTeam Team?    @relation("WinningTeamRelation", fields: [winningTeamId], references: [id])
