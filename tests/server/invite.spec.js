@@ -46,6 +46,12 @@ beforeAll(async () => {
   ]);
 });
 
+afterEach(async () => {
+  await prisma.partyMember.deleteMany({
+    where: { partyId: aliceParty.id }
+  }).catch(() => {});
+});
+
 afterAll(async () => {
   await prisma.$disconnect();
   await redis.quit();
