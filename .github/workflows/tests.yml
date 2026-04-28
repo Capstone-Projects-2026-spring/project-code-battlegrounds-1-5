@@ -47,6 +47,31 @@ jobs:
       PORT: 3000
 
     steps:
+      - name: Authenticate to Google Artifact Registry
+        run: |
+          echo '${{ secrets.GCP_SA_KEY }}' | docker login \
+            -u _json_key --password-stdin \
+            https://us-central1-docker.pkg.dev
+
+      - name: Start executor
+        run: |
+          docker run -d \
+            --name battlegrounds-executor \
+            --security-opt seccomp:unconfined \
+            --cap-add SYS_ADMIN \
+            -p 8000:8000 \
+            us-central1-docker.pkg.dev/code-battlegrounds/app/rootjail:latest
+
+      - name: Wait for executor
+        run: |
+          for i in $(seq 1 15); do
+            if curl -sf http://localhost:8000/health > /dev/null 2>&1; then
+              echo "Executor ready"; exit 0
+            fi
+            sleep 2
+          done
+          echo "Executor failed to start"; exit 1
+
       - name: Generate auth secret
         run: echo "BETTER_AUTH_SECRET=$(openssl rand -base64 32)" >> "$GITHUB_ENV"
 
@@ -102,6 +127,7 @@ jobs:
           exit 1
 
       - name: Run tests
-        run: bun test
+        run: bun test 2>&1 | tee test-output.txt
         env:
           PORT: 3000
+          EXECUTOR_ADDR: http://localhost:1

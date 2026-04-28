@@ -116,6 +116,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
 
     } catch (error: unknown) {
+        console.error('[CREATE] Handler error:', error);
         if (error instanceof Error) {
             // Return error message with status 500 (internal server error) if something goes wrong during game room creation
             return res.status(500).json({ message: error?.message || 'Failed to create game room' });
