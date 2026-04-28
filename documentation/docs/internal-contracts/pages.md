@@ -1,113 +1,104 @@
 ---
-sidebar_position: 7
-title: Pages
+sidebar_position: 3
+title: Pages and Routes
 ---
 
-# Pages
+# Pages and Routes
 
----
+This app uses the Next.js Pages Router. Client-side navigation is handled with `next/router` and most pages gate access with `authClient.useSession()`.
 
-## `LoginPage` — `src/pages/login.tsx`
+## App shell
 
-`/login`. Submits credentials via `authClient.signIn.email`. Navigates to `/dashboard` on success, `alert`s the error message on failure.
+### `_app` — `src/pages/_app.tsx`
 
-### State
+**Responsibilities**
+- Registers Mantine theme + global styles and mounts `Notifications`.
+- Boots PostHog analytics once on mount.
+- Composes global context providers in this order: `SocketProvider` -> `PartyProvider` -> `MatchmakingProvider` -> `FriendshipProvider`.
+- Restores the last active game by reading `localStorage.stored_game` and redirecting to `/game/[gameID]` if present.
+- Hides the navbar on `/`, `/login`, and `/signup`.
 
-| Field | Type | Description |
-|---|---|---|
-| `email` | `string` | Email input value. Init: `""`. |
-| `password` | `string` | Password input value. Init: `""`. |
-| `loading` | `boolean` | Never set to `true` in the current implementation. Reserved for a loading indicator. |
+### `_document` — `src/pages/_document.tsx`
 
-### `handleLogin(): Promise<void>`
+**Responsibilities**
+- Sets `<Html lang="en">` and Mantine color-scheme script.
+- Defines the favicon for the base document.
 
-Calls `authClient.signIn.email` with current state.
+## Public routes
 
-**Preconditions:**
-- `email` is a valid email format.
-- `password` is non-empty.
+### Home — `/` (`src/pages/index.tsx`)
 
-**Postconditions (success):** `router.push("/dashboard")`. Session cookie set.
+- Uses dynamic imports for the hero, how-it-works, live demo, and CTA sections.
+- If a session exists, shows an avatar button that opens the side panel.
+- Sends the `homepage_viewed` PostHog event.
 
-**Postconditions (failure):** `alert(ctx.error.message)`. No navigation.
+### Tutorial — `/tutorial` (`src/pages/tutorial.tsx`)
 
-**Throws:** None. Errors surface through `onError`.
+- Scroll-driven tutorial page that tracks visibility with `IntersectionObserver`.
+- Sends the `tutorial_viewed` PostHog event.
 
-### `data-testid` attributes
+### Login — `/login` (`src/pages/login.tsx`)
 
-| `data-testid` | Element | Description |
-|---|---|---|
-| `email-login` | `<input type="email">` | Email field. |
-| `password-login` | `<input type="password">` | Password field. |
-| `login-button` | `<button type="submit">` | Submit. Disabled when `loading` is `true`. |
+- Uses Mantine `useForm` for email + password.
+- Calls `authClient.signIn.email`, then redirects to `/matchmaking` on success.
+- Emits PostHog success/failure events and uses `showErrorNotification` on error.
 
----
+### Signup — `/signup` (`src/pages/signup.tsx`)
 
-## `SignUpPage` — `src/pages/signup.tsx`
+- Uses Mantine `useForm` for name + email + password.
+- Calls `authClient.signUp.email`, then redirects to `/matchmaking` on success.
+- Emits PostHog success/failure events and uses `showErrorNotification` on error.
 
-`/signup`. Registers a new account via `authClient.signUp.email`. Navigates to `/dashboard` on success, `alert`s on failure.
+## Authenticated routes
 
-### State
+### Matchmaking — `/matchmaking` (`src/pages/matchmaking.tsx`)
 
-| Field | Type | Description |
-|---|---|---|
-| `email` | `string` | Email input value. Init: `""`. |
-| `password` | `string` | Password input value. Init: `""`. |
-| `name` | `string` | Display name input value. Init: `""`. |
-| `loading` | `boolean` | Never set to `true` in the current implementation. Reserved for a loading indicator. |
+- Requires an active session; redirects to `/login` if unauthenticated.
+- Uses `MatchmakingContext` + `PartyContext` to track queue state and party membership.
+- Emits:
+  - `joinQueue` / `leaveQueue` for matchmaking.
+  - `partySearch` so party guests can mirror queue state.
+- Renders two flows:
+  - **Create Game** (`DifficultySection`) uses `/api/rooms/create` and optionally emits `sendGameWithParty`.
+  - **Matchmaking** (`FindLobbySection`) updates queue selection and status.
+- Optional join-by-id flow via `JoinGameSection`.
 
-### `handleSignUp(): Promise<void>`
+### Game room — `/game/[gameID]` (`src/pages/game/[gameID].tsx`)
 
-Calls `authClient.signUp.email` with current state.
+**Auth and bootstrapping**
+- Redirects to `/login` if unauthenticated.
+- Wraps the room in `GameStateProvider` + `GameTestCasesProvider`.
+- Fetches `/api/rooms/{gameId}/{userId}` to load the active problem, game type, and team/role info.
+- Auto-joins the first team for 2-player games if no team is assigned.
+- Saves the game ID to `localStorage.stored_game` so refreshes can resume.
 
-**Preconditions:**
-- `email` is a valid email format and not already registered.
-- `password` is at least 8 characters (enforced server-side).
-- `name` is non-empty.
+**Socket flow (high level)**
+- `joinGame` joins both the game room and team room.
+- `codeChange`, `updateTestCases`, and chat events broadcast to the team room.
+- `gameStarting`, `gameStarted`, `roleSwapWarning`, `roleSwapping`, `roleSwap`, and `gameEnded` drive the timer + role UI.
+- `submitCode` finalizes a team submission; `submitTestCases` executes tester runs.
 
-**Postconditions (success):** `User` record created in DB. `router.push("/dashboard")`. Session cookie set.
+**UI behavior**
+- Team selection UI (`TeamSelect`) gates entry when a player has no team.
+- Spectators can toggle between team views (coder/tester POV) and have read-only editors.
+- The Monaco editor is editable only for coders and only when not spectating.
+- Test cases are limited to 5 total and can be added/removed by testers.
 
-**Postconditions (failure):** `alert(ctx.error.message)`. No record created. No navigation.
+**Known gap**
+- The page listens for an `invalidGame` socket event, but the server does not emit it.
 
-**Throws:** None. Errors surface through `onError`.
+### Results — `/results/[gameID]` (`src/pages/results/[gameID].tsx`)
 
-### `data-testid` attributes
+- Requires an active session; redirects to `/login` if unauthenticated.
+- Fetches results via `useGameResults` (`/api/results/{gameId}`).
+- Computes scores using `calculateScorePair` and renders:
+  - `AnalysisBox` for final code + runtime metrics.
+  - `TestCaseResultsBox` for scoring tests and game-made tests.
+- Clears `localStorage.stored_game` once results load.
 
-| `data-testid` | Element | Description |
-|---|---|---|
-| `name-signup` | `<input type="text">` | Display name field. |
-| `email-signup` | `<input type="email">` | Email field. |
-| `password-signup` | `<input type="password">` | Password field. |
-| `signup-button` | `<button type="submit">` | Submit. Disabled when `loading` is `true`. |
+## Development-only route
 
----
+### Infra/Auth test page — `/test` (`src/pages/test.tsx`)
 
-## `DashboardPage` — `src/pages/dashboard/index.tsx`
-
-`/dashboard`. Protected page. Renders a welcome message and a sign-out button. Redirects to `/login` if unauthenticated.
-
-### State
-
-| Field | Type | Description |
-|---|---|---|
-| `session` | `Session \| null` | From `authClient.useSession()`. |
-| `isPending` | `boolean` | `true` while the initial session fetch is in flight. |
-| `error` | `Error \| null` | Non-null only if the session fetch itself failed (not just unauthenticated). |
-
-### Auth guard
-
-`useEffect` runs when `isPending` or `session` changes. Once `isPending` is `false`, if `session` is `null`, calls `router.push("/login")`. This is a **client-side** guard only. `proxy.ts` handles the server-side optimistic redirect for the same route. Both are required.
-
-### Render states
-
-| Condition | Output |
-|---|---|
-| `isPending === true` | `<p>Loading...</p>` |
-| `isPending === false && session === null` | `null` (redirect in-flight) |
-| `isPending === false && session !== null` | Welcome heading + Sign Out button |
-
-### Sign Out button
-
-Calls `authClient.signOut()`. Deletes session from DB and clears cookie. Handled internally by BetterAuth.
-
----
+- Manual smoke tests for Postgres/Redis + auth flows.
+- Not linked from any UI surface. Treat as internal tooling.
