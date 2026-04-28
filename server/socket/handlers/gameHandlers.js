@@ -231,7 +231,10 @@ function registerGameHandlers(io, socket, gameService, delayMs = 3000) { // dela
 
         try {
             const testCases = await gameService.getTestCases(teamId);
-            if (testCases) socket.to(teamId).emit('receiveTestCaseSync', testCases);
+            if (testCases) {
+                socket.emit('receiveTestCaseSync', testCases); 
+                socket.to(teamId).emit('receiveTestCaseSync', testCases);
+            }
         } catch (e) {
             console.error('Error fetching test cases', e);
             socket.emit('error', { e, message: 'Failed to fetch test cases.' });

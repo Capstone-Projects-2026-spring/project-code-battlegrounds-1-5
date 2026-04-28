@@ -1,5 +1,5 @@
 const Redis = require("ioredis");
-const { createGameService } = require("../game/gameService");
+const { createGameService } = require("../../server/game/gameService");
 const { makeClient, 
         connectClient, 
         connectAll, 
@@ -7,7 +7,7 @@ const { makeClient,
         waitFor, 
         joinGame, 
         uid 
-      } = require("../utils/tests/helpers");
+      } = require("../../server/utils/tests/helpers");
 
 // ---------------------------------------------------------------------------
 // Redis + service setup

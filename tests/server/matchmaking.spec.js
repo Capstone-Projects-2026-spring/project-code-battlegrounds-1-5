@@ -31,12 +31,12 @@ const prismaStub = {
   },
 };
 
-mock.module("../prisma/index", () => ({
+mock.module("../../server/prisma/index", () => ({
   getPrisma: () => prismaStub,
 }));
 
 // Also stub warmVm so it doesn't try to spin up a real VM during tests
-mock.module("../utils/vm/warmVm", () => ({
+mock.module("../../server/utils/vm/warmVm", () => ({
   warmVm: () => {},
 }));
 
@@ -51,8 +51,8 @@ const {
   disconnectAll,
   waitFor,
   uid,
-} = require("../utils/tests/helpers");
-const { createMatchmakingService } = require("../matchmaking/matchmakingService");
+} = require("../../server/utils/tests/helpers");
+const { createMatchmakingService } = require("../../server/matchmaking/matchmakingService");
 // ---------------------------------------------------------------------------
 // Redis + service setup
 // ---------------------------------------------------------------------------

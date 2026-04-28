@@ -1,6 +1,6 @@
 // WILL NEED TO BE CHANGED FOR SURE ONCE PROD IS SETUP AS WE NEED TO HAVE EXECUTION
 const Redis = require("ioredis");
-const { createGameService } = require("../game/gameService");
+const { createGameService } = require("../../server/game/gameService");
 const {
   makeClient,
   connectClient,
@@ -8,7 +8,7 @@ const {
   disconnectAll,
   waitFor,
   uid,
-} = require("../utils/tests/helpers");
+} = require("../../server/utils/tests/helpers");
 
 // ---------------------------------------------------------------------------
 // Setup
