@@ -45,6 +45,7 @@ jobs:
       REDIS_PORT: 6379
       NODE_ENV: test
       PORT: 3000
+      EXECUTOR_ADDR: http://localhost:6969
 
     steps:
       - name: Start executor
@@ -122,6 +123,3 @@ jobs:
 
       - name: Run tests
         run: bun test 2>&1 | tee test-output.txt
-        env:
-          PORT: 3000
-          EXECUTOR_ADDR: http://localhost:1
