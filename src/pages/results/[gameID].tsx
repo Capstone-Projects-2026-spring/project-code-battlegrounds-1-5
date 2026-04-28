@@ -131,14 +131,6 @@ export function Results() {
     summary: TestResultsSummary;
   } | null>(null);
 
-  useEffect(() => {
-    const storedGame = localStorage.getItem("stored_game");
-    if(storedGame) {
-      console.log("Found stored game! Clearing now...");
-      localStorage.removeItem("stored_game");
-    }
-  }, [gameId]);
-
   const handleSummaryChange = useCallback((summary: TestResultsSummary) => {
     setTestResultsSummaryByGame((previous) => {
       if (!gameId) {

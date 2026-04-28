@@ -69,7 +69,12 @@ function registerGameHandlers(io, socket, gameService) {
 
     socket.on('register', async (data) => {
         socket.userId = data.userId;
-        await gameService.registerSocketToUser(data.userId, socket.id);
+        const pendingGameId = await gameService.registerSocketToUser(data.userId, socket.id);
+        if (pendingGameId) {
+            socket.emit('matchFound', { gameId: pendingGameId });
+            await gameService.deletePendingMatch(data.userId);
+            console.log(`Re-delivered matchFound for ${data.userId} → game ${pendingGameId}`);
+        }
     });
 
     socket.on('joinGame', async (data) => {
@@ -231,7 +236,10 @@ function registerGameHandlers(io, socket, gameService) {
 
         try {
             const testCases = await gameService.getTestCases(teamId);
-            if (testCases) socket.to(teamId).emit('receiveTestCaseSync', testCases);
+            if (testCases) {
+                socket.emit('receiveTestCaseSync', testCases);
+                socket.to(teamId).emit('receiveTestCaseSync', testCases);
+            }
         } catch (e) {
             console.error('Error fetching test cases', e);
             socket.emit('error', { e, message: 'Failed to fetch test cases.' });

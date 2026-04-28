@@ -137,8 +137,6 @@ function PlayGameRoom() {
   useEffect(() => {
     if (!session?.user.id || !gameId || !router.isReady || !socket) return;
 
-    localStorage.setItem("stored_game", gameId);
-
     setStatus('idle');
 
     gameStateCtx.setGameId(gameId);

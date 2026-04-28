@@ -11,6 +11,7 @@ function createGameService(stateRedis, io) {
     async registerSocketToUser(userId, socketId) {
       await stateRedis.set(`socket:${userId}`, socketId); // link userId
       console.log(`REGISTERED TO REDIS: ${userId}`);
+      return await stateRedis.get(`pending:match:${userId}`);
     },
 
     async startGameIfNeeded(gameId) {
@@ -99,7 +100,7 @@ function createGameService(stateRedis, io) {
     },
 
     async cleanupSocket(userId) {
-      await stateRedis.del(`socket:${userId}`);
+      await stateRedis.expire(`socket:${userId}`, 30);
     },
 
     async getSocketId(userId) {
@@ -117,6 +118,10 @@ function createGameService(stateRedis, io) {
 
     async deleteGameData(key) {
       return stateRedis.del(key);
+    },
+
+    async deletePendingMatch(userId) {
+      await stateRedis.del(`pending:match:${userId}`);
     },
 
     async removePlayersFromSockets(gameRoom) {

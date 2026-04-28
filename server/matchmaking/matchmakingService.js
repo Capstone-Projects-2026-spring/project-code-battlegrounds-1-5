@@ -1,11 +1,12 @@
 const { getPrisma } = require('../prisma/index');
 const { GameType, Role, ProblemDifficulty } = require('@prisma/client');
 const { nanoid } = require('../utils/nanoid');
-const { readFileSync } = require('node:fs');
+const { readFileSync, stat } = require('node:fs');
 const { join } = require('node:path');
 const { warmVm } = require('../utils/vm/warmVm');
 
 const QUEUE_KEY = (gameType, difficulty) => `queue:${gameType}:${difficulty}`;
+const QUEUED_KEY = (gameType, difficulty) => `queued:${gameType}:${difficulty}`;
 const REQUIRED_PLAYERS = {
     [GameType.TWOPLAYER]: 2,
     [GameType.FOURPLAYER]: 4,
@@ -21,16 +22,14 @@ function createMatchmakingService(stateRedis, io) {
 
         async joinQueue(userId, gameType, difficulty, partyId = null) {
             const queueKey = QUEUE_KEY(gameType, difficulty);
+            const queuedKey = QUEUED_KEY(gameType, difficulty);
 
-            const entries = await stateRedis.lrange(queueKey, 0, -1);
-            const alreadyQueued = entries.some(e => {
-                const parsed = JSON.parse(e);
-                return parsed.userId === userId;
-            });
-            if (alreadyQueued) {return { status: 'already_queued' }};
+            const added = await stateRedis.sadd(queuedKey, userId);
+            if (added === 0) return { status: 'queued' };
 
             // TWOPLAYER + party = instant game, no queue needed
             if (partyId && gameType === GameType.TWOPLAYER) {
+                await stateRedis.srem(queuedKey, userId);
                 return await this._formPartyGame(partyId, gameType, difficulty);
             }
 
@@ -44,6 +43,7 @@ function createMatchmakingService(stateRedis, io) {
 
         async leaveQueue(userId, gameType, difficulty) {
             const queueKey = QUEUE_KEY(gameType, difficulty);
+            const queuedKey = QUEUED_KEY(gameType, difficulty);
             const entries = await stateRedis.lrange(queueKey, 0, -1);
 
             for (const entry of entries) {
@@ -53,6 +53,7 @@ function createMatchmakingService(stateRedis, io) {
 
                 if (isSolo || isPair) {
                     await stateRedis.lrem(queueKey, 1, entry);
+                    await stateRedis.srem(queuedKey, userId);
                     return { status: 'removed' };
                 }
             }
@@ -86,6 +87,7 @@ function createMatchmakingService(stateRedis, io) {
         // MATCH FORMATION SECTION
 
         async _tryFormMatch(queueKey, gameType, difficulty) {
+            const queuedKey = QUEUED_KEY(gameType, difficulty);
             const required = REQUIRED_PLAYERS[gameType];
 
             const results = await stateRedis.eval(
@@ -123,6 +125,10 @@ function createMatchmakingService(stateRedis, io) {
             );
 
             const players = resolved.flat().filter(Boolean);
+
+            for (const player of players) {
+                await stateRedis.srem(queuedKey, player.userId);
+            }
 
             // If a dropped party left us short, re-queue the valid players and abort
             if (players.length < required) {
@@ -166,6 +172,16 @@ function createMatchmakingService(stateRedis, io) {
             for (const team of gameRoom.teams) {
                 for (const teamPlayer of team.players) {
                     const socketId = await stateRedis.get(`socket:${teamPlayer.userId}`);
+
+                    // Always write the recovery key so a reconnecting socket can
+                    // re-receive matchFound without re-queuing. TTL of 2 minutes is
+                    // enough to survive a page reload or brief connection drop.
+                    await stateRedis.set(
+                        `pending:match:${teamPlayer.userId}`,
+                        gameRoom.id,
+                        'EX', 120
+                    );
+                    
                     if (socketId) {
                         io.to(socketId).emit('matchFound', { gameId: gameRoom.id });
                     }
