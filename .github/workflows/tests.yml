@@ -47,12 +47,6 @@ jobs:
       PORT: 3000
 
     steps:
-      - name: Authenticate to Google Artifact Registry
-        run: |
-          echo '${{ secrets.GCP_SA_KEY }}' | docker login \
-            -u _json_key --password-stdin \
-            https://us-central1-docker.pkg.dev
-
       - name: Start executor
         run: |
           docker run -d \
