@@ -95,6 +95,7 @@ app.prepare().then(async () => {
     await redis.pubClient.config('SET', 'notify-keyspace-events', 'Ex');
   } else if (process.env.NODE_ENV === "production") {
     console.log("In prod mode. Assume Memorystore is properly configured");
+    await redis.pubClient.config('SET', 'notify-keyspace-events', 'Ex'); // TODO: this will break GCP (but will work locally)
   }
   startExpirationListener(io, redis.pubClient);
 
