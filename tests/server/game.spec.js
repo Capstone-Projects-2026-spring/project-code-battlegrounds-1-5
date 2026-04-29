@@ -515,16 +515,23 @@ describe("requestTeamUpdate", () => {
 
   test("broadcasts teamUpdated to all connected clients including sender", async () => {
     const teamId = `team-upd-${uid()}`;
+    const gameId = `game-upd-${uid()}`;
 
     const sender   = makeClient();
     const observer = makeClient();
     await connectAll(sender, observer);
+    sender.emit("joinLobby", { gameId });
+    observer.emit("joinLobby", { gameId });
+
+    const senderLobbyPromise   = waitFor(sender,   "joinedLobby");
+    const observerLobbyPromise = waitFor(observer, "joinedLobby");
+    await Promise.all([senderLobbyPromise, observerLobbyPromise]);
 
     // io.emit sends to everyone — sender receives it too unlike socket.to()
     const senderPromise   = waitFor(sender,   "teamUpdated");
     const observerPromise = waitFor(observer, "teamUpdated");
 
-    sender.emit("requestTeamUpdate", { teamId, playerCount: 2 });
+    sender.emit("requestTeamUpdate", { teamId, gameId, playerCount: 2 });
 
     const [fromSender, fromObserver] = await Promise.all([senderPromise, observerPromise]);
     expect(fromSender).toMatchObject(  { teamId, playerCount: 2 });
