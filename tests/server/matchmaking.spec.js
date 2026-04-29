@@ -133,7 +133,7 @@ describe("joinQueue", () => {
     disconnectAll(clientA, clientB);
   });
 
-  test("emits queueStatus 'already_queued' if same user joins twice", async () => {
+  test("emits queueStatus 'queued' if same user joins twice", async () => {
     const userId = `user-dupe-${uid()}`;
     const client = makeClient();
     await connectClient(client);
@@ -146,7 +146,7 @@ describe("joinQueue", () => {
     client.emit("joinQueue", { userId, gameType: "FOURPLAYER", difficulty: "HARD" });
 
     const status = await statusPromise;
-    expect(status.status).toBe("already_queued");
+    expect(status.status).toBe("queued");
 
     client.disconnect();
   });
@@ -422,7 +422,7 @@ describe("matchmakingService.joinQueue", () => {
     await drainQueue(gameType, difficulty);
   });
 
-  test("returns 'already_queued' when same userId joins twice", async () => {
+  test("returns 'queued' when same userId joins twice", async () => {
     const gameType = "TWOPLAYER";
     const difficulty = "EASY";
     const userId = `dupe-svc-${uid()}`;
@@ -431,7 +431,7 @@ describe("matchmakingService.joinQueue", () => {
     await matchmakingService.joinQueue(userId, gameType, difficulty);
     const result = await matchmakingService.joinQueue(userId, gameType, difficulty);
 
-    expect(result.status).toBe("already_queued");
+    expect(result.status).toBe("queued");
 
     await drainQueue(gameType, difficulty);
   });
@@ -686,13 +686,13 @@ describe("Bug 1 — non-atomic duplicate-check in joinQueue", () => {
     expect(count).toBe(1);
   });
 
-  test("second sequential joinQueue call for the same userId returns already_queued", async () => {
+  test("second sequential joinQueue call for the same userId returns queued", async () => {
     const userId = `seq-dupe-${uid()}`;
 
     await matchmakingService.joinQueue(userId, GT, DIFF);
     const second = await matchmakingService.joinQueue(userId, GT, DIFF);
 
-    expect(second.status).toBe("already_queued");
+    expect(second.status).toBe("queued");
   });
 
   test("two different users racing each other both get their entries written", async () => {
