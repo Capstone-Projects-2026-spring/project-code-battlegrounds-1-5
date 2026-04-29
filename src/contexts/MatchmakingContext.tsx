@@ -55,8 +55,6 @@ export const MatchmakingProvider = ({ children }: { children: ReactNode }) => {
 
     socket.emit("checkInGame", { userId: session.user.id });
 
-    socket.emit("checkInGame", { userId: session.user.id });
-
     // Check on every route change
     const handleRouteChangeStart = (url: string) => {
       // Don't intercept if already navigating to a game route
