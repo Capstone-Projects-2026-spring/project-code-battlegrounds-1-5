@@ -13,7 +13,7 @@ function createGameService(stateRedis, io) {
       console.log(`REGISTERED TO REDIS: ${userId}`);
       const pendingMatch = await stateRedis.get(`pending:match:${userId}`);
       if (!pendingMatch) {
-        return await stateRedis.get(`gameInSession:${userId}`); // check if user is in an active game
+        return this.getUserInGame(userId); // check if user is in an active game
       }
       this.deletePendingMatch(userId);
       return pendingMatch;
@@ -54,6 +54,10 @@ function createGameService(stateRedis, io) {
 
     async deleteUserInGame(userId) {
       await stateRedis.del(`gameInSession:${userId}`);
+    },
+
+    async getUserInGame(userId) {
+      return await stateRedis.get(`gameInSession:${userId}`);
     },
 
     async isGameStarted(gameId) {

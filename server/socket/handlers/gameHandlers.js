@@ -76,6 +76,16 @@ function registerGameHandlers(io, socket, gameService, delayMs = 3000) { // dela
         }
     });
 
+    socket.on("checkInGame", async (data) => {
+        const gameId = await gameService.getUserInGame(socket.userId);
+        if (gameId) {
+            socket.emit('matchFound', { gameId });
+            console.log(`User ${socket.userId} is in game ${gameId} - emitted matchFound`);
+        } else {
+            console.log(`User ${socket.userId} is not currently in a game`);
+        }
+    });
+
     socket.on('joinGame', async (data) => {
         const payload = validate(joinGameSchema, data);
         if (!payload) {
