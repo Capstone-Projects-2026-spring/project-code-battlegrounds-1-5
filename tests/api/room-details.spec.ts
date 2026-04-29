@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, jest, test } from "@jest/globals";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { Role, GameType } from "@prisma/client";
-import handler from "../../src/pages/api/rooms/[gameId]/[userId]";
+import handler from "../../src/pages/api/rooms/[gameId]";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
@@ -59,23 +59,13 @@ describe("GET /api/rooms/[gameId] unit tests", () => {
   });
 
   test("returns 400 for missing gameId", async () => {
-    const req = { method: "GET", query: { userId: "user-1" } } as unknown as NextApiRequest;
+    const req = { method: "GET", query: { } } as unknown as NextApiRequest;
     const res = makeRes();
 
     await handler(req, res);
 
     expect(res.status).toHaveBeenCalledWith(400);
     expect(res.body).toEqual({ message: "Invalid room ID" });
-  });
-
-  test("returns 400 for missing userId", async () => {
-    const req = { method: "GET", query: { gameId: "room-1" } } as unknown as NextApiRequest;
-    const res = makeRes();
-
-    await handler(req, res);
-
-    expect(res.status).toHaveBeenCalledWith(400);
-    expect(res.body).toEqual({ message: "Invalid user ID" });
   });
 
 
@@ -94,7 +84,7 @@ describe("GET /api/rooms/[gameId] unit tests", () => {
   test("returns 404 when room is not found", async () => {
     mockFindUnique.mockResolvedValue(null);
 
-    const req = { method: "GET", query: { gameId: "room-1", userId: "user-1" } } as unknown as NextApiRequest;
+    const req = { method: "GET", query: { gameId: "room-1" } } as unknown as NextApiRequest;
     const res = makeRes();
 
     await handler(req, res);
@@ -153,7 +143,7 @@ describe("GET /api/rooms/[gameId] unit tests", () => {
       ],
     });
 
-    const req = { method: "GET", query: { gameId: "room-1", userId: "user-1" } } as unknown as NextApiRequest;
+    const req = { method: "GET", query: { gameId: "room-1" } } as unknown as NextApiRequest;
     const res = makeRes();
 
     await handler(req, res);

@@ -1,0 +1,205 @@
+# Test Report
+
+We used a combination of Jest and Bun's builtin testing library to create both unit and integration tests. The coverage report showcases both unit and integration tests. We originally utilized Playwright to create e2e acceptance tests but were hard pressed to maintain it as the tests would fail at the slightest change in the frontend.
+
+## Coverage Report
+
+```
+---------------------------------------------|---------|---------|-------------------
+File                                         | % Funcs | % Lines | Uncovered Line #s
+---------------------------------------------|---------|---------|-------------------
+All files                                    |   85.90 |   84.61 |
+ server/game/gameService.js                  |   72.41 |   45.08 | 3-12,78-87,98-105,110-148
+ server/matchmaking/matchmakingService.js    |  100.00 |   88.14 | 105-108,110-113,115-118,129-135,170
+ server/socket/handlers/executionHandlers.js |   72.73 |   60.33 | 31,35-38,42-45,120-122,154-158,208-209,231-232,244,246,248-251,253-266,268-271,274-281,284-286,288-295,298-302,305-308,312,314,318-340,346-347,356-357,379-380,475-476,500,502-504,506,508-511,514-528,543-602
+ server/utils/nanoid.js                      |  100.00 |  100.00 | 
+ server/utils/tests/helpers.js               |   93.33 |  100.00 | 
+ src/lib/auth.ts                             |    0.00 |   51.61 | 16-30
+ src/lib/nanoid.ts                           |  100.00 |  100.00 | 
+ src/lib/prisma.ts                           |  100.00 |  100.00 | 
+ src/pages/api/friends.ts                    |  100.00 |   97.59 | 93-94
+ src/pages/api/party.ts                      |  100.00 |  100.00 | 
+ src/pages/api/rooms/[gameId].ts             |  100.00 |   98.72 | 
+ src/pages/api/rooms/create.ts               |   50.00 |   65.00 | 25,56,90-108,111-112,119-121,123-124
+ src/pages/api/team/join.ts                  |  100.00 |   97.78 | 
+ src/util/deepEqual.ts                       |  100.00 |   92.59 | 47-48
+ src/util/groupScoredCases.ts                |  100.00 |   72.34 | 54,56-67
+---------------------------------------------|---------|---------|-------------------
+
+ 200 pass
+ 0 fail
+ 342 expect() calls
+Ran 200 tests across 14 files. [43.66s]
+```
+
+## Manual Acceptance Test
+
+| Test Name | Result |
+|...|...|
+| Game Creation COOP | Passed |
+| Matchmaking | Passed |
+| Game Creation 2v2 | Passed |
+
+## Known Problems
+
+Automatic acceptance tests were extremely hard to create and even harder to maintain. Testing as well did not cover a lot of different areas especially as the codebase got bigger. There are also some tests that should be created for problems that would fail such as the race condition bugs in matchmaking that showed up even in the final demo.
+
+# README
+
+<div align="center">
+
+# Code Battlegrounds
+<!-- [![Report Issue on Jira](https://img.shields.io/badge/Report%20Issues-Jira-0052CC?style=flat&logo=jira-software)](https://temple-cis-projects-in-cs.atlassian.net/jira/software/c/projects/DT/issues) -->
+
+[![Documentation Website Link](https://img.shields.io/badge/-Documentation%20Website-brightgreen)](https://capstone-projects-2026-spring.github.io/project-code-battlegrounds-1-5/)
+
+**codebattlegrounds.com**
+
+</div>
+
+
+## Keywords
+
+- Section 1
+- Multiplayer
+- Game
+- Pair-programming
+- Real-time
+
+## Project Abstract
+
+This repository contains a multiplayer web game that is meant to teach collaborative programming concepts. It utilizes pair-programming, where each user must complete their part to ensure the solution meets all requirements. The coder writes the code to solve the prompt. The quality assurance user cannot edit the code. They can write test cases, and run them. They can discuss potential approaches or failing tests and how to fix them with the coder.
+
+
+## High Level Requirement
+
+From a user's perspective, the application must provide an intuitive way to complete their tasks. It needs to support low latency communication between clients. It also must support fast and secure untrusted code execution for user submissions and test cases. The scoring system must be robust and fair, prioritizing efficient code over fast submissions.
+
+## Conceptual Design
+
+Tech Stack:
+- Bun
+- Node.js
+- Next.js
+- TypeScript
+- Socket.io
+- Socket.io Redis Adapter
+- JavaScript
+- Jest
+- BetterAuth
+- Prisma ORM
+- PostgreSQL
+- Redis
+
+The frontend includes Bun as a runtime, which launches a Node.js websocket server using Next.js routing.
+
+The backend is designed to be stateless and inherently scalable. Redis is used for game state, such as timers, code, etc. PostgreSQL is used for persistence data such as match results through Prisma ORM. 
+
+
+## Background
+
+Previous similar projects include leetcode.com and hackerrank.com, known for their programming challenges. They do not offer any form of collaboration, which fails to realistically simulate a developer's life.
+
+Pair-programming has been shown to be "faster than solo programming when programming task complexity is low and yields code solutions of higher quality when task complexity is high." (See [here](https://www.sciencedirect.com/science/article/abs/pii/S0950584909000123)).
+
+We hope that necessitating pair-programming will encourage better testing, documentation, and communication among those learning to write code.
+
+As far as we can tell, this is the first platform of its type.
+
+
+## Required Resources
+
+To use the web application, a computer with an active internet connection will be required.
+
+
+## Development
+
+To develop, you will need a computer with Git, Node, Bun, and Docker Compose.
+
+### Environment Setup
+1. Clone the repository.
+2. Create a `.env` file and populate it with the following (filling the tokens as needed, they shouldn't matter too much
+   for local development):
+    ```
+    # config
+    PORT=3000
+    NODE_ENV=development
+   
+    # db seeding configs
+    # password for the test accounts. in prod, ensure we inject this into the db script with something secure
+    TEST_ACCS_PASSWORD=password123
+    # if you ever want to seed the db with a single problem (two sum), uncomment this line
+    #DEMO_MODE=false
+   
+    # better auth
+    BETTER_AUTH_SECRET=SOME_SECRET_TOKEN
+    BETTER_AUTH_URL=http://localhost:3000
+    
+    # postgres
+    POSTGRES_USER=appuser
+    POSTGRES_PASSWORD=SOME_SECRET_TOKEN
+    POSTGRES_DB=appdb
+    POSTGRES_HOST=localhost
+    POSTGRES_PORT=5432
+
+    # redis
+    REDIS_HOST=localhost
+    REDIS_PORT=6379
+   
+    # executor image
+    EXECUTOR_PORT=6969
+    EXECUTOR_ADDR=http://127.0.0.1:6969
+
+    # for prisma
+    DATABASE_URL=postgresql://appuser:SOME_SECRET_TOKEN@localhost:5432/appdb
+
+    # for posthog
+    NEXT_PUBLIC_POSTHOG_KEY=phc_Io7LeSThy8dz3wDLgPJCcKsWny6zZkapNnyrnPRI1gN
+    NEXT_PUBLIC_POSTHOG_HOST=https://cbt.strange.boats
+    ```
+   Remember to `source` as needed!
+3. Run `bun install` to install the dependencies.
+4. Run `bunx --bun prisma generate` to generate the Prisma client and database migrations.
+5. Run `docker compose up -d` to bring up the containers (you may need to run as root).
+6. Run `bunx --bun prisma migrate dev` to bring the database up to schema.
+7. Run `bunx --bun prisma db seed` to add mock data to the dev database.
+8. Run `bun dev` to launch the development server and navigate to `localhost:3000` to view the page.
+9. When done, `docker compose down` will bring the containers down.
+
+### Helpful Common Commands and Tricks
+- `docker compose down -v` will stop the containers and purge the volumes. Good if you _really_ mess something up (you WILL lose data!).
+- `bunx --bun prisma migrate reset` will drop the DB (you WILL lose data!).
+- If your database is stuck out of sync and you can't apply migrations, run `rm -rf ./prisma/migrations/**` to remove all pending migrations. Then recreate the migration with `bunx prisma migrate dev --name dev` and apply it.
+- Sometimes changing between calling prisma with `bunx` or `bunx --bun` or vice versa can help as well.
+- If you want to pull new images, just run `sudo docker compose pull`.
+- To see how the websockets are working, try opening up the game page in an incognito tab to be registered as a different client.
+
+## Testing
+We use one testing library: 
+Jest is used for individual API tests 
+
+For the Jest tests, run `bunx jest tests/api/ --forceExit`.
+
+## Infrastructure Development
+To develop the infrastructure or deploy the app, you must have a Google Cloud account. While I won't supply specific instructions (trust me, if you want to deploy on this - you will have to be precocious and persistent), the basic flow is that you will need to create a service account and store it's credentials in your cloud environment, then edit the main.tf file to reference it.
+
+There are some more specific commands in the /infra/README.md file to help get you started.
+
+Estimated deployment costs are ~40$/month dependent on usage. This is primarily due to the cost of Memorystore for Redis.
+
+Check out the /build-artifacts folder for the Docker files and cloudbuild configs.
+
+## Code Executor Development
+The code executor is a 3 layer system for production. Code is sent by the application to a VM orchestrator, which spins up and maintains a pool of Compute Engines as needed. The VMs in turn spin up Docker containers running an Alpine image, which pivot to new rootfs via a nsjail rootjail where the code is actually executed. There are a lot of moving parts to this system. For more info, take a look ath the /code-executor/README.md file.
+
+It is build on Python's fastapi for relatively easy development and integration with Google's compute APIs.
+
+## Collaborators
+
+<div align="center">
+
+[//]: # (Replace with your collaborators)
+[Julia Fasick](https://github.com/julia-fasick) • [Jesse Herrera](https://github.com/JesseHerrera04) • [Kyle Fauntroy](https://github.com/safebootup) • [Elan Reizas](https://github.com/ElanReizas) • [Samir Buch](https://github.com/samirbuch) • [Michael Zach](https://github.com/Mzach55)
+• [Saad Chaudry](https://github.com/s0dl)
+
+</div>

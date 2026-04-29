@@ -5,7 +5,7 @@ title: Middleware
 
 # Middleware — `src/proxy.ts`
 
-Next.js middleware that redirects unauthenticated requests to `/login`. Currently applied to `/dashboard` via `config.matcher`.
+Next.js middleware that redirects unauthenticated requests to `/login`.
 
 :::warning
 This is **not a security boundary**. It is an optimistic redirect to improve UX. Every protected page and API handler must perform its own session check. An attacker can bypass middleware-only guards.
@@ -15,7 +15,7 @@ This is **not a security boundary**. It is an optimistic redirect to improve UX.
 
 | Name | Type | Description |
 |---|---|---|
-| `config.matcher` | `string[]` | Routes the middleware runs on. Currently `["/dashboard"]`. Add paths here to extend protection. |
+| `config.matcher` | `string[]` | Routes the middleware runs on. Currently `["/dashboard", "/game/:path*", "/matchmaking"]`. Add paths here to extend protection. |
 
 ## Functions
 
@@ -39,6 +39,6 @@ Called automatically by Next.js for every request matching `config.matcher`. Do 
 **To protect additional routes:**
 ```typescript
 export const config = {
-  matcher: ["/dashboard", "/game/:path*"],
+  matcher: ["/dashboard", "/game/:path*", "/matchmaking"],
 };
 ```

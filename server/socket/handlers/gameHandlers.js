@@ -62,11 +62,17 @@ const requestSyncSchema = z.object({
 
 const requestTeamUpdateSchema = z.object({
     teamId: z.string(),
+    gameId: z.string(),
     playerCount: z.number(),
 });
 
 function registerGameHandlers(io, socket, gameService, delayMs = 3000) { // delayMs for testing
 
+    socket.on('joinLobby', async (data) => {
+        await socket.join(`${data.gameId}:lobby`);
+        socket.emit("joinedLobby");
+    });
+  
     socket.on('register', async (data) => {
         socket.userId = data.userId;
         const pendingGameId = await gameService.registerSocketToUser(data.userId, socket.id);
@@ -97,6 +103,7 @@ function registerGameHandlers(io, socket, gameService, delayMs = 3000) { // dela
         try {
             await socket.join(teamId);
             await socket.join(gameId);
+            await socket.leave(`${gameId}:lobby`);
         } catch (e) {
             console.error('Error joining game room', e);
             socket.emit('error', { e, message: 'Failed to join game room.' });
@@ -266,10 +273,10 @@ function registerGameHandlers(io, socket, gameService, delayMs = 3000) { // dela
             socket.emit('error', { message: 'Invalid payload for requestTeamUpdate.' });
             return;
         }
-        const { teamId, playerCount } = payload;
+        const { teamId, gameId, playerCount } = payload;
 
         if (!playerCount) return;
-        io.emit('teamUpdated', { teamId, playerCount });
+        io.to(`${gameId}:lobby`).emit('teamUpdated', { teamId, playerCount });
     });
 
     socket.on('creatingRoomWithParty', async (data) => {

@@ -12,7 +12,7 @@ This page outlines the required hardware, software, and core libraries necessary
 
 ### **Core Tooling**
 * **IDE:** [Visual Studio Code](https://code.visualstudio.com/) or similar.
-* **Package Manager:** `npm` ([Node Package Manager](https://www.npmjs.com/))
+* **Package Manager:** `bun` ([Bun](https://bun.com/))
 * **Runtime & Build Tool:** [Bun](https://bun.com/)
 
 ### **Programming Languages**
