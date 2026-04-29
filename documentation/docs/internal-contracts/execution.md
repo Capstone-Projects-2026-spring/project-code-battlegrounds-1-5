@@ -1,5 +1,5 @@
 ---
-sidebar_position: 2
+sidebar_position: 9
 title: Execution
 ---
 ## `registerExecutionHandlers` — `server/socket/handlers/executionHandlers.js`

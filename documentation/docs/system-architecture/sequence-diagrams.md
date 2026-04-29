@@ -2,7 +2,7 @@
 
 ## Use Case 1 — Full Game Flow (Redis / WebSockets)
 
-```plantuml
+```plantuml-diagram
 @startuml
 title Use Case 1 — Full Game Flow
 
@@ -12,9 +12,9 @@ skinparam shadowing false
 skinparam sequenceArrowThickness 1
 skinparam maxMessageSize 120
 
-actor "User A\n(Coder)" as ua
-actor "User B\n(Tester)" as ub
-participant "WebSocket\nServer" as ws
+actor "User A (Coder)" as ua
+actor "User B (Tester)" as ub
+participant "WebSocket Server" as ws
 activate ws
 participant "Executor" as ex
 note left of ex
@@ -26,7 +26,7 @@ participant Redis as rds
 activate rds
 participant PostgreSQL as pg
 activate pg
-participant "Expiration\nListener" as el
+participant "Expiration  Listener" as el
 activate el
 
 note right of ws
@@ -170,7 +170,7 @@ deactivate el
 
 ## Use Case 2 — Perfect Game Flow
 
-```plantuml
+```plantuml-diagram
 @startuml
 title Use Case 2 — Perfect Game Flow
 
@@ -180,9 +180,9 @@ skinparam shadowing false
 skinparam sequenceArrowThickness 1
 skinparam maxMessageSize 120
 
-actor "User A\n(Coder)" as ua
-actor "User B\n(Tester)" as ub
-participant "WebSocket\nServer" as ws
+actor "User A (Coder)" as ua
+actor "User B (Tester)" as ub
+participant "WebSocket Server" as ws
 activate ws
 participant "Executor" as ex
 activate ex
@@ -274,7 +274,7 @@ deactivate ws
 
 ## Use Case 3 — Worst-Case Game Flow (Timer Expiry)
 
-```plantuml
+```plantuml-diagram
 @startuml
 title Use Case 3 — Worst-Case Game Flow (Timer Expiry)
 
@@ -284,9 +284,9 @@ skinparam shadowing false
 skinparam sequenceArrowThickness 1
 skinparam maxMessageSize 120
 
-actor "User A\n(Coder → Tester)" as ua
-actor "User B\n(Tester → Coder)" as ub
-participant "WebSocket\nServer" as ws
+actor "User A (Coder → Tester)" as ua
+actor "User B (Tester → Coder)" as ub
+participant "WebSocket Server" as ws
 activate ws
 participant "Executor" as ex
 activate ex
@@ -294,7 +294,7 @@ participant Redis as rds
 activate rds
 participant PostgreSQL as pg
 activate pg
-participant "Expiration\nListener" as el
+participant "Expiration Listener" as el
 activate el
 
 == Connection & Game Start ==
@@ -396,7 +396,7 @@ deactivate el
 
 ## Use Case 4 — Default Solo Matchmaking
 
-```plantuml
+```plantuml-diagram
 @startuml
 title Use Case 4 — Default Solo Matchmaking
 
@@ -408,7 +408,7 @@ skinparam maxMessageSize 120
 
 actor "User A" as ua
 actor "User B" as ub
-participant "WebSocket\nServer" as ws
+participant "WebSocket  Server" as ws
 activate ws
 participant "Executor" as ex
 activate ex
@@ -451,7 +451,7 @@ rds --> ws: [entryA, entryB]
 ws -> pg: problem.findMany({ where: { difficulty: 'MEDIUM' } })
 pg --> ws: problems[]
 note right of ws: Random problem selected
-ws -> pg: gameRoom.create({ id: nanoid(8), gameType, problem, teams\n  team1: [{ userId: A, role: CODER }, { userId: B, role: TESTER }]\n  gameResult: {} })
+ws -> pg: gameRoom.create({ id: nanoid(8), gameType, problem, teams    team1: [{ userId: A, role: CODER }, { userId: B, role: TESTER }]    gameResult: {} })
 pg --> ws: gameRoom { id, teams[{ id, players }] }
 ws -> ex: POST /request-warm-vm { gameId }
 ws -> rds: GET socket:{userA} → socketId A
@@ -488,7 +488,7 @@ deactivate ws
 
 ## Use Case 5 — Party Matchmaking
 
-```plantuml
+```plantuml-diagram
 @startuml
 title Use Case 5 — Party Matchmaking
 
@@ -498,9 +498,9 @@ skinparam shadowing false
 skinparam sequenceArrowThickness 1
 skinparam maxMessageSize 120
 
-actor "User A\n(Party Owner)" as ua
-actor "User B\n(Invitee)" as ub
-participant "WebSocket\nServer" as ws
+actor "User A  (Party Owner)" as ua
+actor "User B  (Invitee)" as ub
+participant "WebSocket  Server" as ws
 activate ws
 participant "Executor" as ex
 activate ex
@@ -560,7 +560,7 @@ ua -> ws: emit('joinQueue', { userId: A, gameType: 'TWOPLAYER', difficulty: 'EAS
 ws -> pg: party.findUnique({ where: { id: partyId }, include: { owner, member } })
 note right of pg: Validates party is full (has both members)
 ws -> pg: problem.findMany({ where: { difficulty: 'EASY' } })
-ws -> pg: gameRoom.create({ id: nanoid(8), gameType, problem, teams\n  team1: [{ userId: A, role: CODER }, { userId: B, role: TESTER }]\n  gameResult: {} })
+ws -> pg: gameRoom.create({ id: nanoid(8), gameType, problem, teams    team1: [{ userId: A, role: CODER }, { userId: B, role: TESTER }]    gameResult: {} })
 pg --> ws: gameRoom
 ws -> ex: POST /request-warm-vm { gameId }
 ws -> rds: GET socket:{userA} → socketId A
@@ -619,7 +619,7 @@ deactivate ws
 
 ## Use Case 6 — Account Creation
 
-```plantuml
+```plantuml-diagram
 @startuml
 title Use Case 6 — Account Creation
 
@@ -630,8 +630,8 @@ skinparam sequenceArrowThickness 1
 skinparam maxMessageSize 120
 
 actor "User" as u
-participant "Next.js\nFrontend" as fe
-participant "Better Auth\nAPI" as auth
+participant "Next.js  Frontend" as fe
+participant "Better Auth  API" as auth
 participant PostgreSQL as pg
 activate pg
 
@@ -639,16 +639,16 @@ activate pg
 activate u
 u -> fe: Navigate to /sign-up
 activate fe
-fe --> u: Render sign-up page\n(email + password fields, or OAuth buttons)
+fe --> u: Render sign-up page  (email + password fields, or OAuth buttons)
 
 == Email / Password Registration ==
 u -> fe: Submit { name, email, password }
-fe -> auth: POST /api/auth/sign-up/email\n{ name, email, password }
+fe -> auth: POST /api/auth/sign-up/email  { name, email, password }
 activate auth
 auth -> auth: Hash password (bcrypt)
-auth -> pg: user.create({ name, email, hashedPassword,\n  emailVerified: false })
+auth -> pg: user.create({ name, email, hashedPassword,    emailVerified: false })
 pg --> auth: user record
-auth -> pg: account.create({ userId, providerId: 'credential',\n  accountId: email })
+auth -> pg: account.create({ userId, providerId: 'credential',    accountId: email })
 pg --> auth: account record
 auth -> pg: party.create({ ownerId: userId })
 note right of pg
@@ -656,7 +656,7 @@ note right of pg
   new user so they always have a partyId
   ready for invites.
 end note
-auth -> pg: verification.create({ identifier: email,\n  value: token, expiresAt })
+auth -> pg: verification.create({ identifier: email,    value: token, expiresAt })
 auth --> fe: 200 OK — verification email sent
 fe --> u: "Please check your email to verify your account"
 deactivate auth
@@ -709,7 +709,7 @@ deactivate u
 
 ## Use Case 7 — Signing In
 
-```plantuml
+```plantuml-diagram
 @startuml
 title Use Case 7 — Signing In
 
@@ -720,11 +720,11 @@ skinparam sequenceArrowThickness 1
 skinparam maxMessageSize 120
 
 actor "User" as u
-participant "Next.js\nFrontend" as fe
-participant "Better Auth\nAPI" as auth
+participant "Next.js  Frontend" as fe
+participant "Better Auth  API" as auth
 participant PostgreSQL as pg
 activate pg
-participant "WebSocket\nServer" as ws
+participant "WebSocket  Server" as ws
 participant Redis as rds
 activate rds
 
@@ -732,11 +732,11 @@ activate rds
 activate u
 u -> fe: Navigate to /sign-in
 activate fe
-fe --> u: Render sign-in page\n(email + password, or OAuth buttons)
+fe --> u: Render sign-in page  (email + password, or OAuth buttons)
 
 == Email / Password Sign In ==
 u -> fe: Submit { email, password }
-fe -> auth: POST /api/auth/sign-in/email\n{ email, password }
+fe -> auth: POST /api/auth/sign-in/email  { email, password }
 activate auth
 auth -> pg: user.findUnique({ where: { email } })
 pg --> auth: user record (with hashedPassword)
@@ -746,7 +746,7 @@ alt invalid credentials
   auth --> fe: 401 Unauthorized
   fe --> u: "Invalid email or password"
 else valid credentials
-  auth -> pg: session.create({ userId, token: sessionToken,\n  expiresAt: now + sessionDuration })
+  auth -> pg: session.create({ userId, token: sessionToken,    expiresAt: now + sessionDuration })
   pg --> auth: session record
   auth --> fe: 200 OK + Set-Cookie: session token (HttpOnly, Secure)
   fe --> u: Redirect to /dashboard
@@ -798,7 +798,7 @@ end note
 u -> fe: Navigate to protected page
 fe -> auth: GET /api/... + Cookie: session token
 activate auth
-auth -> pg: session.findUnique({ where: { token },\n  include: { user } })
+auth -> pg: session.findUnique({ where: { token },    include: { user } })
 pg --> auth: session + user
 auth -> auth: Check session.expiresAt > now
 alt session valid

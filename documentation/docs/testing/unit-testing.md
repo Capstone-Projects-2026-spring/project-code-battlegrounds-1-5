@@ -37,7 +37,7 @@ test.each(queryParamsCombinations)('$qps', async ({ qps }) => {
 ```
 
 ### Test Location
-`tests/*.spec.ts` - unit and integration tests
-`testse/*.spec.js` - websocket unit and integration tests
+* `tests/*.spec.ts` - unit and integration tests
+* `tests/*.spec.js` - websocket unit and integration tests
 
 

@@ -29,12 +29,12 @@ Contracts must stay in sync with implementation. If route behavior, context stat
 
 | Module | File | Contract |
 |---|---|---|
-| `auth` | `src/lib/auth.ts` | [auth / authClient](./auth) |
-| `authClient` | `src/lib/auth-client.ts` | [auth / authClient](./auth) |
-| `prisma` | `src/lib/prisma.ts` | [Prisma Client](./prisma) |
-| `proxy` | `src/proxy.ts` | [Middleware](./proxy) |
-| Question API route | `src/pages/api/question.ts` | [Question API](./question-api) |
-| Socket.IO event surface | `server/index.js`, `server/socketEvents/*.js` | [WebSocket](./websocket) |
+| `auth` | `./src/lib/auth.ts` | [auth / authClient](./auth) |
+| `authClient` | `./src/lib/auth-client.ts` | [auth / authClient](./auth) |
+| `prisma` | `./src/lib/prisma.ts` | [Prisma Client](./prisma) |
+| `proxy` | `./src/proxy.ts` | [Middleware](./proxy) |
+| sockets | `./server/index.js` | [Websockets](./websocket) |
+| execution | `./server/sockets/handlers/executionHandlers.js` | [Execution](./execution)
 
 ## Error-handling conventions
 
