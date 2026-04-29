@@ -259,7 +259,14 @@ const toRemove = [
   "print-foobar-alternately",
   "find-the-city-with-the-smallest-number-of-neighbors-at-a-threshold-distance",
   "number-of-ways-where-square-of-number-is-equal-to-product-of-two-numbers",
-  "time-based-key-value-store"
+  "time-based-key-value-store",
+  "reverse-linked-list-ii",
+  "print-in-order",
+  "design-parking-system",
+  "binary-tree-coloring-game",
+  "fizz-buzz-multithreaded",
+  "building-h2o",
+  "print-zero-even-odd"
 ];
 
 import * as Bun from "bun";
