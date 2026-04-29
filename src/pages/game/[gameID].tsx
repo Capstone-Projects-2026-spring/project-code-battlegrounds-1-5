@@ -199,7 +199,13 @@ function PlayGameRoom() {
     };
     loadRoomDetails();
 
+    socket.emit('joinLobby', { gameId });
+
     // 3. Initialize the connection to our custom server.js backend
+
+    const joinedLobbyHandler = () => {
+      console.log(`Joined lobby for game: ${gameId}`);
+    }
 
     const teamUpdatedHandler = ({ teamId, playerCount }: { teamId: string; playerCount: number }) => {
       setTeams((prev) => prev.map((t) => (t.teamId === teamId ? { ...t, playerCount } : t)));
@@ -216,13 +222,14 @@ function PlayGameRoom() {
     };
 
     // This is so if another person picks while someone is deciding
-    socket.on("teamUpdated", teamUpdatedHandler);
-
+    socket.on("joinedLobby", joinedLobbyHandler);
+    socket.on("teamUpdated", teamUpdatedHandler);    
     socket.on('invalidGame', invalidGameHandler);
     socket.on("error", errorHandler);
 
     // 6. Cleanup: disconnect the socket if the user leaves the page
     return () => {
+      socket.off("joinedLobby", joinedLobbyHandler);
       socket.off("teamUpdated", teamUpdatedHandler);
       socket.off('invalidGame', invalidGameHandler);
       socket.off("error", errorHandler);
@@ -583,7 +590,7 @@ function PlayGameRoom() {
           if (role === Role.SPECTATOR) {
             setGameState(GameStatus.ACTIVE);
           }
-          socket?.emit("requestTeamUpdate", { teamId, playerCount });
+          socket?.emit("requestTeamUpdate", { teamId, gameId, playerCount });
         }}
       />
     );
