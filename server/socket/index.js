@@ -22,7 +22,9 @@ function initSocket(httpServer, redis) {
     io.adapter(redis.adapter);
 
     // Create services using Redis state client
-    const gameService = createGameService(redis.stateRedis, io);
+    const gameService = process.env.NODE_ENV === 'test' ? 
+        createGameService(redis.stateRedis, io) : 
+        createGameService(redis.stateRedis, io, 100);
     const matchmakingService = createMatchmakingService(redis.stateRedis, io);
     const inviteService = createInviteService(redis.stateRedis);
 

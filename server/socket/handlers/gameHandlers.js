@@ -72,7 +72,6 @@ function registerGameHandlers(io, socket, gameService, delayMs = 3000) { // dela
         const pendingGameId = await gameService.registerSocketToUser(data.userId, socket.id);
         if (pendingGameId) {
             socket.emit('matchFound', { gameId: pendingGameId });
-            await gameService.deletePendingMatch(data.userId);
             console.log(`Re-delivered matchFound for ${data.userId} → game ${pendingGameId}`);
         }
     });
@@ -97,9 +96,10 @@ function registerGameHandlers(io, socket, gameService, delayMs = 3000) { // dela
         socket.gameId = gameId;
 
         let numPlayers = 0;
+        let socketsInRoom;
 
         try {
-            const socketsInRoom = await io.in(gameId).allSockets();
+            socketsInRoom = await io.in(gameId).allSockets();
             console.log(`Room ${gameId} now has ${socketsInRoom.size} sockets`);
             numPlayers = socketsInRoom ? socketsInRoom.size : 0;
         } catch (e) {
@@ -136,6 +136,10 @@ function registerGameHandlers(io, socket, gameService, delayMs = 3000) { // dela
                     console.log('game ttl:', time?.remaining, 'of', time?.duration);
                     io.to(gameId).emit('gameStarted', { start: time?.remaining, _duration: gameService.GAME_DURATION_MS });
                 }, delayMs);
+                for (const socketId of socketsInRoom) {
+                    const s = io.sockets.sockets.get(socketId);
+                    await gameService.setUserInGame(s.userId, gameId);
+                }
             } catch (e) {
                 console.error('Failed to start game', e);
                 socket.emit('error', { e, message: 'Failed to start game.' });

@@ -1,7 +1,7 @@
 const { getPrisma } = require('../prisma/index');
 const { GameType, Role, ProblemDifficulty } = require('@prisma/client');
 const { nanoid } = require('../utils/nanoid');
-const { readFileSync, stat } = require('node:fs');
+const { readFileSync } = require('node:fs');
 const { join } = require('node:path');
 const { warmVm } = require('../utils/vm/warmVm');
 
@@ -26,6 +26,8 @@ function createMatchmakingService(stateRedis, io) {
 
             const added = await stateRedis.sadd(queuedKey, userId);
             if (added === 0) return { status: 'queued' };
+
+            console.log(`User ${userId} joining queue ${queueKey} with party ${partyId}`);
 
             // TWOPLAYER + party = instant game, no queue needed
             if (partyId && gameType === GameType.TWOPLAYER) {
