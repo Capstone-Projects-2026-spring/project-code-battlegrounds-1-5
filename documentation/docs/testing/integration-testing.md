@@ -4,7 +4,7 @@ sidebar_position: 2
 # Integration tests
 
 ## Overview
-Integration testing ensures that different components of the system work together as expected. These tests are designed to validate the interactions between the user, backend, and system logic by simulating real-world scenarios using mock objects.
+Integration testing ensures that different components of the system work together as expected. These tests are designed to validate the interactions between the user, backend, and system logic by simulating real-world scenarios using mock objects. This is also handled by `jest`.
 
 ## Testing Approach
 - Test Cases correspond to a use case

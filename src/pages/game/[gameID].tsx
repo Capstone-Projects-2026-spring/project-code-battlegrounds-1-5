@@ -145,7 +145,7 @@ function PlayGameRoom() {
 
     const loadRoomDetails = async () => {
       try {
-        const response = await fetch(`/api/rooms/${gameId}/${session.user.id}`);
+        const response = await fetch(`/api/rooms/${gameId}`);
         if (!response.ok) {
           // Game room doesn't exist or user isn't authorized — send them home
           router.replace("/");
