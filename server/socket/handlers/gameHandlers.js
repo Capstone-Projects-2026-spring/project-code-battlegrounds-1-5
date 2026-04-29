@@ -65,7 +65,7 @@ const requestTeamUpdateSchema = z.object({
     playerCount: z.number(),
 });
 
-function registerGameHandlers(io, socket, gameService) {
+function registerGameHandlers(io, socket, gameService, delayMs = 3000) { // delayMs for testing
 
     socket.on('register', async (data) => {
         socket.userId = data.userId;
@@ -130,7 +130,7 @@ function registerGameHandlers(io, socket, gameService) {
                     const time = await gameService.startGameIfNeeded(gameId);
                     console.log('game ttl:', time?.remaining, 'of', time?.duration);
                     io.to(gameId).emit('gameStarted', { start: time?.remaining, _duration: gameService.GAME_DURATION_MS });
-                }, 3000);
+                }, delayMs);
             } catch (e) {
                 console.error('Failed to start game', e);
                 socket.emit('error', { e, message: 'Failed to start game.' });
@@ -231,7 +231,10 @@ function registerGameHandlers(io, socket, gameService) {
 
         try {
             const testCases = await gameService.getTestCases(teamId);
-            if (testCases) socket.to(teamId).emit('receiveTestCaseSync', testCases);
+            if (testCases) {
+                socket.emit('receiveTestCaseSync', testCases); 
+                socket.to(teamId).emit('receiveTestCaseSync', testCases);
+            }
         } catch (e) {
             console.error('Error fetching test cases', e);
             socket.emit('error', { e, message: 'Failed to fetch test cases.' });

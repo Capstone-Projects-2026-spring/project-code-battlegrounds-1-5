@@ -195,8 +195,11 @@ function registerInviteHandlers(io, socket, inviteService, gameService) {
 
     socket.on("friendDelete", async (data) => {
         const { exFriendId, friendId } = data;
-        const result = await inviteService.deleteFriend(friendId);
-        if (result.status !== "ok") socket.emit("error", { message: "friendNotDeleted" });
+        const result = await inviteService.deleteFriend(friendId).catch(() => ({ status: "error" }));
+        if (result.status !== "ok") {
+            socket.emit("error", { message: "friendNotDeleted" });
+            return;
+        }
         const exFriendSocket = await gameService.getSocketId(exFriendId);
         io.to(exFriendSocket).emit("friendDeleted", { friendId });
     });

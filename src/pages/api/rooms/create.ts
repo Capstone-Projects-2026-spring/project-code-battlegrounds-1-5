@@ -86,8 +86,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             })
          */
 
-        const gameId = gameRoom.id; // warm vm
-        fetch(`${process.env.EXECUTOR_ADDR}/request-warm-vm`, {
+        if (process.env.NODE_ENV !== 'test') {
+            const gameId = gameRoom.id; // warm vm
+            fetch(`${process.env.EXECUTOR_ADDR}/request-warm-vm`, {
             method: "POST",
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ gameId })
@@ -109,13 +110,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 }
             })
             .catch(error => console.error('[WARM_VM] Error:', error));
-
-
+        }
+        
         // return generated code
         return res.status(201).json({ gameId: gameRoom.id });
 
 
     } catch (error: unknown) {
+        console.error('[CREATE] Handler error:', error);
         if (error instanceof Error) {
             // Return error message with status 500 (internal server error) if something goes wrong during game room creation
             return res.status(500).json({ message: error?.message || 'Failed to create game room' });
