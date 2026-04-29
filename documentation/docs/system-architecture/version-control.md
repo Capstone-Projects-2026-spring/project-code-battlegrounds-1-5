@@ -12,6 +12,9 @@ This project utilizes **Git** for version control with **GitHub** serving as the
 The repository is organized to maintain a clear separation between product and documentation:
 * **`/docs`**: Docusaurus-based project documentation.
 * **`/src/`**: The core **Code BattleGrounds** web application.
+* **`/server`**: The websocket backend
+* **`/code-executor`**: Code-executor fastapi server
+* **`/infra`**: Infrastructure as code folder
 
 ---
 
