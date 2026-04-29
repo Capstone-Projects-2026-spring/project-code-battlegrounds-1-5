@@ -2,6 +2,7 @@ import {
   createContext,
   useContext,
   useEffect,
+  useRef,
   useState,
   type Dispatch,
   type ReactNode,
@@ -47,6 +48,8 @@ export const MatchmakingProvider = ({ children }: { children: ReactNode }) => {
   const [gameId, setGameId] = useState<string | undefined>();
   const [activeTab, setActiveTab] = useState<string>("create-game");
 
+  const isRedirectingRef = useRef(false);
+
   // Initialize socket once when the user session is available
   useEffect(() => {
     if (!session?.user.id) return;
@@ -55,31 +58,43 @@ export const MatchmakingProvider = ({ children }: { children: ReactNode }) => {
 
     socket.emit("checkInGame", { userId: session.user.id });
 
-    // Check on every route change
     const handleRouteChangeStart = (url: string) => {
-      // Don't intercept if already navigating to a game route
       if (url.startsWith("/game/")) return;
+      if (isRedirectingRef.current) return;
       socket.emit("checkInGame", { userId: session.user.id });
     };
 
+    const handleRouteChangeComplete = (url: string) => {
+      if (!url.startsWith("/game/")) {
+        isRedirectingRef.current = false;
+      }
+    };
+
     router.events.on("routeChangeStart", handleRouteChangeStart);
+    router.events.on("routeChangeComplete", handleRouteChangeComplete);
 
     const handleInGame = ({ gameId }: { gameId: string }) => {
+      if (isRedirectingRef.current) return;
+      isRedirectingRef.current = true;
       setStatus("matched");
       setGameId(gameId);
       router.replace(`/game/${gameId}`);
     };
 
-    const handleCreatedRoomFromhost = (({ gameId: id }: { gameId: string }) => {
+    const handleCreatedRoomFromhost = ({ gameId: id }: { gameId: string }) => {
+      if (isRedirectingRef.current) return;
+      isRedirectingRef.current = true;
       setStatus("matched");
-      router.replace(`/game/${id}`);
       setGameId(id);
-    });
+      router.replace(`/game/${id}`);
+    };
 
     const matchFoundHandler = ({ gameId: id }: { gameId: string }) => {
-      router.replace(`/game/${id}`);
-      setStatus("matched");
+      if (isRedirectingRef.current) return;
+      isRedirectingRef.current = true;
       setGameId(id);
+      setStatus("matched");
+      router.replace(`/game/${id}`);
     };
 
     const queueStatusHandler = ({ status: qs, error }: { status: QueueStatus; error?: string }) => {
@@ -105,8 +120,9 @@ export const MatchmakingProvider = ({ children }: { children: ReactNode }) => {
     socket.on("createdRoomFromHost", handleCreatedRoomFromhost);
     socket.on("inGame", handleInGame);
 
-
     return () => {
+      router.events.off("routeChangeStart", handleRouteChangeStart);
+      router.events.off("routeChangeComplete", handleRouteChangeComplete); // ✅ was missing
       socket.off("matchFound", matchFoundHandler);
       socket.off("queueStatus", queueStatusHandler);
       socket.off("receiveQueueSelection", handleReceiveQueueSelection);
