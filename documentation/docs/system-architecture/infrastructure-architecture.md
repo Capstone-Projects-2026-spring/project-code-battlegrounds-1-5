@@ -9,11 +9,10 @@ sidebar_position: 1
 The architecture is designed with a high level of inherent scalability, both vertically and horizontally. This is
 achieved with an ephemeral, stateless application that can be autoscaled by orchestration systems. For local
 development, the application can be run with a `.env` file and `docker-compose.yml`
-file (see [development-environment.md](./development-environment.md)). This environment maps
-perfectly to production, as discussed later.
+file (see [development-environment.md](./development-environment.md)). This environment maps as perfectly to production as possible, as discussed later.
 
-The API will connect with two different data stores. For quick-access, ephemeral data, [Redis](https://redis.io/) will
-be utilized. For an authoritative data store, [PostgreSQL](https://www.postgresql.org/) will be used. For more
+The API and websocket server connect with two different data stores. For quick-access, ephemeral data, [Redis](https://redis.io/) is
+utilized. For an authoritative data store, [PostgreSQL](https://www.postgresql.org/) will be used. For more
 information on the database design, see [Database Schema](database-schema.md)
 
 ## Diagram and Explanation
@@ -28,10 +27,8 @@ left to right direction
 
 title Production Infrastructure
 
-actor "GitHub Action CI/CD" as cicd
 actor "End User" as user
 
-frame "Google Cloud Project" as project {
   node "Artifact Registry\n(DOCKER format)" as ar
   cloud "VPC Network: vpc" as vpc {
     node "Serverless VPC Access Connector\nName: connector" as vpcac
@@ -42,10 +39,13 @@ frame "Google Cloud Project" as project {
   database "Cloud SQL (PostgreSQL 15)\nInstance: postgres\nDB: appdb" as sql
   node "Cloud Run Service\nName: app" as app
   node "Cloud Run Job\nName: migrate-job" as migrate
+  node "Cloud Run Job\nName: db-seed-job" as seed
+  node "Cloud Run Service\nName: orchestrator" as orch
+  cloud "VM Pool" as pool
+  
 
   ' layout constraint: keep ar to the left of app
   ar -[hidden]-> app
-}
 
 note right of sql
   Accessed using Cloud SQL Auth Proxy and mounted by Cloud Run. Authenticated via service account.
@@ -55,15 +55,22 @@ note right of redis
   Redis is only authorized to be accessed through the VPC network, hence the subnet in the VPC and Access Connector.
 end note
 
+note right of pool
+  The orchestrator spins up and destroys VMs that run an API to talk with. They in turn spin up containers where code runs in a pivoted root filesystem inside nsjail.
+end note
+
 migrate ..> sql
+seed ..> sql
 
 ar ..> app : image
 ar ..> migrate : image
+ar ..> seed: image
+ar ..> orch: image
 
 app --> sql
 app --> vpcac
-
-cicd --> ar
+app -> orch
+orch ..> pool
 user --> app
 @enduml
 ```
@@ -79,19 +86,17 @@ Service into the VPC and creating clones of that VPC for individual regions. If 
 even put behind a [Kubernetes StatefulSet](https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/) if
 necessitated by scale.
 
-At the time of this writing (2/15/2026), the entire infrastructure has been successfully deployed
-via [Terraform](https://developer.hashicorp.com/terraform). Future planned additions
-include [Cloud DNS](https://cloud.google.com/dns), [Cloud Armor](https://cloud.google.com/security/products/armor)
-and [Pub/Sub](https://cloud.google.com/pubsub) for asynchronous event handling like matchmaking and post-match
-analytics. Infrastructure declaration files are hosted in a separate Git repo, hosted [here](https://git.juliafasick.com/julia/code-battlegrounds-infra).
+It is worth noting that this architecture has some... issues. Right now, the orchestrator uses public IPs instead of internal addresses, meaning that anyone with your Cloud Run URL can spin up VMs on your bill.
+The Cloud Run Service itself is not a great place for websockets. The fact that it's ephemeral and the environment can be affected by other service's usage is a massive issue. It means that websockets sometimes lose connections, and no matter how gracefully you handle it, the Redis state will always be slightly tainted by this eventually, leading to some of the weirdest and most undefined behavior I've ever seen.
 
+The fix for this would be to replace the Cloud Run service for the app with literally anything else. A single VM would work, or a GKE cluster would provide more of the scalability we aim for. With that, the app itself should behave a lot better in production. If you're thinking of deploying this after seeing our demo, note that we actually did not have this deployed on GCP for the demo. It was instead built on Julia's server, as we scrapped everything on GCP except the Artifact Registry at 10PM the night prior after hunting down the umpteenth state bug that wasn't happening locally.
 ## Detailed Breakdown
 
 ### [Artifact Registry](https://docs.cloud.google.com/artifact-registry/docs)
 
 - Hosts container images built by CI/CD pipeline (specifically, a [
   `gcloud builds`](https://docs.cloud.google.com/sdk/gcloud/reference/builds) call).
-- Serves the images as needed to the `migrate` job and the Cloud Run Service itself.
+- Serves the images as needed to the `migrate` job, the orchestrator, the executor image, and the Cloud Run Service itself.
 - Allows for quick, painless, and reproducible deployment.
 
 ### [Cloud Run Service](https://cloud.google.com/run)
@@ -102,14 +107,16 @@ analytics. Infrastructure declaration files are hosted in a separate Git repo, h
 - Environment variables injected at runtime, so production environment can perfectly match local environment.
 - 0 -> N scaling allows for 0% overhead during idle periods (in contradiction to
   traditional [Google Kubernetes Engine](https://cloud.google.com/kubernetes-engine) approaches).
+- Orchestrator Cloud Run service deploys the orchestrator built in this repo.
 
-### [Cloud Run Migrate Job](https://docs.cloud.google.com/run/docs/create-jobs)
+### [Cloud Run Migrate/Seed Job](https://docs.cloud.google.com/run/docs/create-jobs)
 
 - Runs specialized image built automagically by the `gcloud builds` call and hosted in the Artifact Registry.
 - Handles deployment of database schemas and applies migrations as needed.
 - Manually ran only when needed.
 - Removes need for Cloud Run image to handle database deployments and migrations at run time (a security risk and
   high-coupled nightmare where database issues will stop the app from even starting).
+- Seed job seeds the database with questions and test users.
 
 ### [CloudSQL](https://cloud.google.com/sql)
 

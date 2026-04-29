@@ -21,9 +21,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     } catch (e) {
       console.error("Error: ", e);
-      res.status(405).json({ error: e });
+      return res.status(405).json({ error: e });
     }
-    
+
     return res.status(200).json({ newFriendCode });
   }
 
@@ -31,62 +31,67 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const [acceptedFriendships, pendingFriendships, currentUser] = await Promise.all([
-    prisma.friendship.findMany({
-      where: {
-        status: "ACCEPTED",
-        OR: [{ requesterId: userId }, { addresseeId: userId }],
-      },
-      include: {
-        requester: { select: { id: true, name: true, image: true } },
-        addressee: { select: { id: true, name: true, image: true } },
-      },
-    }),
-    prisma.friendship.findMany({
-      where: {
-        status: "PENDING",
-        OR: [{ requesterId: userId }, { addresseeId: userId }],
-      },
-      include: {
-        requester: { select: { id: true, name: true, image: true } },
-        addressee: { select: { id: true, name: true, image: true } },
-      },
-    }),
-    prisma.user.findUnique({
-      where: { id: userId },
-      select: { friendCode: true },
-    }),
-  ]);
+  try {
+    const [acceptedFriendships, pendingFriendships, currentUser] = await Promise.all([
+      prisma.friendship.findMany({
+        where: {
+          status: "ACCEPTED",
+          OR: [{ requesterId: userId }, { addresseeId: userId }],
+        },
+        include: {
+          requester: { select: { id: true, name: true, image: true } },
+          addressee: { select: { id: true, name: true, image: true } },
+        },
+      }),
+      prisma.friendship.findMany({
+        where: {
+          status: "PENDING",
+          OR: [{ requesterId: userId }, { addresseeId: userId }],
+        },
+        include: {
+          requester: { select: { id: true, name: true, image: true } },
+          addressee: { select: { id: true, name: true, image: true } },
+        },
+      }),
+      prisma.user.findUnique({
+        where: { id: userId },
+        select: { friendCode: true },
+      }),
+    ]);
 
-  const friends: Friend[] = acceptedFriendships.map((f) => {
-    const other = f.requesterId === userId ? f.addressee : f.requester;
-    return {
-      id: other.id,
-      friendId: f.id,
-      username: other.name,
-      displayName: other.name,
-      avatarUrl: other.image ?? undefined,
-      status: "online", // Presence status would require additional implementation
-    };
-  });
+    const friends: Friend[] = acceptedFriendships.map((f) => {
+      const other = f.requesterId === userId ? f.addressee : f.requester;
+      return {
+        id: other.id,
+        friendId: f.id,
+        username: other.name,
+        displayName: other.name,
+        avatarUrl: other.image ?? undefined,
+        status: "online", // Presence status would require additional implementation
+      };
+    });
 
-  const friendRequests: FriendRequest[] = pendingFriendships.map((f) => {
-    const isOutgoing = f.requesterId === userId;
-    const other = isOutgoing ? f.addressee : f.requester;
-    return {
-      id: f.id,
-      userId: other.id,
-      username: other.name,
-      displayName: other.name,
-      avatarUrl: other.image ?? undefined,
-      direction: isOutgoing ? "outgoing" : "incoming",
-      createdAt: f.createdAt.toISOString(),
-    };
-  });
+    const friendRequests: FriendRequest[] = pendingFriendships.map((f) => {
+      const isOutgoing = f.requesterId === userId;
+      const other = isOutgoing ? f.addressee : f.requester;
+      return {
+        id: f.id,
+        userId: other.id,
+        username: other.name,
+        displayName: other.name,
+        avatarUrl: other.image ?? undefined,
+        direction: isOutgoing ? "outgoing" : "incoming",
+        createdAt: f.createdAt.toISOString(),
+      };
+    });
 
-  return res.status(200).json({
-    friends,
-    friendRequests,
-    friendCode: currentUser?.friendCode ?? null,
-  });
+    return res.status(200).json({
+      friends,
+      friendRequests,
+      friendCode: currentUser?.friendCode ?? null,
+    });
+  } catch (error) {
+    console.error('Error working with friends api', error);
+    return res.status(405).json({ message: error });
+  }
 }

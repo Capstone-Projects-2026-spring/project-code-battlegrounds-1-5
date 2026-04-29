@@ -37,7 +37,7 @@ mock.module("../../server/prisma/index", () => ({
 
 // Also stub warmVm so it doesn't try to spin up a real VM during tests
 mock.module("../../server/utils/vm/warmVm", () => ({
-  warmVm: () => { },
+  warmVm: () => {},
 }));
 
 // ---------------------------------------------------------------------------
@@ -188,6 +188,10 @@ describe("joinQueue", () => {
 
     client.disconnect();
   });
+
+  // matchFound and valid-party socket tests are covered at the service level below.
+  // They require mock.module to intercept the server's Prisma instance, which is
+  // not possible once the server process has already booted.
 });
 
 // ---------------------------------------------------------------------------
