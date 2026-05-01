@@ -5,7 +5,7 @@ if not required then
   return {}
 end
 
-local entries = redis.call('LRANGE', key, 0, -1)
+local entries = redis.call('LRANGE', key, 0, required - 1)
 local totalPlayers = 0
 local entryCount = 0
 
