@@ -11,6 +11,12 @@ function createGameService(stateRedis, io) {
     async registerSocketToUser(userId, socketId) {
       await stateRedis.set(`socket:${userId}`, socketId); // link userId
       console.log(`REGISTERED TO REDIS: ${userId}`);
+      const pendingMatch = await stateRedis.get(`pending:match:${userId}`);
+      if (!pendingMatch) {
+        return this.getUserInGame(userId); // check if user is in an active game
+      }
+      this.deletePendingMatch(userId);
+      return pendingMatch;
     },
 
     async startGameIfNeeded(gameId) {
@@ -39,6 +45,19 @@ function createGameService(stateRedis, io) {
         duration: GAME_DURATION_MS,
         remaining: ttl,
       };
+    },
+
+    async setUserInGame(userId, gameId) {
+      console.log(`User ${userId} is now in game ${gameId}`);
+      await stateRedis.set(`gameInSession:${userId}`, gameId, 'PX', GAME_DURATION_MS, 'NX'); // for quick lookup of which game a user is in
+    },
+
+    async deleteUserInGame(userId) {
+      await stateRedis.del(`gameInSession:${userId}`);
+    },
+
+    async getUserInGame(userId) {
+      return await stateRedis.get(`gameInSession:${userId}`);
     },
 
     async isGameStarted(gameId) {
@@ -99,7 +118,7 @@ function createGameService(stateRedis, io) {
     },
 
     async cleanupSocket(userId) {
-      await stateRedis.del(`socket:${userId}`);
+      await stateRedis.expire(`socket:${userId}`, 30);
     },
 
     async getSocketId(userId) {
@@ -119,12 +138,21 @@ function createGameService(stateRedis, io) {
       return stateRedis.del(key);
     },
 
-    async removePlayersFromSockets(gameRoom) {
+    async deletePendingMatch(userId) {
+      await stateRedis.del(`pending:match:${userId}`);
+    },
+
+    async removePlayersFromSockets(gameRoom, gameId) {
       for (const team of gameRoom.teams) {
         for (const player of team.players) {
           console.log('Looking up player:', player.userId);
           const socketId = await stateRedis.get(`socket:${player.userId}`);
           console.log('Found socketId:', socketId ?? 'null');
+          this.deletePendingMatch(player.userId);
+          console.log(`Removed pending match for user ${player.userId}`);
+          this.deleteUserInGame(player.userId);
+          console.log(`Deleted gameInSession for user ${player.userId}`);
+
 
           if (!socketId) {
             console.log(`No socket mapping for user ${player.userId}; skipping room leave.`);
@@ -133,17 +161,17 @@ function createGameService(stateRedis, io) {
 
           try {
             // Cluster-safe: instruct any node to remove this socket from rooms
-            await io.in(socketId).socketsLeave([gameRoom.id, team.id]);
+            await io.in(socketId).socketsLeave([gameId, team.id]);
 
             // Best-effort local logging if the socket is on this node
             const localSocket = io.sockets.sockets.get(socketId);
             if (localSocket) {
-              console.log(`Socket: ${localSocket.id} left ${gameRoom.id} and ${team.id}`);
+              console.log(`Socket: ${localSocket.id} left ${gameId} and ${team.id}`);
             } else {
-              console.log(`Requested remote leave for socket ${socketId} from ${gameRoom.id} and ${team.id}`);
+              console.log(`Requested remote leave for socket ${socketId} from ${gameId} and ${team.id}`);
             }
           } catch (err) {
-            console.error(`Error removing socket ${socketId} from rooms ${gameRoom.id}, ${team.id}:`, err);
+            console.error(`Error removing socket ${socketId} from rooms ${gameId}, ${team.id}:`, err);
           }
         }
       }

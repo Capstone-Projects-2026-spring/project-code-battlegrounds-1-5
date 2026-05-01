@@ -2,6 +2,7 @@ import {
   createContext,
   useContext,
   useEffect,
+  useRef,
   useState,
   type Dispatch,
   type ReactNode,
@@ -28,6 +29,9 @@ export interface MatchmakingContextAPI {
 
   gameId: string | undefined;
   setGameId: Dispatch<SetStateAction<string | undefined>>;
+
+  activeTab: string;
+  setActiveTab: Dispatch<SetStateAction<string>>;
 }
 
 export const MatchmakingContext = createContext<MatchmakingContextAPI | null>(null);
@@ -42,23 +46,55 @@ export const MatchmakingProvider = ({ children }: { children: ReactNode }) => {
   const [gameType, setGameType] = useState<GameType>(GameType.TWOPLAYER);
   const [difficulty, setDifficulty] = useState<ProblemDifficulty>(ProblemDifficulty.MEDIUM);
   const [gameId, setGameId] = useState<string | undefined>();
+  const [activeTab, setActiveTab] = useState<string>("create-game");
+
+  const isRedirectingRef = useRef(false);
 
   // Initialize socket once when the user session is available
   useEffect(() => {
     if (!session?.user.id) return;
     if (!socket) return;
+    if (!router.isReady) return;
 
-    socket.emit("register", { userId: session.user.id });
+    socket.emit("checkInGame", { userId: session.user.id });
 
-    const handleCreatedRoomFromhost = (({gameId: id}: { gameId: string }) => {
-      router.push(`/game/${id}`);
-      setGameId(id);
-    });
+    const handleRouteChangeStart = (url: string) => {
+      if (url.startsWith("/game/")) return;
+      if (isRedirectingRef.current) return;
+      socket.emit("checkInGame", { userId: session.user.id });
+    };
 
-    const matchFoundHandler = ({ gameId: id }: { gameId: string }) => {
-      router.push(`/game/${id}`);
+    const handleRouteChangeComplete = (url: string) => {
+      if (!url.startsWith("/game/")) {
+        isRedirectingRef.current = false;
+      }
+    };
+
+    router.events.on("routeChangeStart", handleRouteChangeStart);
+    router.events.on("routeChangeComplete", handleRouteChangeComplete);
+
+    const handleInGame = ({ gameId }: { gameId: string }) => {
+      if (isRedirectingRef.current) return;
+      isRedirectingRef.current = true;
+      setStatus("matched");
+      setGameId(gameId);
+      router.replace(`/game/${gameId}`);
+    };
+
+    const handleCreatedRoomFromhost = ({ gameId: id }: { gameId: string }) => {
+      if (isRedirectingRef.current) return;
+      isRedirectingRef.current = true;
       setStatus("matched");
       setGameId(id);
+      router.replace(`/game/${id}`);
+    };
+
+    const matchFoundHandler = ({ gameId: id }: { gameId: string }) => {
+      if (isRedirectingRef.current) return;
+      isRedirectingRef.current = true;
+      setGameId(id);
+      setStatus("matched");
+      router.replace(`/game/${id}`);
     };
 
     const queueStatusHandler = ({ status: qs, error }: { status: QueueStatus; error?: string }) => {
@@ -66,10 +102,11 @@ export const MatchmakingProvider = ({ children }: { children: ReactNode }) => {
       if (qs === "queued") setStatus("queued");
       if (qs === "matched") setStatus("matched");
     };
-    
-    const handleReceiveQueueSelection = ({ gameType, difficulty }: { gameType: GameType; difficulty: ProblemDifficulty }) => {
+
+    const handleReceiveQueueSelection = ({ gameType, difficulty, activeTab }: { gameType: GameType; difficulty: ProblemDifficulty; activeTab: string }) => {
       setGameType(gameType);
       setDifficulty(difficulty);
+      setActiveTab(activeTab);
     };
 
     const handlePartySearchUpdate = ({ state }: { state: QueueStatus }) => {
@@ -81,17 +118,20 @@ export const MatchmakingProvider = ({ children }: { children: ReactNode }) => {
     socket.on("receiveQueueSelection", handleReceiveQueueSelection);
     socket.on("partySearchUpdate", handlePartySearchUpdate);
     socket.on("createdRoomFromHost", handleCreatedRoomFromhost);
-
+    socket.on("inGame", handleInGame);
 
     return () => {
+      router.events.off("routeChangeStart", handleRouteChangeStart);
+      router.events.off("routeChangeComplete", handleRouteChangeComplete); // ✅ was missing
       socket.off("matchFound", matchFoundHandler);
       socket.off("queueStatus", queueStatusHandler);
       socket.off("receiveQueueSelection", handleReceiveQueueSelection);
       socket.off("partySearchUpdate", handlePartySearchUpdate);
       socket.off("createdRoomFromHost", handleCreatedRoomFromhost);
+      socket.off("inGame", handleInGame);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session?.user.id, socket]);
+  }, [session?.user.id, socket, router.isReady]);
 
   const v: MatchmakingContextAPI = {
     status,
@@ -102,6 +142,8 @@ export const MatchmakingProvider = ({ children }: { children: ReactNode }) => {
     setDifficulty,
     gameId,
     setGameId,
+    activeTab,
+    setActiveTab
   };
 
   return (

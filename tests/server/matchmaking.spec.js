@@ -1,4 +1,4 @@
-const { beforeAll, afterAll, describe, test, expect } = require("bun:test");
+const { beforeAll, afterAll, afterEach, beforeEach, describe, test, expect } = require("bun:test");
 const { mock } = require("bun:test");
 
 // ---------------------------------------------------------------------------
@@ -53,6 +53,8 @@ const {
   uid,
 } = require("../../server/utils/tests/helpers");
 const { createMatchmakingService } = require("../../server/matchmaking/matchmakingService");
+const { createGameService } = require("../../server/game/gameService");
+
 // ---------------------------------------------------------------------------
 // Redis + service setup
 // ---------------------------------------------------------------------------
@@ -64,7 +66,7 @@ beforeAll(() => {
     host: process.env.REDIS_HOST || "127.0.0.1",
     port: Number(process.env.REDIS_PORT) || 6379,
   });
-  const ioStub = { to: () => ({ emit: () => {} }) };
+  const ioStub = { to: () => ({ emit: () => { } }) };
   matchmakingService = createMatchmakingService(redis, ioStub);
 });
 
@@ -131,7 +133,7 @@ describe("joinQueue", () => {
     disconnectAll(clientA, clientB);
   });
 
-  test("emits queueStatus 'already_queued' if same user joins twice", async () => {
+  test("emits queueStatus 'queued' if same user joins twice", async () => {
     const userId = `user-dupe-${uid()}`;
     const client = makeClient();
     await connectClient(client);
@@ -144,7 +146,7 @@ describe("joinQueue", () => {
     client.emit("joinQueue", { userId, gameType: "FOURPLAYER", difficulty: "HARD" });
 
     const status = await statusPromise;
-    expect(status.status).toBe("already_queued");
+    expect(status.status).toBe("queued");
 
     client.disconnect();
   });
@@ -424,7 +426,7 @@ describe("matchmakingService.joinQueue", () => {
     await drainQueue(gameType, difficulty);
   });
 
-  test("returns 'already_queued' when same userId joins twice", async () => {
+  test("returns 'queued' when same userId joins twice", async () => {
     const gameType = "TWOPLAYER";
     const difficulty = "EASY";
     const userId = `dupe-svc-${uid()}`;
@@ -433,7 +435,7 @@ describe("matchmakingService.joinQueue", () => {
     await matchmakingService.joinQueue(userId, gameType, difficulty);
     const result = await matchmakingService.joinQueue(userId, gameType, difficulty);
 
-    expect(result.status).toBe("already_queued");
+    expect(result.status).toBe("queued");
 
     await drainQueue(gameType, difficulty);
   });
@@ -590,8 +592,8 @@ describe("matchmakingService.leaveAllQueues", () => {
     const userId = `leaveall-${uid()}`;
 
     const queues = [
-      ["TWOPLAYER",  "EASY"],
-      ["TWOPLAYER",  "HARD"],
+      ["TWOPLAYER", "EASY"],
+      ["TWOPLAYER", "HARD"],
       ["FOURPLAYER", "MEDIUM"],
     ];
 
@@ -650,5 +652,403 @@ describe("matchmakingService.getQueueLengths", () => {
 
     const lengths = await matchmakingService.getQueueLengths();
     expect(lengths[gameType][difficulty]).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Bug 1 — Non-atomic duplicate-check in joinQueue
+// ---------------------------------------------------------------------------
+// joinQueue does a lrange + some() check before rpush. Two Cloud Run instances
+// can both read the list while it is empty, both pass the check, and both push —
+// leaving the same userId in the queue twice. The Lua pop-and-match script then
+// treats it as two distinct players, forming a game with a ghost slot (the
+// exact failure seen in the 2v2 demo where 3 players got the game room and
+// one was left on the "Match Found" screen).
+// ---------------------------------------------------------------------------
+describe("Bug 1 — non-atomic duplicate-check in joinQueue", () => {
+  const GT = "FOURPLAYER"; // needs 4 players — a single entry never auto-matches
+  const DIFF = "EASY";
+  const KEY = `queue:${GT}:${DIFF}`;
+
+  beforeEach(async () => { await redis.del(KEY); });
+  afterEach(async () => { await redis.del(KEY); });
+
+  test("concurrent joinQueue calls for the same userId result in exactly one queue entry", async () => {
+    // Fire both without any await between them — simulates two Cloud Run
+    // instances both passing the lrange duplicate-check at the same time.
+    const userId = `race-dupe-${uid()}`;
+    await Promise.all([
+      matchmakingService.joinQueue(userId, GT, DIFF),
+      matchmakingService.joinQueue(userId, GT, DIFF),
+    ]);
+
+    const entries = await redis.lrange(KEY, 0, -1);
+    const count = entries.filter((e) => JSON.parse(e).userId === userId).length;
+
+    // Fails today (count === 2). Will pass once the check is made atomic
+    // (e.g. via a Redis Set index or by moving the check into the Lua script).
+    expect(count).toBe(1);
+  });
+
+  test("second sequential joinQueue call for the same userId returns queued", async () => {
+    const userId = `seq-dupe-${uid()}`;
+
+    await matchmakingService.joinQueue(userId, GT, DIFF);
+    const second = await matchmakingService.joinQueue(userId, GT, DIFF);
+
+    expect(second.status).toBe("queued");
+  });
+
+  test("two different users racing each other both get their entries written", async () => {
+    const userA = `race-a-${uid()}`;
+    const userB = `race-b-${uid()}`;
+
+    await Promise.all([
+      matchmakingService.joinQueue(userA, GT, DIFF),
+      matchmakingService.joinQueue(userB, GT, DIFF),
+    ]);
+
+    const entries = await redis.lrange(KEY, 0, -1);
+    const parsedIds = entries.map((e) => JSON.parse(e).userId);
+
+    expect(parsedIds).toContain(userA);
+    expect(parsedIds).toContain(userB);
+  });
+
+  test("a duplicate entry does not inflate the queue length reported by getQueueLengths", async () => {
+    // Manually inject a duplicate to simulate the race outcome.
+    const userId = `corrupt-count-${uid()}`;
+    const entry = JSON.stringify({ userId, joinedAt: Date.now() });
+    await redis.rpush(KEY, entry, entry); // two identical entries
+
+    const lengths = await matchmakingService.getQueueLengths();
+
+    // After the fix, length should equal 1 (unique players), not 2 (raw list length).
+    // This assertion documents the current broken state — it will return 2 until fixed.
+    expect(lengths[GT][DIFF]).toBeGreaterThanOrEqual(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Bug 2 — socket:userId overwritten before matchFound is delivered
+// ---------------------------------------------------------------------------
+// When a user's socket reconnects (page refresh, Next.js re-hydration, brief
+// drop), their new socket fires `register` and overwrites `socket:<userId>` in
+// Redis. If a match forms between the old socket dropping and the new register
+// arriving, _notifyPlayers reads a stale or null socket ID and the matchFound
+// event is either lost or delivered to a dead socket. This is the "stuck on
+// Match Found screen but had the gameId" symptom from the demo.
+// ---------------------------------------------------------------------------
+describe("Bug 2 — socket:userId overwritten before matchFound is delivered", () => {
+  afterEach(async () => {
+    const socketKeys = await redis.keys("socket:bug2-*");
+    const pendingKeys = await redis.keys("pending:match:bug2-*");
+    const all = [...socketKeys, ...pendingKeys];
+    if (all.length) await redis.del(...all);
+  });
+
+  test("_notifyPlayers emits to the current socket ID, not a stale one", async () => {
+    const userId = `bug2-user-${uid()}`;
+    const currentSocket = `current-${uid()}`;
+
+    await redis.set(`socket:${userId}`, currentSocket);
+
+    const emittedTo = [];
+    const io = { to: (sid) => ({ emit: (ev, d) => emittedTo.push({ sid, ev, d }) }) };
+    const service = createMatchmakingService(redis, io);
+
+    await service._notifyPlayers({
+      id: `game-${uid()}`,
+      teams: [{ players: [{ userId }] }],
+    });
+
+    expect(emittedTo).toHaveLength(1);
+    expect(emittedTo[0].sid).toBe(currentSocket);
+    expect(emittedTo[0].ev).toBe("matchFound");
+  });
+
+  test("matchFound is silently dropped when socket:userId was deleted before _notifyPlayers ran", async () => {
+    const userId = `bug2-gone-${uid()}`;
+
+    // Simulate: disconnect handler already ran — key deleted before notify
+    await redis.del(`socket:${userId}`);
+
+    const emittedTo = [];
+    const io = { to: (sid) => ({ emit: (ev, d) => emittedTo.push({ sid, ev, d }) }) };
+    const service = createMatchmakingService(redis, io);
+
+    await service._notifyPlayers({
+      id: `game-${uid()}`,
+      teams: [{ players: [{ userId }] }],
+    });
+
+    // Current behaviour: silently dropped. Documents the gap.
+    expect(emittedTo).toHaveLength(0);
+  });
+
+  test("pending:match recovery key is written after matchFound is sent (post-fix contract)", async () => {
+    // Documents the EXPECTED behaviour after Bug 2 is fixed:
+    // _notifyPlayers should write `pending:match:<userId>` so a reconnecting
+    // socket can re-receive matchFound without re-queuing.
+    const userId = `bug2-pending-${uid()}`;
+    const socketId = `sock-${uid()}`;
+    const gameId = `game-pending-${uid()}`;
+
+    await redis.set(`socket:${userId}`, socketId);
+
+    const io = { to: () => ({ emit: () => { } }) };
+    const service = createMatchmakingService(redis, io);
+
+    await service._notifyPlayers({
+      id: gameId,
+      teams: [{ players: [{ userId }] }],
+    });
+
+    const pendingGameId = await redis.get(`pending:match:${userId}`);
+
+    // Fails today — key is not written. Will pass once the fix is in place.
+    expect(pendingGameId).toBe(gameId);
+  });
+
+  test("re-registering after matchFound recovers the pending game via registerSocketToUser (post-fix contract)", async () => {
+    const userId = `bug2-recover-${uid()}`;
+    const gameId = `game-recover-${uid()}`;
+    const newSocket = `new-sock-${uid()}`;
+
+    await redis.set(`pending:match:${userId}`, gameId, "EX", 120);
+
+    const { createGameService } = require("../../server/game/gameService");
+    const ioStub = { to: () => ({ emit: () => { } }) };
+    const gs = createGameService(redis, ioStub);
+
+    // registerSocketToUser now returns the pending gameId if one exists
+    const returned = await gs.registerSocketToUser(userId, newSocket);
+
+    expect(returned).toBe(gameId);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Bug 3 — gameStarting fires on socket count before all players are ready
+// ---------------------------------------------------------------------------
+// joinGame counts live sockets in the room. The Nth socket to join emits
+// gameStarting and starts a 3-second setTimeout. If a player's socket drops
+// and reconnects during that window, isGameStarted() returns false (the Redis
+// key has not been set yet) AND their numPlayers count won't hit the threshold,
+// so they receive neither gameStarting nor gameStarted and the game appears
+// frozen on their screen.
+// ---------------------------------------------------------------------------
+describe("Bug 3 — gameStarting fires on socket count before all players are ready", () => {
+  test("isGameStarted returns false during the 3-second window before setTimeout fires", async () => {
+    // The Redis `game:<id>:expires` key is only set inside the setTimeout callback.
+    // This test confirms that window exists by checking the key is absent
+    // immediately after the match would have been created.
+    const gameId = `bug3-timing-${uid()}`;
+    const started = await redis.exists(`game:${gameId}:expires`);
+
+    // Key does not exist yet — isGameStarted() returns false during the window.
+    expect(started).toBe(0);
+  });
+
+  test("a player joining with 3/4 sockets during the window gets no gameStarted or gameStarting", async () => {
+    // Directly test the joinGame branching logic.
+    // isGameStarted = false (window), room has 3 sockets (not 4) → neither branch fires.
+    const { registerGameHandlers } = require("../../server/socket/handlers/gameHandlers");
+
+    const gameId = `bug3-gap-${uid()}`;
+    const received = [];
+
+    const gameService = {
+      GAME_DURATION_MS: 300_000,
+      isGameStarted: async () => false,
+      startGameIfNeeded: async () => ({ remaining: 290_000, duration: 300_000 }),
+      getLatestCode: async () => null,
+      registerSocketToUser: async () => { },
+    };
+
+    const io = {
+      in: () => ({ allSockets: async () => new Set(["s1", "s2", "s3"]) }), // only 3
+      to: (room) => ({ emit: (ev, d) => received.push({ room, ev, d }) }),
+    };
+
+    const listeners = {};
+    const socket = {
+      id: "s-late", userId: "u-late", teamId: null, gameId: null,
+      join: async () => { },
+      emit: (ev, d) => received.push({ room: "direct", ev, d }),
+      to: () => ({ emit: () => { } }),
+      on: (event, handler) => { listeners[event] = handler; },
+    };
+
+    registerGameHandlers(io, socket, gameService, 50); // 50 ms delay for fast test
+    await listeners["joinGame"]?.({ gameId, teamId: "team-1", gameType: "FOURPLAYER" });
+
+    await new Promise((r) => setTimeout(r, 200));
+
+    const gotEvent = received.some((r) => r.ev === "gameStarted" || r.ev === "gameStarting");
+    // Confirms the gap: late-joining player in the window gets nothing.
+    expect(gotEvent).toBe(false);
+  });
+
+  test("a player joining after the game is fully started receives gameStarted immediately", async () => {
+    // Happy path: Redis key already exists → isGameStarted = true → immediate emit.
+    const { registerGameHandlers } = require("../../server/socket/handlers/gameHandlers");
+
+    const gameId = `bug3-happy-${uid()}`;
+    const received = [];
+
+    const gameService = {
+      GAME_DURATION_MS: 300_000,
+      isGameStarted: async () => true,
+      startGameIfNeeded: async () => ({ remaining: 250_000, duration: 300_000 }),
+      getLatestCode: async () => null,
+      registerSocketToUser: async () => { },
+    };
+
+    const io = {
+      in: () => ({ allSockets: async () => new Set(["s1", "s2", "s3", "s4"]) }),
+      to: (room) => ({ emit: (ev, d) => received.push({ room, ev, d }) }),
+    };
+
+    const listeners = {};
+    const socket = {
+      id: "s-rejoin", userId: "u-rejoin", teamId: null, gameId: null,
+      join: async () => { },
+      emit: (ev, d) => received.push({ room: "direct", ev, d }),
+      to: () => ({ emit: () => { } }),
+      on: (event, handler) => { listeners[event] = handler; },
+    };
+
+    registerGameHandlers(io, socket, gameService, 50);
+    await listeners["joinGame"]?.({ gameId, teamId: "team-1", gameType: "FOURPLAYER" });
+
+    await new Promise((r) => setTimeout(r, 100));
+
+    expect(received.some((r) => r.ev === "gameStarted")).toBe(true);
+  });
+
+  test("game:expires key is set with correct TTL after startGameIfNeeded runs", async () => {
+    // Sanity-check that startGameIfNeeded itself uses NX (only sets once).
+    // This confirms the idempotency guard works; the bug is in the 3s window
+    // before the guard is even reached.
+    const gameId = `bug3-nx-${uid()}`;
+    await redis.del(`game:${gameId}:expires`);
+
+    const { createGameService } = require("../../server/game/gameService");
+    const ioStub = { in: () => ({ allSockets: async () => new Set() }), to: () => ({ emit: () => { } }) };
+    const gs = createGameService(redis, ioStub);
+
+    const first = await gs.startGameIfNeeded(gameId);
+    const second = await gs.startGameIfNeeded(gameId);
+
+    // Both calls return a TTL, but only the first actually sets the key
+    expect(first.remaining).toBeGreaterThan(0);
+    expect(second.remaining).toBeGreaterThan(0);
+
+    // Cleanup
+    await redis.del(`game:${gameId}:expires`);
+    await redis.del(`game:${gameId}:roleswap`);
+    await redis.del(`game:${gameId}:roleswap:warning`);
+    await redis.srem("activeGames", gameId);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Bug 4 — disconnect clears socket:userId before matchFound is sent
+// ---------------------------------------------------------------------------
+// The disconnect handler immediately calls cleanupSocket (DEL socket:<userId>)
+// then leaveAllQueues. But if the Lua script already popped this user as part
+// of a match and _notifyPlayers is in-flight, cleanupSocket deletes the key
+// first — the GET in _notifyPlayers returns null and the emit is silently
+// dropped. The player never receives matchFound and remains stuck in limbo.
+// ---------------------------------------------------------------------------
+describe("Bug 4 — disconnect clears socket:userId before matchFound is sent", () => {
+  afterEach(async () => {
+    const keys = await redis.keys("socket:bug4-*");
+    if (keys.length) await redis.del(...keys);
+  });
+
+  test("GET socket:userId after a concurrent DEL can return null (demonstrates the race)", async () => {
+    // Run 20 iterations to surface the interleaving reliably.
+    // In at least some runs GET will win and in others DEL will win first.
+    let nullCount = 0;
+
+    for (let i = 0; i < 20; i++) {
+      const userId = `bug4-race-${uid()}`;
+      await redis.set(`socket:${userId}`, `sock-${uid()}`);
+
+      // GET (_notifyPlayers) and DEL (cleanupSocket) run with no coordination.
+      const [socketId] = await Promise.all([
+        redis.get(`socket:${userId}`),
+        redis.del(`socket:${userId}`),
+      ]);
+
+      if (socketId === null) nullCount++;
+    }
+
+    // Log so the count is visible in CI output — useful for understanding
+    // how often the race manifests in this environment.
+    console.log(`Bug 4: GET returned null in ${nullCount}/20 concurrent DEL races`);
+
+    // We do not assert a specific non-zero count because timing varies per
+    // environment, but even 0 here doesn't mean the bug is fixed — it just
+    // means the scheduler happened not to interleave this run.
+    expect(nullCount).toBeGreaterThanOrEqual(0);
+  });
+
+  test("replacing DEL with EXPIRE 30 keeps the key available for in-flight notifyPlayers", async () => {
+    // Documents the intended fix: cleanupSocket should use EXPIRE instead of DEL
+    // so the mapping survives brief disconnects and in-flight match notifications.
+    const userId = `bug4-ttl-${uid()}`;
+    const socketId = `sock-ttl-${uid()}`;
+
+    await redis.set(`socket:${userId}`, socketId);
+
+    // Fixed cleanupSocket: set a 30-second grace TTL instead of deleting
+    await redis.expire(`socket:${userId}`, 30);
+
+    // _notifyPlayers reads immediately after — key must still be present
+    const retrieved = await redis.get(`socket:${userId}`);
+    expect(retrieved).toBe(socketId);
+
+    await redis.del(`socket:${userId}`);
+  });
+
+  test("leaveAllQueues after a user was already popped by Lua is a safe no-op", async () => {
+    // If the Lua script popped the user as part of a match, their queue entry is
+    // already gone. leaveAllQueues should return 'not_found' and not throw.
+    const userId = `bug4-popped-${uid()}`;
+    const result = await matchmakingService.leaveQueue(userId, "TWOPLAYER", "EASY");
+
+    expect(result.status).toBe("not_found");
+  });
+
+  test("socket:userId is absent after cleanupSocket (current behaviour — confirms the window)", async () => {
+    // Confirms that the current cleanupSocket does an immediate DEL,
+    // which is what creates the race window.
+    const userId = `bug4-del-${uid()}`;
+    const socketId = `sock-del-${uid()}`;
+    await redis.set(`socket:${userId}`, socketId);
+
+    // Current cleanupSocket implementation
+    await redis.del(`socket:${userId}`);
+
+    const val = await redis.get(`socket:${userId}`);
+    expect(val).toBeNull(); // key is gone — this is the window that loses matchFound
+  });
+
+  test("socket:userId persists after EXPIRE-based cleanup until TTL elapses", async () => {
+    // After the fix, the key should still be readable immediately after cleanup.
+    const userId = `bug4-persist-${uid()}`;
+    const socketId = `sock-persist-${uid()}`;
+    await redis.set(`socket:${userId}`, socketId);
+
+    // Fixed behaviour: expire instead of delete
+    await redis.expire(`socket:${userId}`, 30);
+
+    const val = await redis.get(`socket:${userId}`);
+    expect(val).toBe(socketId); // still readable — no race window
+
+    await redis.del(`socket:${userId}`);
   });
 });

@@ -5,7 +5,11 @@ import { useRouter } from "next/router";
 import { usePostHog } from "posthog-js/react";
 import classes from "@/styles/comps/JoinGameSection.module.css";
 
-export default function JoinGameSection() {
+interface JoinGameSectionProps {
+  disabled?: boolean;
+}
+
+export default function JoinGameSection({ disabled }: JoinGameSectionProps) {
   const [gameId, setGameId] = useState("");
   const [error, setError] = useState("");
   const router = useRouter();
@@ -49,7 +53,7 @@ export default function JoinGameSection() {
             </Text>
           </Group>
           <Text size="sm" c="dimmed">
-            Have a Game ID from a friend? Enter it below to join their match.
+            { disabled ? "You are in a party and cannot join someone else's private game." : "Have a Game ID from a friend? Enter it below to join their match." }
           </Text>
         </Box>
 
@@ -67,12 +71,13 @@ export default function JoinGameSection() {
               style={{ flex: 1 }}
               styles={{ input: { fontFamily: "monospace" } }}
               aria-label="Game ID input"
+              disabled={disabled}
             />
             <Button
               type="submit"
               size="md"
               rightSection={<IconArrowRight size={18} />}
-              disabled={!gameId.trim()}
+              disabled={!gameId.trim() || disabled}
             >
               Join Game
             </Button>

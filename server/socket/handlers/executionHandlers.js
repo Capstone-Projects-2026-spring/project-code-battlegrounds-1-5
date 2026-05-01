@@ -333,7 +333,7 @@ function registerExecutionHandlers(io, socket, gameService) {
                     data: { status: GameStatus.FINISHED }
                 });
                 io.to(roomId).emit('gameEnded');
-                await gameService.removePlayersFromSockets(gameRoom);
+                await gameService.removePlayersFromSockets(gameRoom, roomId);
                 deleteVm(roomId);
             } catch (error) {
                 console.error("Error in TWOPLAYER execution:", error);
@@ -521,7 +521,7 @@ function registerExecutionHandlers(io, socket, gameService) {
                     deleteVm(roomId);
                     await gameService.deleteGameData(`game:${roomId}:submissions`);
                     io.to(roomId).emit('gameEnded');
-                    await gameService.removePlayersFromSockets(gameRoom);
+                    await gameService.removePlayersFromSockets(gameRoom, roomId);
                 }
             } catch (error) {
                 console.error('[FOURPLAYER] Error in submission:', error);

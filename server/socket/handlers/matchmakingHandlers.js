@@ -10,10 +10,10 @@ function registerMatchmakingHandlers(io, socket, matchmakingService, gameService
     socket.emit('queueStatus', result);
   });
 
-  socket.on('updateQueueSelection', async ({ gameType, difficulty, partyMember }) => {
+  socket.on('updateQueueSelection', async ({ gameType, difficulty, partyMember, activeTab }) => {
     if (!socket.userId) return;
     const partyMemberSocket = await gameService.getSocketId(partyMember.userId);
-    io.to(partyMemberSocket).emit('receiveQueueSelection', { gameType, difficulty });
+    io.to(partyMemberSocket).emit('receiveQueueSelection', { gameType, difficulty, activeTab });
   });
 
   socket.on('partySearch', async ({ partyMember, state }) => {

@@ -65,7 +65,7 @@ export default function FindLobbySection({
             size="md"
             value={gameType}
             onChange={(val) => {
-              if (partyMember) socket?.emit('updateQueueSelection', { gameType: val as GameType, difficulty, partyMember });
+              if (partyMember) socket?.emit('updateQueueSelection', { gameType: val as GameType, difficulty, partyMember, activeTab: 'matchmaking' });
               onGameTypeChange(val as GameType);
             }}
             disabled={status === "queued" || status === "matched" || joinedParty !== null}
@@ -103,7 +103,7 @@ export default function FindLobbySection({
             size="md"
             value={difficulty}
             onChange={(val) => {
-              if (partyMember) socket?.emit('updateQueueSelection', { gameType, difficulty: val as ProblemDifficulty, partyMember });
+              if (partyMember) socket?.emit('updateQueueSelection', { gameType, difficulty: val as ProblemDifficulty, partyMember, activeTab: 'matchmaking' });
               onDifficultyChange(val as ProblemDifficulty);
             }}
             disabled={status === "queued" || status === "matched" || joinedParty !== null}

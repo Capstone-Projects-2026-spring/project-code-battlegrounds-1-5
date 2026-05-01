@@ -40,12 +40,33 @@ export default function QueuePage() {
     setGameType,
     difficulty,
     setDifficulty,
+    activeTab,
+    setActiveTab
   } = useMatchmaking();
 
   const { joinedParty, partyMember, partyCode } = useParty();
 
   // Tracks what the user actually queued for so leaveQueue cancels the right one
   const queuedSelectionRef = useRef<{ gameType: GameType; difficulty: ProblemDifficulty } | null>(null);
+
+  const handleTabChange = (value: string | null) => {
+    if (!value) return;
+
+    // Only the leader (non-joined party member) can change tabs
+    if (joinedParty !== null) return;
+
+    setActiveTab(value);
+
+    // Broadcast to party if in one
+    if (socket && partyMember) {
+      socket.emit("updateQueueSelection", {
+        gameType,
+        difficulty,
+        partyMember,
+        activeTab: value,
+      });
+    }
+  };
 
   // TODO: pull from PartyContext once party member is wired up
   const inParty = partyMember !== null || joinedParty !== null;
@@ -80,6 +101,28 @@ export default function QueuePage() {
     queuedSelectionRef.current = null;
     setStatus('idle');
   };
+
+  // Sync full state when someone joins your party
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleMemberJoined = () => {
+      // Leader pushes current state to new joiner
+      if (joinedParty === null && partyMember) {
+        socket.emit("updateQueueSelection", {
+          gameType,
+          difficulty,
+          partyMember,
+          activeTab,
+        });
+      }
+    };
+
+    socket.on("partyMemberJoined", handleMemberJoined);
+    return () => { 
+      socket.off("partyMemberJoined", handleMemberJoined); 
+    };
+  }, [socket, joinedParty, partyMember, gameType, difficulty, activeTab]);
 
   if (isPending) {
     return (
@@ -137,12 +180,13 @@ export default function QueuePage() {
             </Box>
           </Stack>
 
-          <Tabs defaultValue="create-game">
+          <Tabs value={activeTab} onChange={handleTabChange}>
             <Tabs.List grow>
               <Tabs.Tab
                 value="create-game"
                 data-testid="create-game-tab"
                 className={classes.modeTab}
+                disabled={joinedParty !== null}
               >
                 Create Game
               </Tabs.Tab>
@@ -150,6 +194,7 @@ export default function QueuePage() {
                 value="matchmaking"
                 data-testid="matchmaking-tab"
                 className={classes.modeTab}
+                disabled={joinedParty !== null}
               >
                 Matchmaking
               </Tabs.Tab>
@@ -174,9 +219,7 @@ export default function QueuePage() {
 
           </Tabs>
 
-          {joinedParty === null && (
-            <JoinGameSection />
-          )}
+          <JoinGameSection disabled={inParty} />
 
           {/* Help Text */}
           <Text size="sm" c="dimmed" ta="center" mt="xl">
